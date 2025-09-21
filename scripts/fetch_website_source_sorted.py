@@ -725,6 +725,350 @@ def extract_player_data_from_rosters(data_dir: str = "data") -> dict:
     return all_players_data
 
 
+def extract_club_links_from_rosters(data_dir: str = "data") -> dict:
+    """
+    Extract club links from all team roster HTML files.
+
+    Args:
+        data_dir: Directory containing the team roster HTML files
+
+    Returns:
+        Dictionary with team IDs as keys and club information as values
+    """
+    import glob
+
+    # Find all team roster files - handle both old and new naming patterns
+    roster_files = glob.glob(os.path.join(data_dir, "**", "team_roster_*.html"), recursive=True)
+
+    club_data = {}
+
+    for roster_file in roster_files:
+        try:
+            # Extract team ID from filename - handle both old and new naming patterns
+            filename = os.path.basename(roster_file)
+            team_id = None
+
+            # Try new naming pattern first: team_roster_{division}_{team_name}_{team_id}.html
+            new_pattern = r'team_roster_[^_]+_[^_]+_(\d+)\.html'
+            team_id_match = re.search(new_pattern, filename)
+            if team_id_match:
+                team_id = team_id_match.group(1)
+            else:
+                # Fallback to old naming pattern: team_roster_L2P_{team_id}.html
+                old_pattern = r'team_roster_L2P_(\d+)\.html'
+                team_id_match = re.search(old_pattern, filename)
+                if team_id_match:
+                    team_id = team_id_match.group(1)
+
+            if not team_id:
+                continue
+
+            # Read the HTML content
+            with open(roster_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Extract club link from the navigation
+            # Pattern: <a aria-haspopup="true" href="?L1=Public&L2=Verein&L2P={club_id}&Page=Spielbetrieb&Sportart=96" >Verein</a>
+            club_pattern = r'href="([^"]*L2=Verein[^"]*)"[^>]*>Verein</a>'
+            club_match = re.search(club_pattern, content, re.IGNORECASE)
+
+            if club_match:
+                club_link = club_match.group(1)
+                # Extract club ID from the link
+                club_id_match = re.search(r'L2P=([^&]+)', club_link)
+                if club_id_match:
+                    club_id = club_id_match.group(1)
+                    club_data[team_id] = {
+                        'club_id': club_id,
+                        'club_link': club_link,
+                        'team_file': roster_file
+                    }
+                    print(f"  Extracted club {club_id} for team {team_id}")
+
+        except Exception as e:
+            print(f"  Error processing {roster_file}: {e}")
+
+    return club_data
+
+
+def fetch_club_overview_sources(club_data: dict, data_dir: str = "data") -> dict:
+    """
+    Fetch the source code of each club overview page and save to data directory.
+
+    Args:
+        club_data: Dictionary with team IDs as keys and club information as values
+        data_dir: Directory to save the files
+
+    Returns:
+        Dictionary with club IDs as keys and file paths as values
+    """
+    saved_files = {}
+    root_url = "https://leipzig.tischtennislive.de/"
+
+    # Get unique club IDs
+    unique_club_ids = set()
+    for team_id, club_info in club_data.items():
+        unique_club_ids.add(club_info['club_id'])
+
+    print(f"Fetching {len(unique_club_ids)} unique club overview pages...")
+
+    for i, club_id in enumerate(unique_club_ids, 1):
+        try:
+            # Build club overview URL
+            club_url = f"{root_url}?L1=Public&L2=Verein&L2P={club_id}&Page=Spielbetrieb&Sportart=96"
+
+            print(f"Fetching club overview {i}/{len(unique_club_ids)}: {club_url}")
+
+            # Create request with headers to mimic a browser
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+
+            req = urllib.request.Request(club_url, headers=headers)
+            with urllib.request.urlopen(req) as response:
+                content = response.read().decode('utf-8')
+
+            # Generate filename based on club ID
+            filename = f"club_overview_{club_id}.html"
+
+            # Create clubs subfolder
+            clubs_folder = os.path.join(data_dir, "clubs")
+            os.makedirs(clubs_folder, exist_ok=True)
+
+            # Full path for output file
+            output_path = os.path.join(clubs_folder, filename)
+
+            # Save content to file
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            saved_files[club_id] = output_path
+            print(f"  Saved to: {output_path}")
+
+        except urllib.error.HTTPError as e:
+            print(f"  HTTP Error {e.code}: {e.reason} for club {club_id}")
+        except urllib.error.URLError as e:
+            print(f"  URL Error: {e.reason} for club {club_id}")
+        except Exception as e:
+            print(f"  Unexpected error: {e} for club {club_id}")
+
+    return saved_files
+
+
+def extract_all_teams_from_clubs(club_files: dict, data_dir: str = "data") -> dict:
+    """
+    Extract all teams from each club overview page using the same method as the main page.
+
+    Args:
+        club_files: Dictionary with club IDs as keys and file paths as values
+        data_dir: Directory containing the files
+
+    Returns:
+        Dictionary with club IDs as keys and list of team information as values
+    """
+    all_club_teams = {}
+
+    print(f"Extracting teams from {len(club_files)} club overview pages...")
+
+    for club_id, club_file in club_files.items():
+        try:
+            # Read the HTML content
+            with open(club_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Use the existing extract_team_names_and_divisions function
+            # to extract teams from the club page (same structure as main page)
+            teams_info = extract_team_names_and_divisions(content)
+
+            if teams_info:
+                teams = []
+                for team_id, (team_name, division_name) in teams_info.items():
+                    # Build the team roster link based on the team ID
+                    # This follows the same pattern as the original links
+                    team_link = f"?L1=Ergebnisse&L2=TTStaffeln&L2P={team_id}&L3=Mannschaften&L3P={team_id}"
+
+                    teams.append({
+                        'team_name': team_name,
+                        'team_id': team_id,
+                        'team_link': team_link,
+                        'division': division_name
+                    })
+
+                all_club_teams[club_id] = teams
+                print(f"  Extracted {len(teams)} teams from club {club_id}")
+                for team in teams:
+                    print(f"    - {team['team_name']} (ID: {team['team_id']})")
+            else:
+                print(f"  No teams found in club {club_id}")
+
+        except Exception as e:
+            print(f"  Error processing club {club_id}: {e}")
+
+    return all_club_teams
+
+
+def fetch_all_club_teams(club_teams: dict, data_dir: str = "data") -> dict:
+    """
+    Fetch all team rosters from all clubs.
+
+    Args:
+        club_teams: Dictionary with club IDs as keys and list of team information as values
+        data_dir: Directory to save the team roster files
+
+    Returns:
+        Dictionary with all team roster information organized by club
+    """
+    root_url = "https://leipzig.tischtennislive.de/"
+    all_club_team_rosters = {}
+
+    total_teams = 0
+    for club_id, teams in club_teams.items():
+        total_teams += len(teams)
+
+    print(f"Preparing to fetch {total_teams} team rosters from {len(club_teams)} clubs...")
+
+    for club_id, teams in club_teams.items():
+        club_rosters = []
+
+        for i, team in enumerate(teams, 1):
+            try:
+                team_link = team['team_link']
+
+                # Add root URL if not present
+                if not team_link.startswith('http'):
+                    full_url = f"{root_url}{team_link}"
+                else:
+                    full_url = team_link
+
+                print(f"  Fetching team roster {i}/{len(teams)} in club {club_id}: {team['team_name']}")
+
+                # Create request with headers to mimic a browser
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+
+                req = urllib.request.Request(full_url, headers=headers)
+                with urllib.request.urlopen(req) as response:
+                    content = response.read().decode('utf-8')
+
+                # Generate filename based on team name and club
+                clean_team_name = re.sub(r'[^\w\s-]', '', team['team_name']).strip()
+                clean_team_name = re.sub(r'[-\s]+', '_', clean_team_name)
+
+                team_id = team.get('team_id', 'unknown')
+                filename = f"club_team_{club_id}_{clean_team_name}_{team_id}.html"
+
+                # Create club teams subfolder
+                club_teams_folder = os.path.join(data_dir, "club_teams")
+                os.makedirs(club_teams_folder, exist_ok=True)
+
+                # Full path for output file
+                output_path = os.path.join(club_teams_folder, filename)
+
+                # Save content to file
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+
+                # Store team information
+                club_rosters.append({
+                    'team_name': team['team_name'],
+                    'team_id': team_id,
+                    'team_link': team_link,
+                    'file_path': output_path
+                })
+
+                print(f"    Saved to: {output_path}")
+
+            except urllib.error.HTTPError as e:
+                print(f"    HTTP Error {e.code}: {e.reason} for {full_url}")
+            except urllib.error.URLError as e:
+                print(f"    URL Error: {e.reason} for {full_url}")
+            except Exception as e:
+                print(f"    Unexpected error: {e} for {full_url}")
+
+        if club_rosters:
+            all_club_team_rosters[club_id] = club_rosters
+
+    return all_club_team_rosters
+
+
+def map_teams_to_clubs(club_data: dict, club_teams: dict) -> dict:
+    """
+    Create a mapping between teams and their clubs.
+
+    Args:
+        club_data: Dictionary with team IDs as keys and club information as values
+        club_teams: Dictionary with club IDs as keys and list of team information as values
+
+    Returns:
+        Dictionary with team IDs as keys and club information as values
+    """
+    team_to_club_mapping = {}
+
+    # Map teams to clubs based on club_data
+    for team_id, club_info in club_data.items():
+        club_id = club_info['club_id']
+        team_to_club_mapping[team_id] = {
+            'club_id': club_id,
+            'club_link': club_info['club_link'],
+            'team_file': club_info['team_file']
+        }
+
+    # Add additional teams from club overviews that weren't in the original data
+    for club_id, teams in club_teams.items():
+        for team in teams:
+            team_id = team.get('team_id')
+            if team_id and team_id not in team_to_club_mapping:
+                team_to_club_mapping[team_id] = {
+                    'club_id': club_id,
+                    'team_link': team['team_link'],
+                    'additional_team': True
+                }
+
+    return team_to_club_mapping
+
+
+def update_match_tracking_with_club_teams(tracking_data: dict, team_to_club_mapping: dict, matches_data: dict) -> dict:
+    """
+    Update match tracking to include all club teams.
+
+    Args:
+        tracking_data: Current tracking data
+        team_to_club_mapping: Mapping between teams and clubs
+        matches_data: Match data for all teams
+
+    Returns:
+        Updated tracking data
+    """
+    # Add club information to upcoming matches
+    for match in tracking_data.get("upcoming_matches", []):
+        team_id = match.get("team_id")
+        if team_id and team_id in team_to_club_mapping:
+            club_info = team_to_club_mapping[team_id]
+            match["club_id"] = club_info.get("club_id")
+            match["club_team"] = club_info.get("additional_team", False)
+
+    # Add matches from additional club teams
+    for team_id, matches in matches_data.items():
+        if team_id in team_to_club_mapping and team_to_club_mapping[team_id].get("additional_team"):
+            # This is an additional team from a club overview
+            for match in matches:
+                if match.get("status") == "upcoming":
+                    tracking_data["upcoming_matches"].append({
+                        "team_id": team_id,
+                        "team_name": match.get("home_team", ""),  # This might need adjustment
+                        "division": "Unknown",  # This might need to be extracted from team data
+                        "date": match.get("date", ""),
+                        "time": match.get("time", ""),
+                        "home_team": match.get("home_team", ""),
+                        "guest_team": match.get("guest_team", ""),
+                        "club_team": True,
+                        "additional_team": True
+                    })
+
+    return tracking_data
+
+
 def load_match_tracking_data(data_dir: str = "data") -> dict:
     """
     Load existing match tracking data from JSON file.
@@ -1032,15 +1376,22 @@ def main():
                 print(f"  {division}")
             print(f"{'='*60}")
 
-        # Extract match data from all roster files
+        # Extract match data from all roster files (including club teams)
         print(f"\n{'='*60}")
-        print("EXTRACTING MATCH DATA:")
+        print("EXTRACTING MATCH DATA FROM ALL ROSTERS:")
         print(f"{'='*60}")
 
+        # Extract match data from main team rosters
         matches_data = extract_match_data_from_rosters(data_dir)
 
-        # Extract upcoming matches for tracking
-        upcoming_matches = extract_upcoming_matches_from_data(matches_data, teams_info)
+        # Extract match data from club team rosters
+        club_matches_data = extract_match_data_from_rosters(os.path.join(data_dir, "club_teams"))
+
+        # Combine all match data
+        all_matches_data = {**matches_data, **club_matches_data}
+
+        # Extract upcoming matches for tracking from all sources
+        upcoming_matches = extract_upcoming_matches_from_data(all_matches_data, teams_info)
 
         # Update tracking data with new upcoming matches
         tracking_data["upcoming_matches"] = upcoming_matches
@@ -1051,10 +1402,10 @@ def main():
         # Display extracted match data with actual team names
         total_matches = 0
         completed_matches = 0
-        upcoming_matches = 0
+        upcoming_matches_count = 0
 
-        for team_id in sorted(matches_data.keys()):
-            matches = matches_data[team_id]
+        for team_id in sorted(all_matches_data.keys()):
+            matches = all_matches_data[team_id]
             total_matches += len(matches)
 
             # Count completed and upcoming matches
@@ -1062,7 +1413,7 @@ def main():
                 if match.get('status') == 'completed':
                     completed_matches += 1
                 else:
-                    upcoming_matches += 1
+                    upcoming_matches_count += 1
 
             # Get team name and division
             if team_id in teams_info:
@@ -1092,10 +1443,10 @@ def main():
         print(f"\n{'='*60}")
         print("MATCH DATA SUMMARY:")
         print(f"{'='*60}")
-        print(f"Teams with matches: {len(matches_data)}")
+        print(f"Teams with matches: {len(all_matches_data)}")
         print(f"Total matches found: {total_matches}")
         print(f"Completed matches: {completed_matches}")
-        print(f"Upcoming matches: {upcoming_matches}")
+        print(f"Upcoming matches: {upcoming_matches_count}")
         print(f"{'='*60}")
 
         # Display match tracking information
@@ -1107,17 +1458,230 @@ def main():
         print(f"Match tracking data saved to: {os.path.join(data_dir, 'match_tracking.json')}")
         print(f"{'='*60}")
 
-        # Extract player data from all roster files
+        # Extract club links from ALL team roster files in the entire data directory
         print(f"\n{'='*60}")
-        print("EXTRACTING PLAYER DATA:")
+        print("EXTRACTING CLUB LINKS FROM ALL TEAM ROSTERS:")
         print(f"{'='*60}")
 
+        # Find all team roster files in the entire data directory (including subfolders)
+        import glob
+        all_roster_files = glob.glob(os.path.join(data_dir, "**", "team_roster_*.html"), recursive=True)
+        print(f"Found {len(all_roster_files)} team roster files to process for club links...")
+
+        club_data = {}
+        processed_count = 0
+        skipped_count = 0
+
+        for roster_file in all_roster_files:
+            try:
+                # Extract team ID from filename - handle both old and new naming patterns
+                filename = os.path.basename(roster_file)
+                team_id = None
+
+                # Try new naming pattern first: team_roster_{division}_{team_name}_{team_id}.html
+                new_pattern = r'team_roster_[^_]+_[^_]+_(\d+)\.html'
+                team_id_match = re.search(new_pattern, filename)
+                if team_id_match:
+                    team_id = team_id_match.group(1)
+                else:
+                    # Fallback to old naming pattern: team_roster_L2P_{team_id}.html
+                    old_pattern = r'team_roster_L2P_(\d+)\.html'
+                    team_id_match = re.search(old_pattern, filename)
+                    if team_id_match:
+                        team_id = team_id_match.group(1)
+
+                # If we can't extract team ID from filename, try to extract it from the HTML content
+                if not team_id:
+                    try:
+                        with open(roster_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+
+                        # Try to extract team ID from the HTML content using the roster link pattern
+                        team_id_pattern = r'L3P=([^&"]+)'
+                        team_id_match = re.search(team_id_pattern, content)
+                        if team_id_match:
+                            team_id = team_id_match.group(1)
+                    except:
+                        pass
+
+                if not team_id:
+                    skipped_count += 1
+                    continue
+
+                # Read the HTML content
+                with open(roster_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Extract club link from the navigation
+                # Pattern: <a aria-haspopup="true" href="?L1=Public&L2=Verein&L2P={club_id}&Page=Spielbetrieb&Sportart=96" >Verein</a>
+                club_pattern = r'href="([^"]*L2=Verein[^"]*)"[^>]*>Verein</a>'
+                club_match = re.search(club_pattern, content, re.IGNORECASE)
+
+                if club_match:
+                    club_link = club_match.group(1)
+                    # Extract club ID from the link
+                    club_id_match = re.search(r'L2P=([^&]+)', club_link)
+                    if club_id_match:
+                        club_id = club_id_match.group(1)
+                        club_data[team_id] = {
+                            'club_id': club_id,
+                            'club_link': club_link,
+                            'team_file': roster_file
+                        }
+                        print(f"  Extracted club {club_id} for team {team_id}")
+                        processed_count += 1
+
+            except Exception as e:
+                print(f"  Error processing {roster_file}: {e}")
+
+        print(f"Successfully processed {processed_count} team roster files for club links")
+        if skipped_count > 0:
+            print(f"Skipped {skipped_count} files (could not extract team ID)")
+
+        # Display extracted club data
+        unique_clubs = set()
+        for team_id, club_info in club_data.items():
+            unique_clubs.add(club_info['club_id'])
+
+        print(f"\nFound {len(club_data)} teams with club information:")
+        print(f"Unique clubs discovered: {len(unique_clubs)}")
+        for team_id in sorted(club_data.keys()):
+            club_info = club_data[team_id]
+            print(f"  Team {team_id} -> Club {club_info['club_id']}")
+
+        print(f"\n{'='*60}")
+        print("CLUB DATA SUMMARY:")
+        print(f"{'='*60}")
+        print(f"Teams with club data: {len(club_data)}")
+        print(f"Unique clubs found: {len(unique_clubs)}")
+        print(f"{'='*60}")
+
+        # Fetch club overview pages for ALL clubs
+        print(f"\n{'='*60}")
+        print("FETCHING ALL CLUB OVERVIEW PAGES:")
+        print(f"{'='*60}")
+
+        club_files = fetch_club_overview_sources(club_data, data_dir)
+
+        print(f"\n{'='*60}")
+        print("CLUB OVERVIEW SUMMARY:")
+        print(f"{'='*60}")
+        print(f"Club overview pages fetched: {len(club_files)}")
+        print(f"{'='*60}")
+
+        # Extract all teams from ALL club overviews
+        print(f"\n{'='*60}")
+        print("EXTRACTING ALL TEAMS FROM ALL CLUBS:")
+        print(f"{'='*60}")
+
+        club_teams = extract_all_teams_from_clubs(club_files, data_dir)
+
+        # Display extracted club teams
+        total_club_teams = 0
+        for club_id in sorted(club_teams.keys()):
+            teams = club_teams[club_id]
+            total_club_teams += len(teams)
+
+            print(f"\nClub {club_id}:")
+            print("-" * 60)
+            print(f"  Total teams: {len(teams)}")
+
+            for i, team in enumerate(teams, 1):
+                print(f"    {i:2d}. {team['team_name']:<30} (ID: {team.get('team_id', 'N/A')})")
+
+        print(f"\n{'='*60}")
+        print("CLUB TEAMS SUMMARY:")
+        print(f"{'='*60}")
+        print(f"Clubs processed: {len(club_teams)}")
+        print(f"Total teams found: {total_club_teams}")
+        print(f"{'='*60}")
+
+        # Fetch team rosters for all teams from all clubs
+        print(f"\n{'='*60}")
+        print("FETCHING ALL CLUB TEAM ROSTERS:")
+        print(f"{'='*60}")
+
+        all_club_team_rosters = fetch_all_club_teams(club_teams, data_dir)
+
+        # Display summary of fetched club team rosters
+        total_fetched_club_teams = 0
+        for club_id in sorted(all_club_team_rosters.keys()):
+            teams = all_club_team_rosters[club_id]
+            total_fetched_club_teams += len(teams)
+
+            print(f"\nClub {club_id}:")
+            print("-" * 60)
+            print(f"  Fetched teams: {len(teams)}")
+
+            for i, team in enumerate(teams, 1):
+                print(f"    {i:2d}. {team['team_name']:<30} -> {team['file_path']}")
+
+        print(f"\n{'='*60}")
+        print("CLUB TEAM ROSTER FETCHING SUMMARY:")
+        print(f"{'='*60}")
+        print(f"Clubs processed: {len(all_club_team_rosters)}")
+        print(f"Total club team rosters fetched: {total_fetched_club_teams}")
+        print(f"{'='*60}")
+
+        # Create comprehensive team-to-club mapping
+        print(f"\n{'='*60}")
+        print("CREATING COMPREHENSIVE TEAM-TO-CLUB MAPPING:")
+        print(f"{'='*60}")
+
+        team_to_club_mapping = map_teams_to_clubs(club_data, club_teams)
+
+        print(f"\nTeam-to-club mapping created for {len(team_to_club_mapping)} teams:")
+        for team_id in sorted(team_to_club_mapping.keys()):
+            mapping_info = team_to_club_mapping[team_id]
+            additional = " (additional)" if mapping_info.get("additional_team") else ""
+            print(f"  Team {team_id} -> Club {mapping_info['club_id']}{additional}")
+
+        print(f"\n{'='*60}")
+        print("MAPPING SUMMARY:")
+        print(f"{'='*60}")
+        print(f"Total teams mapped: {len(team_to_club_mapping)}")
+        print(f"{'='*60}")
+
+        # Update match tracking with all club teams
+        print(f"\n{'='*60}")
+        print("UPDATING MATCH TRACKING WITH ALL CLUB TEAMS:")
+        print(f"{'='*60}")
+
+        # Extract match data from all club team rosters
+        club_matches_data = extract_match_data_from_rosters(os.path.join(data_dir, "club_teams"))
+
+        # Update tracking data with all club team information
+        updated_tracking_data = update_match_tracking_with_club_teams(tracking_data, team_to_club_mapping, club_matches_data)
+
+        # Save updated tracking data
+        save_match_tracking_data(updated_tracking_data, data_dir)
+
+        print(f"\n{'='*60}")
+        print("UPDATED MATCH TRACKING SUMMARY:")
+        print(f"{'='*60}")
+        print(f"Last scrape: {updated_tracking_data.get('last_scrape', 'Never')}")
+        print(f"Upcoming matches tracked: {len(updated_tracking_data.get('upcoming_matches', []))}")
+        print(f"Match tracking data saved to: {os.path.join(data_dir, 'match_tracking.json')}")
+        print(f"{'='*60}")
+
+        # Extract player data from all roster files (including club teams)
+        print(f"\n{'='*60}")
+        print("EXTRACTING PLAYER DATA FROM ALL ROSTERS:")
+        print(f"{'='*60}")
+
+        # Extract player data from main team rosters
         players_data = extract_player_data_from_rosters(data_dir)
+
+        # Extract player data from club team rosters
+        club_players_data = extract_player_data_from_rosters(os.path.join(data_dir, "club_teams"))
+
+        # Combine all player data
+        all_players_data = {**players_data, **club_players_data}
 
         # Display extracted player data with actual team names
         total_players = 0
-        for team_id in sorted(players_data.keys()):
-            players = players_data[team_id]
+        for team_id in sorted(all_players_data.keys()):
+            players = all_players_data[team_id]
             total_players += len(players)
 
             # Get team name and division
@@ -1135,7 +1699,7 @@ def main():
         print(f"\n{'='*60}")
         print("PLAYER DATA SUMMARY:")
         print(f"{'='*60}")
-        print(f"Teams processed: {len(players_data)}")
+        print(f"Teams processed: {len(all_players_data)}")
         print(f"Total players found: {total_players}")
         print(f"{'='*60}")
 
