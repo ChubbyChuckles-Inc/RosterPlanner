@@ -46,7 +46,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.23 Color token drift detector (alerts if ad-hoc hardcoded color introduced)
 [x] 0.24 Developer lint rule: forbid inline styles outside approved token map
 [x] 0.25 Usability heuristic review checklist integrated into PR template
-[ ] 0.26 User preference persistence for all opt-in visual customizations
+[x] 0.26 User preference persistence for all opt-in visual customizations
 [ ] 0.27 Plugin UI style contract (tokens-only consumption, no arbitrary palettes)
 [ ] 0.28 Print-friendly stylesheet for exports (light, high-contrast variant)
 [ ] 0.29 Continuous design snapshot pipeline (nightly screenshot diff of key views)
