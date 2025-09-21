@@ -70,7 +70,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.47 Adaptive scrollbar styling (consistent across platforms, theme-aware)
 [x] 0.48 Heatmap color ramp perceptual uniformity validation (Lab space check)
 [x] 0.49 Component maturity index (alpha/beta/stable) surfaced in gallery
-[ ] 0.50 Design debt register (tracked issues with severity & remediation target)
+[x] 0.50 Design debt register (tracked issues with severity & remediation target)
 
 Milestone 1: GUI Foundation & Infrastructure
 [x] 1.1 Create dedicated GUI package structure (gui/app, gui/views, gui/viewmodels, gui/components, gui/services)

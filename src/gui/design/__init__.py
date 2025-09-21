@@ -219,6 +219,16 @@ from .component_maturity import (  # noqa: F401
     clear_component_maturity,
     summarize_maturity,
 )
+from .design_debt import (  # noqa: F401
+    DesignDebtItem,
+    register_design_debt,
+    get_design_debt,
+    list_design_debt,
+    filter_design_debt,
+    close_design_debt,
+    summarize_design_debt,
+    clear_design_debt,
+)
 
 __all__ = [
     "load_tokens",
@@ -389,4 +399,12 @@ __all__ = [
     "list_component_maturity",
     "clear_component_maturity",
     "summarize_maturity",
+    "DesignDebtItem",
+    "register_design_debt",
+    "get_design_debt",
+    "list_design_debt",
+    "filter_design_debt",
+    "close_design_debt",
+    "summarize_design_debt",
+    "clear_design_debt",
 ]

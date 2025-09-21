@@ -35,3 +35,4 @@ feat: implement 0.46 live performance overlay metrics (capture module, stats, te
 feat: implement 0.47 adaptive scrollbar styling (QSS generator, fallbacks, tests, exports)
 feat: implement 0.48 heatmap ramp perceptual uniformity validation (Lab approximation, report dataclass, tests, exports)
 feat: implement 0.49 component maturity index (registry, gallery badges, tests, exports)
+feat: implement 0.50 design debt register (registry, filtering, summary, tests, exports)
