@@ -4,3 +4,4 @@ feat: implement 0.16 performance budget matrix (registry, enforcement helper, te
 feat: implement 0.17 skeleton loader variants (registry, shape schema, tests)
 feat: implement 0.18 empty state templates (registry & tests)
 feat: implement 0.19 error state visual taxonomy (registry, dataclass, tests)
+feat: implement 0.20 notification style guidelines (registry, dataclass, tests)
