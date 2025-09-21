@@ -1030,17 +1030,20 @@ def map_teams_to_clubs(club_data: dict, club_teams: dict) -> dict:
 
 def update_match_tracking_with_club_teams(tracking_data: dict, team_to_club_mapping: dict, matches_data: dict) -> dict:
     """
-    Update match tracking to include all club teams.
+    Update match tracking to include club information for all teams.
 
     Args:
         tracking_data: Current tracking data
         team_to_club_mapping: Mapping between teams and clubs
-        matches_data: Match data for all teams
+        matches_data: Match data for all teams (used for reference)
 
     Returns:
-        Updated tracking data
+        Updated tracking data with club information
     """
-    # Add club information to upcoming matches
+    # Add club information to existing upcoming matches
+    # Note: The comprehensive upcoming matches already include club team matches
+    # from the extract_upcoming_matches_from_data function, so we just need to
+    # add club metadata to existing matches
     for match in tracking_data.get("upcoming_matches", []):
         team_id = match.get("team_id")
         if team_id and team_id in team_to_club_mapping:
@@ -1048,23 +1051,8 @@ def update_match_tracking_with_club_teams(tracking_data: dict, team_to_club_mapp
             match["club_id"] = club_info.get("club_id")
             match["club_team"] = club_info.get("additional_team", False)
 
-    # Add matches from additional club teams
-    for team_id, matches in matches_data.items():
-        if team_id in team_to_club_mapping and team_to_club_mapping[team_id].get("additional_team"):
-            # This is an additional team from a club overview
-            for match in matches:
-                if match.get("status") == "upcoming":
-                    tracking_data["upcoming_matches"].append({
-                        "team_id": team_id,
-                        "team_name": match.get("home_team", ""),  # This might need adjustment
-                        "division": "Unknown",  # This might need to be extracted from team data
-                        "date": match.get("date", ""),
-                        "time": match.get("time", ""),
-                        "home_team": match.get("home_team", ""),
-                        "guest_team": match.get("guest_team", ""),
-                        "club_team": True,
-                        "additional_team": True
-                    })
+    # Note: We don't add additional matches here because they are already
+    # included in the comprehensive upcoming_matches from extract_upcoming_matches_from_data
 
     return tracking_data
 
@@ -1165,13 +1153,14 @@ def should_rescrape_division(division_name: str, tracking_data: dict) -> bool:
     return False
 
 
-def extract_upcoming_matches_from_data(matches_data: dict, teams_info: dict) -> list:
+def extract_upcoming_matches_from_data(matches_data: dict, teams_info: dict, team_to_club_mapping: dict = None) -> list:
     """
     Extract upcoming matches from match data for tracking.
 
     Args:
         matches_data: Dictionary with match data by team ID
         teams_info: Dictionary mapping team IDs to (team_name, division_name)
+        team_to_club_mapping: Optional mapping of teams to clubs for additional teams
 
     Returns:
         List of upcoming matches with division and timestamp info
@@ -1179,20 +1168,34 @@ def extract_upcoming_matches_from_data(matches_data: dict, teams_info: dict) -> 
     upcoming_matches = []
 
     for team_id, matches in matches_data.items():
+        # Try to get team info from the original teams_info first
+        team_name = None
+        division_name = None
+
         if team_id in teams_info:
             team_name, division_name = teams_info[team_id]
+        elif team_to_club_mapping and team_id in team_to_club_mapping:
+            # This is a club team, try to get info from club data
+            club_info = team_to_club_mapping[team_id]
+            # For club teams, we might not have the exact team name, so use a generic name
+            team_name = f"Club Team {team_id}"
+            division_name = "Unknown"  # Club teams might not have division info
 
-            for match in matches:
-                if match.get("status") == "upcoming":
-                    upcoming_matches.append({
-                        "team_id": team_id,
-                        "team_name": team_name,
-                        "division": division_name,
-                        "date": match.get("date", ""),
-                        "time": match.get("time", ""),
-                        "home_team": match.get("home_team", ""),
-                        "guest_team": match.get("guest_team", "")
-                    })
+        # If we still don't have team info, skip this team
+        if not team_name or not division_name:
+            continue
+
+        for match in matches:
+            if match.get("status") == "upcoming":
+                upcoming_matches.append({
+                    "team_id": team_id,
+                    "team_name": team_name,
+                    "division": division_name,
+                    "date": match.get("date", ""),
+                    "time": match.get("time", ""),
+                    "home_team": match.get("home_team", ""),
+                    "guest_team": match.get("guest_team", "")
+                })
 
     return upcoming_matches
 
@@ -1375,88 +1378,6 @@ def main():
             for division in sorted(divisions_to_scrape):
                 print(f"  {division}")
             print(f"{'='*60}")
-
-        # Extract match data from all roster files (including club teams)
-        print(f"\n{'='*60}")
-        print("EXTRACTING MATCH DATA FROM ALL ROSTERS:")
-        print(f"{'='*60}")
-
-        # Extract match data from main team rosters
-        matches_data = extract_match_data_from_rosters(data_dir)
-
-        # Extract match data from club team rosters
-        club_matches_data = extract_match_data_from_rosters(os.path.join(data_dir, "club_teams"))
-
-        # Combine all match data
-        all_matches_data = {**matches_data, **club_matches_data}
-
-        # Extract upcoming matches for tracking from all sources
-        upcoming_matches = extract_upcoming_matches_from_data(all_matches_data, teams_info)
-
-        # Update tracking data with new upcoming matches
-        tracking_data["upcoming_matches"] = upcoming_matches
-
-        # Save updated tracking data
-        save_match_tracking_data(tracking_data, data_dir)
-
-        # Display extracted match data with actual team names
-        total_matches = 0
-        completed_matches = 0
-        upcoming_matches_count = 0
-
-        for team_id in sorted(all_matches_data.keys()):
-            matches = all_matches_data[team_id]
-            total_matches += len(matches)
-
-            # Count completed and upcoming matches
-            for match in matches:
-                if match.get('status') == 'completed':
-                    completed_matches += 1
-                else:
-                    upcoming_matches_count += 1
-
-            # Get team name and division
-            if team_id in teams_info:
-                team_name, division_name = teams_info[team_id]
-                team_display = f"{team_name} / {division_name}"
-            else:
-                team_display = f"Team {team_id}"
-
-            print(f"\n{team_display} ({len(matches)} matches):")
-            print("-" * 60)
-
-            # Separate completed and upcoming matches
-            completed = [m for m in matches if m.get('status') == 'completed']
-            upcoming = [m for m in matches if m.get('status') == 'upcoming']
-
-            if completed:
-                print("  Completed matches:")
-                for i, match in enumerate(completed, 1):
-                    score = f"{match.get('home_score', '')}:{match.get('guest_score', '')}" if match.get('home_score') and match.get('guest_score') else 'N/A'
-                    print(f"    {i:2d}. {match.get('date', '')} {match.get('time', '')} - {match.get('home_team', '')} vs {match.get('guest_team', '')} ({score})")
-
-            if upcoming:
-                print("  Upcoming matches:")
-                for i, match in enumerate(upcoming, 1):
-                    print(f"    {i:2d}. {match.get('date', '')} {match.get('time', '')} - {match.get('home_team', '')} vs {match.get('guest_team', '')}")
-
-        print(f"\n{'='*60}")
-        print("MATCH DATA SUMMARY:")
-        print(f"{'='*60}")
-        print(f"Teams with matches: {len(all_matches_data)}")
-        print(f"Total matches found: {total_matches}")
-        print(f"Completed matches: {completed_matches}")
-        print(f"Upcoming matches: {upcoming_matches_count}")
-        print(f"{'='*60}")
-
-        # Display match tracking information
-        print(f"\n{'='*60}")
-        print("MATCH TRACKING SUMMARY:")
-        print(f"{'='*60}")
-        print(f"Last scrape: {tracking_data.get('last_scrape', 'Never')}")
-        print(f"Upcoming matches tracked: {len(tracking_data.get('upcoming_matches', []))}")
-        print(f"Match tracking data saved to: {os.path.join(data_dir, 'match_tracking.json')}")
-        print(f"{'='*60}")
 
         # Extract club links from ALL team roster files in the entire data directory
         print(f"\n{'='*60}")
@@ -1642,27 +1563,88 @@ def main():
         print(f"Total teams mapped: {len(team_to_club_mapping)}")
         print(f"{'='*60}")
 
-        # Update match tracking with all club teams
+        # Extract match data from all roster files (including club teams)
         print(f"\n{'='*60}")
-        print("UPDATING MATCH TRACKING WITH ALL CLUB TEAMS:")
+        print("EXTRACTING MATCH DATA FROM ALL ROSTERS:")
         print(f"{'='*60}")
 
-        # Extract match data from all club team rosters
+        # Extract match data from main team rosters
+        matches_data = extract_match_data_from_rosters(data_dir)
+
+        # Extract match data from club team rosters
         club_matches_data = extract_match_data_from_rosters(os.path.join(data_dir, "club_teams"))
 
-        # Update tracking data with all club team information
-        updated_tracking_data = update_match_tracking_with_club_teams(tracking_data, team_to_club_mapping, club_matches_data)
+        # Combine all match data
+        all_matches_data = {**matches_data, **club_matches_data}
+
+        # Extract upcoming matches for tracking from all sources
+        upcoming_matches = extract_upcoming_matches_from_data(all_matches_data, teams_info, team_to_club_mapping)
+
+        # Update tracking data with new upcoming matches (including club teams)
+        tracking_data["upcoming_matches"] = upcoming_matches
 
         # Save updated tracking data
-        save_match_tracking_data(updated_tracking_data, data_dir)
+        save_match_tracking_data(tracking_data, data_dir)
+
+        # Display extracted match data with actual team names
+        total_matches = 0
+        completed_matches = 0
+        upcoming_matches_count = 0
+
+        for team_id in sorted(all_matches_data.keys()):
+            matches = all_matches_data[team_id]
+            total_matches += len(matches)
+
+            # Count completed and upcoming matches
+            for match in matches:
+                if match.get('status') == 'completed':
+                    completed_matches += 1
+                else:
+                    upcoming_matches_count += 1
+
+            # Get team name and division
+            if team_id in teams_info:
+                team_name, division_name = teams_info[team_id]
+                team_display = f"{team_name} / {division_name}"
+            else:
+                team_display = f"Team {team_id}"
+
+            print(f"\n{team_display} ({len(matches)} matches):")
+            print("-" * 60)
+
+            # Separate completed and upcoming matches
+            completed = [m for m in matches if m.get('status') == 'completed']
+            upcoming = [m for m in matches if m.get('status') == 'upcoming']
+
+            if completed:
+                print("  Completed matches:")
+                for i, match in enumerate(completed, 1):
+                    score = f"{match.get('home_score', '')}:{match.get('guest_score', '')}" if match.get('home_score') and match.get('guest_score') else 'N/A'
+                    print(f"    {i:2d}. {match.get('date', '')} {match.get('time', '')} - {match.get('home_team', '')} vs {match.get('guest_team', '')} ({score})")
+
+            if upcoming:
+                print("  Upcoming matches:")
+                for i, match in enumerate(upcoming, 1):
+                    print(f"    {i:2d}. {match.get('date', '')} {match.get('time', '')} - {match.get('home_team', '')} vs {match.get('guest_team', '')}")
 
         print(f"\n{'='*60}")
-        print("UPDATED MATCH TRACKING SUMMARY:")
+        print("MATCH DATA SUMMARY:")
         print(f"{'='*60}")
-        print(f"Last scrape: {updated_tracking_data.get('last_scrape', 'Never')}")
-        print(f"Upcoming matches tracked: {len(updated_tracking_data.get('upcoming_matches', []))}")
+        print(f"Teams with matches: {len(all_matches_data)}")
+        print(f"Total matches found: {total_matches}")
+        print(f"Completed matches: {completed_matches}")
+        print(f"Upcoming matches: {upcoming_matches_count}")
+        print(f"{'='*60}")
+
+        # Display match tracking information
+        print(f"\n{'='*60}")
+        print("MATCH TRACKING SUMMARY:")
+        print(f"{'='*60}")
+        print(f"Last scrape: {tracking_data.get('last_scrape', 'Never')}")
+        print(f"Upcoming matches tracked: {len(tracking_data.get('upcoming_matches', []))}")
         print(f"Match tracking data saved to: {os.path.join(data_dir, 'match_tracking.json')}")
         print(f"{'='*60}")
+
 
         # Extract player data from all roster files (including club teams)
         print(f"\n{'='*60}")

@@ -1,5 +1,5 @@
 {
-  "last_scrape": "2025-09-21T19:51:23.719104",
+  "last_scrape": "2025-09-21T20:43:01.915988",
   "divisions": {},
   "upcoming_matches": [
     {
@@ -9,9 +9,7 @@
       "date": "04.10.25",
       "time": "14:00",
       "home_team": "Brandiser TTC 1946",
-      "guest_team": "SSV Stötteritz 2",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 2"
     },
     {
       "team_id": "20336",
@@ -20,9 +18,7 @@
       "date": "18.10.25",
       "time": "15:00",
       "home_team": "SSV Stötteritz 2",
-      "guest_team": "LSV Mörtitz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "LSV Mörtitz"
     },
     {
       "team_id": "20336",
@@ -31,9 +27,7 @@
       "date": "25.10.25",
       "time": "14:00",
       "home_team": "TTC Holzhausen 4",
-      "guest_team": "SSV Stötteritz 2",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 2"
     },
     {
       "team_id": "20336",
@@ -42,9 +36,7 @@
       "date": "01.11.25",
       "time": "15:00",
       "home_team": "SSV Stötteritz 2",
-      "guest_team": "TTV 1990 Wurzen 2",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TTV 1990 Wurzen 2"
     },
     {
       "team_id": "20336",
@@ -53,9 +45,7 @@
       "date": "22.11.25",
       "time": "15:00",
       "home_team": "SSV Stötteritz 2",
-      "guest_team": "Leutzscher Füchse 4",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "Leutzscher Füchse 4"
     },
     {
       "team_id": "20336",
@@ -64,9 +54,7 @@
       "date": "14.12.25",
       "time": "10:00",
       "home_team": "SG C. Zetkin Leipzig 3",
-      "guest_team": "SSV Stötteritz 2",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 2"
     },
     {
       "team_id": "20337",
@@ -75,9 +63,7 @@
       "date": "04.10.25",
       "time": "14:00",
       "home_team": "Leutzscher Füchse 2",
-      "guest_team": "SSV Stötteritz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz"
     },
     {
       "team_id": "20337",
@@ -86,9 +72,7 @@
       "date": "05.10.25",
       "time": "10:00",
       "home_team": "SSV Stötteritz",
-      "guest_team": "TTC Oschatz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TTC Oschatz"
     },
     {
       "team_id": "20337",
@@ -97,9 +81,7 @@
       "date": "19.10.25",
       "time": "10:00",
       "home_team": "SSV Stötteritz",
-      "guest_team": "TTC Großpösna 1968 2",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TTC Großpösna 1968 2"
     },
     {
       "team_id": "20337",
@@ -108,9 +90,7 @@
       "date": "02.11.25",
       "time": "10:00",
       "home_team": "SSV Stötteritz",
-      "guest_team": "Leutzscher Füchse 3",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "Leutzscher Füchse 3"
     },
     {
       "team_id": "20337",
@@ -119,9 +99,7 @@
       "date": "16.11.25",
       "time": "10:00",
       "home_team": "SSV Stötteritz",
-      "guest_team": "SV Arzberg",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV Arzberg"
     },
     {
       "team_id": "20337",
@@ -130,9 +108,7 @@
       "date": "29.11.25",
       "time": "14:00",
       "home_team": "TTC Großpösna 1968",
-      "guest_team": "SSV Stötteritz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz"
     },
     {
       "team_id": "20337",
@@ -141,9 +117,7 @@
       "date": "07.12.25",
       "time": "10:00",
       "home_team": "SSV Stötteritz",
-      "guest_team": "SV Groitzsch 1861",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV Groitzsch 1861"
     },
     {
       "team_id": "20459",
@@ -152,9 +126,7 @@
       "date": "25.09.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 4",
-      "guest_team": "SV Leipzig 1910",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV Leipzig 1910"
     },
     {
       "team_id": "20459",
@@ -163,9 +135,7 @@
       "date": "02.10.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 4",
-      "guest_team": "MDR SG",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "MDR SG"
     },
     {
       "team_id": "20459",
@@ -174,9 +144,7 @@
       "date": "24.10.25",
       "time": "19:30",
       "home_team": "Leutzscher Füchse 9",
-      "guest_team": "SSV Stötteritz 4",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 4"
     },
     {
       "team_id": "20459",
@@ -185,9 +153,7 @@
       "date": "03.11.25",
       "time": "19:15",
       "home_team": "SG C. Zetkin Leipzig 5",
-      "guest_team": "SSV Stötteritz 4",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 4"
     },
     {
       "team_id": "20459",
@@ -196,9 +162,7 @@
       "date": "13.11.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 4",
-      "guest_team": "TSV Grünau Leipzig",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TSV Grünau Leipzig"
     },
     {
       "team_id": "20459",
@@ -207,9 +171,7 @@
       "date": "28.11.25",
       "time": "19:00",
       "home_team": "SV BW Lindenau",
-      "guest_team": "SSV Stötteritz 4",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 4"
     },
     {
       "team_id": "20459",
@@ -218,9 +180,7 @@
       "date": "11.12.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 4",
-      "guest_team": "SV F. Leipzig-Thekla 2",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV F. Leipzig-Thekla 2"
     },
     {
       "team_id": "20464",
@@ -229,9 +189,7 @@
       "date": "27.09.25",
       "time": "10:45",
       "home_team": "SG MoGoNo Leipzig",
-      "guest_team": "SSV Stötteritz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz"
     },
     {
       "team_id": "20464",
@@ -240,9 +198,7 @@
       "date": "01.11.25",
       "time": "09:30",
       "home_team": "SSV Stötteritz",
-      "guest_team": "SG C. Zetkin Leipzig",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SG C. Zetkin Leipzig"
     },
     {
       "team_id": "20464",
@@ -251,9 +207,7 @@
       "date": "08.11.25",
       "time": "09:30",
       "home_team": "SSV Stötteritz",
-      "guest_team": "TTC MWL",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TTC MWL"
     },
     {
       "team_id": "20464",
@@ -262,9 +216,7 @@
       "date": "29.11.25",
       "time": "10:15",
       "home_team": "ATV Volkmarsdorf",
-      "guest_team": "SSV Stötteritz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz"
     },
     {
       "team_id": "20464",
@@ -273,9 +225,7 @@
       "date": "06.12.25",
       "time": "09:30",
       "home_team": "SSV Stötteritz",
-      "guest_team": "Leutzscher Füchse",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "Leutzscher Füchse"
     },
     {
       "team_id": "20464",
@@ -284,9 +234,7 @@
       "date": "13.12.25",
       "time": "08:30",
       "home_team": "SV DKF Böhlitz-Ehr.",
-      "guest_team": "SSV Stötteritz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz"
     },
     {
       "team_id": "20465",
@@ -295,9 +243,7 @@
       "date": "26.09.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 7",
-      "guest_team": "SG MoGoNo Leipzig 5",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SG MoGoNo Leipzig 5"
     },
     {
       "team_id": "20465",
@@ -306,9 +252,7 @@
       "date": "21.10.25",
       "time": "19:30",
       "home_team": "SV DKF Böhlitz-Ehr. 2",
-      "guest_team": "SSV Stötteritz 7",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 7"
     },
     {
       "team_id": "20465",
@@ -317,9 +261,7 @@
       "date": "07.11.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 7",
-      "guest_team": "SV F. Leipzig-Thekla 4",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV F. Leipzig-Thekla 4"
     },
     {
       "team_id": "20465",
@@ -328,9 +270,7 @@
       "date": "12.11.25",
       "time": "19:15",
       "home_team": "SV Weißblau Allianz  3",
-      "guest_team": "SSV Stötteritz 7",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 7"
     },
     {
       "team_id": "20465",
@@ -339,9 +279,7 @@
       "date": "28.11.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 7",
-      "guest_team": "SV Mölkau 04 4",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV Mölkau 04 4"
     },
     {
       "team_id": "20465",
@@ -350,9 +288,7 @@
       "date": "11.12.25",
       "time": "20:15",
       "home_team": "ATV Volkmarsdorf 2",
-      "guest_team": "SSV Stötteritz 7",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 7"
     },
     {
       "team_id": "20469",
@@ -361,9 +297,7 @@
       "date": "26.09.25",
       "time": "19:30",
       "home_team": "Leutzscher Füchse 14",
-      "guest_team": "SSV Stötteritz 6",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 6"
     },
     {
       "team_id": "20469",
@@ -372,9 +306,7 @@
       "date": "22.10.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 6",
-      "guest_team": "TTC Holzhausen 9",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TTC Holzhausen 9"
     },
     {
       "team_id": "20469",
@@ -383,9 +315,7 @@
       "date": "05.11.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 6",
-      "guest_team": "SV Eintracht Leipzig 7",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV Eintracht Leipzig 7"
     },
     {
       "team_id": "20469",
@@ -394,9 +324,7 @@
       "date": "13.11.25",
       "time": "19:15",
       "home_team": "SV Leipzig 1910 2",
-      "guest_team": "SSV Stötteritz 6",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 6"
     },
     {
       "team_id": "20469",
@@ -405,9 +333,7 @@
       "date": "26.11.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 6",
-      "guest_team": "TTC Taucha 4",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TTC Taucha 4"
     },
     {
       "team_id": "20469",
@@ -416,9 +342,7 @@
       "date": "11.12.25",
       "time": "19:00",
       "home_team": "SG MoGoNo Leipzig 4",
-      "guest_team": "SSV Stötteritz 6",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 6"
     },
     {
       "team_id": "20473",
@@ -427,9 +351,7 @@
       "date": "08.10.25",
       "time": "19:15",
       "home_team": "Leipziger SV Südwest",
-      "guest_team": "SSV Stötteritz 3",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 3"
     },
     {
       "team_id": "20473",
@@ -438,9 +360,7 @@
       "date": "21.10.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 3",
-      "guest_team": "SV Eintracht Leipzig 2",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV Eintracht Leipzig 2"
     },
     {
       "team_id": "20473",
@@ -449,9 +369,7 @@
       "date": "27.10.25",
       "time": "19:30",
       "home_team": "Leutzscher Füchse 6",
-      "guest_team": "SSV Stötteritz 3",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 3"
     },
     {
       "team_id": "20473",
@@ -460,9 +378,7 @@
       "date": "07.11.25",
       "time": "19:30",
       "home_team": "TTV Markranstädt",
-      "guest_team": "SSV Stötteritz 3",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 3"
     },
     {
       "team_id": "20473",
@@ -471,9 +387,7 @@
       "date": "11.11.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 3",
-      "guest_team": "TTC Taucha",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TTC Taucha"
     },
     {
       "team_id": "20473",
@@ -482,9 +396,7 @@
       "date": "25.11.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 3",
-      "guest_team": "SG Lindenthal/STOV",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SG Lindenthal/STOV"
     },
     {
       "team_id": "20473",
@@ -493,9 +405,7 @@
       "date": "04.12.25",
       "time": "19:15",
       "home_team": "SV Rot. Süd Leipzig 6",
-      "guest_team": "SSV Stötteritz 3",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 3"
     },
     {
       "team_id": "20473",
@@ -504,9 +414,7 @@
       "date": "09.12.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 3",
-      "guest_team": "SV Eintracht Leipzig 3",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV Eintracht Leipzig 3"
     },
     {
       "team_id": "20477",
@@ -515,9 +423,7 @@
       "date": "24.09.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 5",
-      "guest_team": "SV F. Leipzig-Thekla 3",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV F. Leipzig-Thekla 3"
     },
     {
       "team_id": "20477",
@@ -526,9 +432,7 @@
       "date": "24.10.25",
       "time": "19:00",
       "home_team": "SV BW Lindenau 2",
-      "guest_team": "SSV Stötteritz 5",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 5"
     },
     {
       "team_id": "20477",
@@ -537,9 +441,7 @@
       "date": "05.11.25",
       "time": "19:15",
       "home_team": "SV Lindenau 1848 2",
-      "guest_team": "SSV Stötteritz 5",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 5"
     },
     {
       "team_id": "20477",
@@ -548,9 +450,7 @@
       "date": "12.11.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 5",
-      "guest_team": "Leutzscher Füchse 11",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "Leutzscher Füchse 11"
     },
     {
       "team_id": "20477",
@@ -559,9 +459,7 @@
       "date": "25.11.25",
       "time": "19:15",
       "home_team": "TTV Liebertwolkwitz 3",
-      "guest_team": "SSV Stötteritz 5",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz 5"
     },
     {
       "team_id": "20477",
@@ -570,9 +468,7 @@
       "date": "10.12.25",
       "time": "19:00",
       "home_team": "SSV Stötteritz 5",
-      "guest_team": "SV Eintracht Leipzig 5",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV Eintracht Leipzig 5"
     },
     {
       "team_id": "21137",
@@ -581,9 +477,7 @@
       "date": "20.09.25",
       "time": "09:30",
       "home_team": "TTC Taucha",
-      "guest_team": "SSV Stötteritz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz"
     },
     {
       "team_id": "21137",
@@ -592,9 +486,7 @@
       "date": "15.11.25",
       "time": "10:15",
       "home_team": "ATV Volkmarsdorf",
-      "guest_team": "SSV Stötteritz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz"
     },
     {
       "team_id": "21137",
@@ -603,9 +495,7 @@
       "date": "22.11.25",
       "time": "09:30",
       "home_team": "SSV Stötteritz",
-      "guest_team": "SV F. Leipzig-Thekla",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SV F. Leipzig-Thekla"
     },
     {
       "team_id": "21137",
@@ -614,9 +504,7 @@
       "date": "29.11.25",
       "time": "09:30",
       "home_team": "SSV Stötteritz",
-      "guest_team": "TSV Einh. Lindenthal",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "TSV Einh. Lindenthal"
     },
     {
       "team_id": "21137",
@@ -625,9 +513,7 @@
       "date": "06.12.25",
       "time": "09:00",
       "home_team": "TTC Holzhausen 2",
-      "guest_team": "SSV Stötteritz",
-      "club_id": "2294",
-      "club_team": false
+      "guest_team": "SSV Stötteritz"
     }
   ]
 }

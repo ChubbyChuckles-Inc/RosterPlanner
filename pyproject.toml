@@ -14,7 +14,14 @@ dependencies = [
     "sphinx-rtd-theme",
     "sphinxcontrib-napoleon",
     "pre-commit",
+    "beautifulsoup4",
+    "httpx",
+    "PyQt6",
 ]
+
+[project.scripts]
+roster-scrape = "cli.scrape:main"
+roster-planner-gui = "gui.app:main"
 
 [project.urls]
 Homepage = "https://github.com/ChubbyChuckles/project-template"
