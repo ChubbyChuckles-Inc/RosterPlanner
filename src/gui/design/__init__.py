@@ -88,6 +88,11 @@ from .print_stylesheet import (  # noqa: F401
     build_print_stylesheet,
     PrintStylesheetMeta,
 )
+from .snapshot_pipeline import (  # noqa: F401
+    compute_image_hash,
+    capture_bytes_placeholder,
+    SnapshotRecord,
+)
 
 __all__ = [
     "load_tokens",
@@ -158,4 +163,7 @@ __all__ = [
     "PluginStyleIssue",
     "build_print_stylesheet",
     "PrintStylesheetMeta",
+    "compute_image_hash",
+    "capture_bytes_placeholder",
+    "SnapshotRecord",
 ]
