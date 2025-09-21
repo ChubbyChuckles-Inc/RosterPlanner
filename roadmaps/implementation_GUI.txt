@@ -35,7 +35,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.13 RTL layout simulation toggle (anticipate future localization) -- direction registry, env var init, CLI flag & bootstrap integration
 [x] 0.14 Dark mode adaptive charts color palette with semantic mapping (background, grid, accent, alert) -- dynamic series count, high-contrast awareness, muted variants, docstrings & tests
 [x] 0.15 Micro-interaction catalog (hover, press, selection, drag indicators) -- registry, dataclass, exports & tests
-[ ] 0.16 Component performance budget matrix (max render time per component class)
+[x] 0.16 Component performance budget matrix (max render/update/frame ms) -- registry, enforcement helper & tests
 [ ] 0.17 Skeleton loader component variants (table rows, cards, charts) tied to token durations
 [ ] 0.18 Empty state design templates (actionable guidance + illustration placeholder)
 [ ] 0.19 Error state visual taxonomy (soft warning vs blocking error vs critical failure)

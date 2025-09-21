@@ -23,6 +23,12 @@ from .micro_interactions import (  # noqa: F401
     get_micro_interaction,
     MicroInteraction,
 )
+from .performance_budgets import (  # noqa: F401
+    list_performance_budgets,
+    get_performance_budget,
+    PerformanceBudget,
+    enforce_budget,
+)
 
 __all__ = [
     "load_tokens",
@@ -52,4 +58,8 @@ __all__ = [
     "list_micro_interactions",
     "get_micro_interaction",
     "MicroInteraction",
+    "list_performance_budgets",
+    "get_performance_budget",
+    "PerformanceBudget",
+    "enforce_budget",
 ]
