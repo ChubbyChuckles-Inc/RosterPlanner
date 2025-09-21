@@ -187,6 +187,17 @@ from .token_metadata import (  # noqa: F401
     clear_metadata,
     flatten_design_tokens,
 )
+from .accessible_reorder import (  # noqa: F401
+    ReorderActionResult,
+    ReorderList,
+    move_up,
+    move_down,
+    move_top,
+    move_bottom,
+    move_to,
+    move_after,
+    interpret_key_command,
+)
 
 __all__ = [
     "load_tokens",
@@ -330,4 +341,13 @@ __all__ = [
     "list_deprecated",
     "clear_metadata",
     "flatten_design_tokens",
+    "ReorderActionResult",
+    "ReorderList",
+    "move_up",
+    "move_down",
+    "move_top",
+    "move_bottom",
+    "move_to",
+    "move_after",
+    "interpret_key_command",
 ]
