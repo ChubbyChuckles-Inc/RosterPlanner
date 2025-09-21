@@ -84,6 +84,10 @@ from .plugin_style_contract import (  # noqa: F401
     scan_plugin_style_files,
     PluginStyleIssue,
 )
+from .print_stylesheet import (  # noqa: F401
+    build_print_stylesheet,
+    PrintStylesheetMeta,
+)
 
 __all__ = [
     "load_tokens",
@@ -152,4 +156,6 @@ __all__ = [
     "validate_style_mapping",
     "scan_plugin_style_files",
     "PluginStyleIssue",
+    "build_print_stylesheet",
+    "PrintStylesheetMeta",
 ]

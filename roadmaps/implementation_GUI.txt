@@ -48,7 +48,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.25 Usability heuristic review checklist integrated into PR template
 [x] 0.26 User preference persistence for all opt-in visual customizations
 [x] 0.27 Plugin UI style contract (tokens-only consumption, no arbitrary palettes)
-[ ] 0.28 Print-friendly stylesheet for exports (light, high-contrast variant)
+[x] 0.28 Print-friendly stylesheet for exports (light, high-contrast variant)
 [ ] 0.29 Continuous design snapshot pipeline (nightly screenshot diff of key views)
 [ ] 0.30 Onboarding tour overlays (progressively educative) framework placeholder
 [ ] 0.31 Focus ring style unification (accessible but subtle; 2px inner outline + outer glow optional)
