@@ -27,7 +27,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.5.2 Accessibility focus order & keyboard interaction tests (logical order + real Tab traversal harness)
 [x] 0.6 High contrast theme + auto-switch based on OS setting (initial variant + tokens + selection helpers; auto-detect placeholder TBD)
 [x] 0.7 Dynamic theming: derive tonal palette from a user-selected accent color (accent palette derivation utility + tests)
-[ ] 0.8 Theme hot-reload without full window refresh (apply diff approach)
+[x] 0.8 Theme hot-reload without full window refresh (ThemeManager diff logic + tests; UI propagation pending)
 [ ] 0.9 Layout density modes (comfortable / compact) with token-driven spacing
 [ ] 0.10 Custom user CSS/QSS override layer sandbox + validation (only whitelisted properties)
 [ ] 0.11 Color blindness simulation filter (protanopia/deuteranopia) preview tool
