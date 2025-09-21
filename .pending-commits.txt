@@ -27,3 +27,4 @@ feat: implement 0.38 multi-monitor DPI scaling validation (dataclasses, heuristi
 feat: implement 0.39 color mixing utilities (parsing, interpolation, alpha composite, gamma option, tests, exports)
 feat: implement 0.40 progressive enhancement ladder (tiers, feature registry, predicates, evaluation, tests, exports)
 test: add 0.41 theming unit tests (token groups, variants, headings, qss generation assertions)
+feat: implement 0.42 design tokens changelog generation (flatten, diff, summary, tests, exports)

@@ -169,6 +169,14 @@ from .progressive_enhancement import (  # noqa: F401
     clear_enhancement_registry,
     ensure_default_tiers,
 )
+from .token_changelog import (  # noqa: F401
+    TokenChange,
+    TokenChangelog,
+    load_tokens_snapshot,
+    flatten_tokens,
+    diff_tokens,
+    generate_changelog,
+)
 
 __all__ = [
     "load_tokens",
@@ -298,4 +306,10 @@ __all__ = [
     "evaluate_active_features",
     "clear_enhancement_registry",
     "ensure_default_tiers",
+    "TokenChange",
+    "TokenChangelog",
+    "load_tokens_snapshot",
+    "flatten_tokens",
+    "diff_tokens",
+    "generate_changelog",
 ]
