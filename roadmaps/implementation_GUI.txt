@@ -38,7 +38,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.16 Component performance budget matrix (max render/update/frame ms) -- registry, enforcement helper & tests
 [x] 0.17 Skeleton loader component variants (table rows, cards, charts) -- registry, shape schema & tests
 [x] 0.18 Empty state design templates (core templates registry + tests)
-[ ] 0.19 Error state visual taxonomy (soft warning vs blocking error vs critical failure)
+[x] 0.19 Error state visual taxonomy (soft warning vs blocking error vs critical failure)
 [ ] 0.20 Notification style guidelines (toast stacking, priority, dismissal timing)
 [ ] 0.21 Responsive breakpoints strategy (even if desktop-only, prepare for narrow window use)
 [ ] 0.21.1 Adaptive reflow rules for <900px width (collapse side docks to icon rail)
