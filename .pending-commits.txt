@@ -24,3 +24,4 @@ feat: implement 0.35 state diagram documentation (command palette + planner scen
 feat: implement 0.36 adaptive motion reduction (module, env bootstrap, scaling helpers, context manager, tests, exports)
 feat: implement 0.37 cursor affordance guidelines (registry, defaults, tests, exports)
 feat: implement 0.38 multi-monitor DPI scaling validation (dataclasses, heuristics, tests, exports)
+feat: implement 0.39 color mixing utilities (parsing, interpolation, alpha composite, gamma option, tests, exports)

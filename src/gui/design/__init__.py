@@ -150,6 +150,13 @@ from .dpi_scaling_validation import (  # noqa: F401
     DpiScalingReport,
     validate_scaling,
 )
+from .color_mixing import (  # noqa: F401
+    parse_hex,
+    to_hex,
+    mix,
+    alpha_composite,
+    blend_over,
+)
 
 __all__ = [
     "load_tokens",
@@ -264,4 +271,9 @@ __all__ = [
     "DpiScalingIssue",
     "DpiScalingReport",
     "validate_scaling",
+    "parse_hex",
+    "to_hex",
+    "mix",
+    "alpha_composite",
+    "blend_over",
 ]
