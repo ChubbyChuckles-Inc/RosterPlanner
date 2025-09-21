@@ -22,9 +22,16 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-__all__ = ["AppConfig", "load_config", "save_config", "CONFIG_VERSION"]
+__all__ = [
+    "AppConfig",
+    "load_config",
+    "save_config",
+    "CONFIG_VERSION",
+    "WINDOW_STATE_VERSION",
+]
 
 CONFIG_VERSION = 1  # Increment when structure changes
+WINDOW_STATE_VERSION = 1  # Increment to invalidate persisted geometry
 
 DEFAULT_FILENAME = "app_state.json"
 
@@ -49,6 +56,7 @@ class AppConfig:
     window_h: Optional[int] = None
     maximized: bool = False
     last_data_dir: Optional[str] = None
+    window_state_version: int = WINDOW_STATE_VERSION
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -57,7 +65,7 @@ class AppConfig:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AppConfig":
         # Basic defensive parsing
-        return cls(
+        inst = cls(
             version=int(data.get("version", CONFIG_VERSION)),
             window_x=data.get("window_x"),
             window_y=data.get("window_y"),
@@ -65,7 +73,11 @@ class AppConfig:
             window_h=data.get("window_h"),
             maximized=bool(data.get("maximized", False)),
             last_data_dir=data.get("last_data_dir"),
+            window_state_version=int(
+                data.get("window_state_version", WINDOW_STATE_VERSION)
+            ),
         )
+        return inst
 
     def is_geometry_complete(self) -> bool:
         return (
@@ -96,9 +108,16 @@ def load_config(base_dir: str | Path | None = None) -> AppConfig:
         data = json.loads(text)
         cfg = AppConfig.from_dict(data)
         if cfg.version != CONFIG_VERSION:
-            # For now just reset to defaults while preserving last_data_dir if possible.
             preserved_last = cfg.last_data_dir
             return AppConfig(last_data_dir=preserved_last)
+        # Window state version mismatch => clear geometry but preserve other fields
+        if cfg.window_state_version != WINDOW_STATE_VERSION:
+            cfg.window_x = None
+            cfg.window_y = None
+            cfg.window_w = None
+            cfg.window_h = None
+            cfg.maximized = False
+            cfg.window_state_version = WINDOW_STATE_VERSION
         return cfg
     except Exception:  # noqa: BLE001
         return AppConfig()
