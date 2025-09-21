@@ -1,1 +1,2 @@
 feat: complete 0.14 adaptive chart palette (dynamic series, high-contrast aware, muted variants, tests)
+feat: implement 0.15 micro-interaction catalog (registry, dataclass, tests)

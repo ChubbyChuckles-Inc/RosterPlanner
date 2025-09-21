@@ -18,6 +18,11 @@ from .qss_overrides import (
 )  # noqa: F401
 from .color_blind import simulate_color_blindness, simulate_rgb_buffer  # noqa: F401
 from .chart_palette import build_chart_palette, ChartPalette  # noqa: F401
+from .micro_interactions import (  # noqa: F401
+    list_micro_interactions,
+    get_micro_interaction,
+    MicroInteraction,
+)
 
 __all__ = [
     "load_tokens",
@@ -44,4 +49,7 @@ __all__ = [
     "simulate_rgb_buffer",
     "build_chart_palette",
     "ChartPalette",
+    "list_micro_interactions",
+    "get_micro_interaction",
+    "MicroInteraction",
 ]

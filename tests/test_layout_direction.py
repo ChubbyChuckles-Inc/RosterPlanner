@@ -7,6 +7,8 @@ from gui.i18n.direction import (
 
 
 def test_default_direction():
+    # Ensure prior tests did not leave global direction mutated
+    set_layout_direction("ltr")
     assert get_layout_direction() == "ltr"
     assert not is_rtl()
 
