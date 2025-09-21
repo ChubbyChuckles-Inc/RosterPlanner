@@ -84,8 +84,8 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.4 Add global dependency container/service locator (for data repo, analytics engine, event bus)
 [x] 1.4.1 Provide test double injection hook for repositories
 [x] 1.5 Implement EventBus (pub/sub) with typed signals for: DATA_REFRESHED, SELECTION_CHANGED, STATS_UPDATED
-[ ] 1.5.1 Event tracing toggle (debug overlay listing last 50 events)
-[ ] 1.6 Theme system: light/dark + accent colors (QSS loader, runtime switch action)
+[x] 1.5.1 Event tracing toggle (debug overlay listing last 50 events)
+[x] 1.6 Theme system: light/dark + accent colors (QSS loader, runtime switch action)
 [ ] 1.6.1 Theme validation lint (ensures required palette keys exist)
 [ ] 1.6.2 Add user custom theme JSON import
 [ ] 1.7 Icon & asset pipeline (SVG set, color adaptive to theme)
