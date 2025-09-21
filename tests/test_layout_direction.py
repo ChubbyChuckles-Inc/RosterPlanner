@@ -2,6 +2,7 @@ from gui.i18n.direction import (
     get_layout_direction,
     set_layout_direction,
     is_rtl,
+    init_direction_from_env,
 )
 
 
@@ -28,3 +29,17 @@ def test_idempotent_and_invalid():
         pass
     else:  # pragma: no cover - defensive
         raise AssertionError("Expected ValueError for invalid direction")
+
+
+def test_init_direction_from_env_true(monkeypatch):
+    monkeypatch.setenv("ROSTERPLANNER_RTL", "1")
+    set_layout_direction("ltr")
+    init_direction_from_env()
+    assert is_rtl()
+
+
+def test_init_direction_from_env_false(monkeypatch):
+    monkeypatch.delenv("ROSTERPLANNER_RTL", raising=False)
+    set_layout_direction("rtl")
+    init_direction_from_env()  # no variable => unchanged
+    assert is_rtl()

@@ -32,7 +32,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.10 Custom user CSS/QSS override layer sandbox + validation (only whitelisted properties)
 [x] 0.11 Color blindness simulation filter (protanopia/deuteranopia) preview tool
 [x] 0.12 Internationalization readiness audit (string externalization, pluralization hooks)  -- core i18n registry, audit utilities & tests
-[~] 0.13 RTL layout simulation toggle (anticipate future localization) -- direction registry + tests
+[~] 0.13 RTL layout simulation toggle (anticipate future localization) -- direction registry + tests + env var init
 [ ] 0.14 Dark mode adaptive charts color palette with semantic mapping (background, grid, accent, alert)
 [ ] 0.15 Micro-interaction catalog (hover, press, selection, drag indicators) documented
 [ ] 0.16 Component performance budget matrix (max render time per component class)

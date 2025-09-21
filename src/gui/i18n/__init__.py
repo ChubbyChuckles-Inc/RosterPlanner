@@ -24,6 +24,7 @@ from .direction import (
     set_layout_direction,
     is_rtl,
     apply_qt_direction,
+    init_direction_from_env,
 )
 
 __all__ = [
@@ -39,6 +40,7 @@ __all__ = [
     "set_layout_direction",
     "is_rtl",
     "apply_qt_direction",
+    "init_direction_from_env",
 ]
 
 _DEFAULT_LOCALE = "en"

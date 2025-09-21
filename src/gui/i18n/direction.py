@@ -22,6 +22,7 @@ __all__ = [
     "set_layout_direction",
     "is_rtl",
     "apply_qt_direction",
+    "init_direction_from_env",
 ]
 
 
@@ -62,3 +63,21 @@ def apply_qt_direction(target) -> None:  # pragma: no cover - UI side effect
     setter = getattr(target, "setLayoutDirection", None)
     if callable(setter):
         setter(qt_dir)
+
+
+def init_direction_from_env(env: "dict[str, str] | None" = None) -> None:
+    """Initialize direction from environment.
+
+    If environment variable ``ROSTERPLANNER_RTL`` is set to a truthy value ("1", "true",
+    "yes", "on") we switch direction to ``rtl``. This is intended for early testing
+    via CI or developer shells without changing application code.
+    """
+    if env is None:
+        import os
+
+        env = os.environ  # type: ignore
+    raw = env.get("ROSTERPLANNER_RTL")
+    if not raw:
+        return
+    if raw.strip().lower() in {"1", "true", "yes", "on"}:
+        set_layout_direction("rtl")
