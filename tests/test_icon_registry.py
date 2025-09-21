@@ -21,14 +21,18 @@ def test_placeholder_registered():
 def test_register_and_retrieve_new_icon(tmp_path):
     # create temp svg
     svg = tmp_path / "custom.svg"
-    svg.write_text('<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8")
+    svg.write_text(
+        '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8"
+    )
     register_icon("custom", svg)
     assert get_icon_path("custom") == svg
 
 
 def test_duplicate_registration_errors(tmp_path):
     svg = tmp_path / "dup.svg"
-    svg.write_text('<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8")
+    svg.write_text(
+        '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8"
+    )
     register_icon("dup", svg)
     with pytest.raises(KeyError):
         register_icon("dup", svg)
@@ -36,11 +40,16 @@ def test_duplicate_registration_errors(tmp_path):
 
 def test_override_allows_replacement(tmp_path):
     svg1 = tmp_path / "one.svg"
-    svg1.write_text('<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8")
+    svg1.write_text(
+        '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8"
+    )
     register_icon("swap", svg1)
     svg2 = tmp_path / "two.svg"
-    svg2.write_text('<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8")
+    svg2.write_text(
+        '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8"
+    )
     from gui.design.icons import register_icon as reg  # access override argument
+
     reg("swap", svg2, override=True)
     assert get_icon_path("swap") == svg2
 
@@ -52,7 +61,9 @@ def test_missing_icon_errors():
 
 def test_invalid_name_rejected(tmp_path):
     svg = tmp_path / "bad.svg"
-    svg.write_text('<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8")
+    svg.write_text(
+        '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8"
+    )
     with pytest.raises(ValueError):
         register_icon("BadCase", svg)
 

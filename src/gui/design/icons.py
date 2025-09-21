@@ -14,6 +14,7 @@ Usage:
     register_icon("placeholder", Path("assets/icons/base/placeholder.svg"))
     path = get_icon_path("placeholder")
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
