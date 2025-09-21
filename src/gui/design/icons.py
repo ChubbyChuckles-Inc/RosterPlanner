@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from pathlib import Path
 from threading import RLock
 from typing import Dict, Iterable, Optional
@@ -28,6 +29,8 @@ __all__ = [
     "get_icon_path",
     "list_icons",
     "clear_icons",
+    "compute_icon_hash",
+    "get_icon_hash_map",
 ]
 
 # Base directory for built-in icons (relative to project root). Adjust if packaging changes.
@@ -97,6 +100,37 @@ def list_icons() -> Iterable[IconDescriptor]:
 def clear_icons() -> None:
     with _lock:
         _registry.clear()
+
+
+# ---------------------------------------------------------------------------
+# Hashing / cache-busting (Milestone 1.7 asset pipeline primitive)
+# ---------------------------------------------------------------------------
+_hash_cache: Dict[str, str] = {}
+
+
+def compute_icon_hash(name: str) -> str:
+    """Return a short content hash (first 10 hex chars) of the icon file.
+
+    Computes and caches the hash; invalidated automatically if file mtime changes.
+    """
+    path = get_icon_path(name)
+    key = f"{name}:{path.stat().st_mtime_ns}"  # include mtime for invalidation
+    cached = _hash_cache.get(key)
+    if cached:
+        return cached
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()[:10]
+    # purge any prior entries for this name to prevent cache growth on edits
+    for k in list(_hash_cache.keys()):
+        if k.startswith(f"{name}:"):
+            _hash_cache.pop(k)
+    _hash_cache[key] = digest
+    return digest
+
+
+def get_icon_hash_map() -> Dict[str, str]:
+    """Return mapping of icon name -> current content hash."""
+    return {desc.name: compute_icon_hash(desc.name) for desc in list_icons()}
 
 
 # Pre-register core placeholder icon on import (safe if file missing? we enforce existence)
