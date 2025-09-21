@@ -10,6 +10,7 @@ Usage:
     tokens = load_tokens()
     qss = tokens.generate_qss()
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

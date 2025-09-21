@@ -19,6 +19,7 @@ Design notes:
 - Thread-safety: a simple RLock protects registry; overhead negligible for expected call frequency.
 - Lifecycle: No automatic disposal; long-lived process with occasional test resets.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -50,7 +51,9 @@ class ServiceLocator:
         self._lock = RLock()
         self._services: Dict[str, ServiceRecord] = {}
 
-    def register(self, key: str, value: Any, *, allow_override: bool = False, origin: str | None = None) -> None:
+    def register(
+        self, key: str, value: Any, *, allow_override: bool = False, origin: str | None = None
+    ) -> None:
         """Register a service object.
 
         Parameters

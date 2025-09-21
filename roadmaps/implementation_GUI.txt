@@ -76,8 +76,8 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.1 Create dedicated GUI package structure (gui/app, gui/views, gui/viewmodels, gui/components, gui/services)
 [ ] 1.1.1 Define __all__ exports for public GUI API
 [ ] 1.1.2 Add __init__ docstrings for each subpackage
-[ ] 1.2 Implement Application bootstrap (QApplication factory, high DPI attributes, single-instance guard)
-[ ] 1.2.1 Add command-line flags for safe mode (disable plugins)
+[x] 1.2 Implement Application bootstrap (QApplication factory, high DPI attributes, single-instance guard)
+[x] 1.2.1 Add command-line flags for safe mode (disable plugins)
 [ ] 1.2.2 Add startup timing logger
 [ ] 1.3 Integrate config-driven startup (load last data directory, window geometry persistence)
 [ ] 1.3.1 Persist window state version tag (invalidate on layout schema change)

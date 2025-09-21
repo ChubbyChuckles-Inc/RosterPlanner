@@ -10,6 +10,7 @@ Public API:
 The `pairs` parameter uses tuples of (foreground_path, background_path, name) where each
 path is dot-separated referencing color tokens (e.g. "text.primary", "background.base").
 """
+
 from __future__ import annotations
 
 from typing import Iterable, Tuple, List
@@ -20,7 +21,7 @@ _HEX_ERR = "Color must be a #RRGGBB hex string: {value}"
 
 
 def _parse_hex(color: str) -> tuple[int, int, int]:
-    if not isinstance(color, str) or not color.startswith('#') or len(color) != 7:
+    if not isinstance(color, str) or not color.startswith("#") or len(color) != 7:
         raise ValueError(_HEX_ERR.format(value=color))
     r = int(color[1:3], 16)
     g = int(color[3:5], 16)
@@ -53,11 +54,13 @@ def contrast_ratio(fg: str, bg: str) -> float:
 
 
 def _resolve_color(tokens: DesignTokens, path: str) -> str:
-    parts = path.split('.')
+    parts = path.split(".")
     return tokens.color(*parts)
 
 
-def validate_contrast(tokens: DesignTokens, pairs: Iterable[Tuple[str, str, str]], threshold: float = 4.5) -> List[str]:
+def validate_contrast(
+    tokens: DesignTokens, pairs: Iterable[Tuple[str, str, str]], threshold: float = 4.5
+) -> List[str]:
     """Validate a collection of foreground/background token pairs.
 
     Parameters
@@ -84,8 +87,11 @@ def validate_contrast(tokens: DesignTokens, pairs: Iterable[Tuple[str, str, str]
             continue
         ratio = contrast_ratio(fg, bg)
         if ratio < threshold:
-            failures.append(f"[contrast-fail] {label}: ratio={ratio:.2f} < {threshold} (fg={fg} bg={bg})")
+            failures.append(
+                f"[contrast-fail] {label}: ratio={ratio:.2f} < {threshold} (fg={fg} bg={bg})"
+            )
     return failures
+
 
 __all__ = [
     "contrast_ratio",
