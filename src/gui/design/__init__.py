@@ -70,6 +70,11 @@ from .interaction_latency import (  # noqa: F401
     LatencyRecord,
     LatencyThreshold,
 )
+from .color_drift import (  # noqa: F401
+    scan_for_color_drift,
+    normalize_hex,
+    ColorDriftIssue,
+)
 
 __all__ = [
     "load_tokens",
@@ -130,4 +135,7 @@ __all__ = [
     "register_threshold",
     "LatencyRecord",
     "LatencyThreshold",
+    "scan_for_color_drift",
+    "normalize_hex",
+    "ColorDriftIssue",
 ]
