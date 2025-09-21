@@ -52,7 +52,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.29 Continuous design snapshot pipeline (nightly screenshot diff of key views)
 [x] 0.30 Onboarding tour overlays (progressively educative) framework placeholder
 [x] 0.31 Focus ring style unification (accessible but subtle; 2px inner outline + outer glow optional)
-[ ] 0.32 Live theming stress test script (iterate all themes rapidly to detect leaks)
+[x] 0.32 Live theming stress test script (iterate all themes rapidly to detect leaks)
 [ ] 0.33 Offline-friendly icon & font caching (hash-based invalidation)
 [ ] 0.34 Visual density A/B toggling harness (future UX experimentation)
 [ ] 0.35 State diagram documentation for complex interactive components (Command Palette, Planner scenario editor)

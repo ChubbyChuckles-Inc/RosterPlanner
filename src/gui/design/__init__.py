@@ -106,6 +106,10 @@ from .focus_ring import (  # noqa: F401
     FocusRingStyle,
     contrast_ratio,
 )
+from .theme_stress import (  # noqa: F401
+    run_theme_stress,
+    ThemeStressReport,
+)
 
 __all__ = [
     "load_tokens",
@@ -188,4 +192,6 @@ __all__ = [
     "build_focus_ring_style",
     "FocusRingStyle",
     "contrast_ratio",
+    "run_theme_stress",
+    "ThemeStressReport",
 ]
