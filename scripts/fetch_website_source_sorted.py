@@ -9,7 +9,7 @@ import urllib.error
 import os
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def fetch_website_source(url: str, output_filename: str = None) -> str:
@@ -787,9 +787,19 @@ def should_rescrape_division(division_name: str, tracking_data: dict) -> bool:
     if not tracking_data.get("upcoming_matches"):
         return True  # No tracking data, scrape everything
 
+    # Get the last scrape time
+    last_scrape_str = tracking_data.get("last_scrape")
+    if not last_scrape_str:
+        return True  # No last scrape time, scrape everything
+
+    try:
+        last_scrape_time = datetime.fromisoformat(last_scrape_str)
+    except ValueError:
+        return True  # Invalid last scrape time, scrape everything
+
     current_time = datetime.now()
 
-    # Check if there are any upcoming matches in this division that might have occurred
+    # Check if there are any upcoming matches in this division scheduled within the next 2 hours from last scrape
     for match in tracking_data["upcoming_matches"]:
         if match.get("division") == division_name:
             match_date_str = match.get("date", "")
@@ -801,8 +811,8 @@ def should_rescrape_division(division_name: str, tracking_data: dict) -> bool:
                     match_datetime_str = f"{match_date_str} {match_time_str}"
                     match_datetime = datetime.strptime(match_datetime_str, "%d.%m.%Y %H:%M")
 
-                    # If match was supposed to happen more than 2 hours ago, rescrape
-                    if current_time > match_datetime.replace(hour=match_datetime.hour + 2):
+                    # If match is scheduled within the next 2 hours from last scrape, rescrape
+                    if last_scrape_time <= match_datetime <= last_scrape_time + timedelta(hours=2):
                         return True
                 except ValueError:
                     # If date parsing fails, be safe and rescrape
@@ -847,6 +857,9 @@ def main():
     """Main function to run the script."""
     url = "https://leipzig.tischtennislive.de/?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&Saison=2025"
 
+    # Initialize variables
+    divisions_to_scrape = set()
+
     try:
         saved_file = fetch_website_source(url)
         print(f"\nSuccess! Website source code saved to: {saved_file}")
@@ -880,7 +893,8 @@ def main():
         print("FETCHING TEAM ROSTER SOURCES:")
         print(f"{'='*60}")
 
-        # Fetch the source code of each team roster page
+        # Fetch the source code of each team roster page (fetch all initially)
+        print("Fetching all team roster sources for complete data...")
         saved_roster_files = fetch_team_roster_sources(full_team_roster_links, data_dir)
 
         print(f"\n{'='*60}")
@@ -895,12 +909,30 @@ def main():
         # Extract team names and divisions from the main content
         teams_info = extract_team_names_and_divisions(content)
 
-        # Fetch ranking table pages
+        # Fetch ranking table pages (only for divisions that need rescraping)
         print(f"\n{'='*60}")
         print("FETCHING RANKING TABLE SOURCES:")
         print(f"{'='*60}")
 
-        saved_ranking_files = fetch_ranking_table_sources(ranking_table_links, teams_info, data_dir)
+        if divisions_to_scrape:
+            # Filter ranking table links to only include divisions that need rescraping
+            filtered_ranking_links = []
+            for link in ranking_table_links:
+                # Extract division ID from the link
+                division_id = re.search(r'L2P=([^&]+)', link)
+                if division_id:
+                    div_id = division_id.group(1)
+                    # Get division name from teams_info
+                    if div_id in teams_info:
+                        team_name, division_name = teams_info[div_id]
+                        if division_name in divisions_to_scrape:
+                            filtered_ranking_links.append(link)
+
+            print(f"Fetching ranking tables for {len(filtered_ranking_links)} divisions that need rescraping...")
+            saved_ranking_files = fetch_ranking_table_sources(filtered_ranking_links, teams_info, data_dir)
+        else:
+            print("No divisions need rescraping, but fetching all ranking tables for complete data...")
+            saved_ranking_files = fetch_ranking_table_sources(ranking_table_links, teams_info, data_dir)
 
         print(f"\n{'='*60}")
         print("SUMMARY:")
@@ -917,7 +949,24 @@ def main():
         print("EXTRACTING RANKING DATA:")
         print(f"{'='*60}")
 
-        ranking_data = extract_ranking_data_from_pages(data_dir, teams_info)
+        # Filter teams_info to only include divisions that need rescraping
+        if divisions_to_scrape:
+            filtered_teams_info = {team_id: (team_name, div_name) for team_id, (team_name, div_name) in teams_info.items() if div_name in divisions_to_scrape}
+            print(f"Extracting ranking data for {len(divisions_to_scrape)} divisions that need rescraping...")
+        else:
+            filtered_teams_info = teams_info
+            print("Extracting ranking data for all divisions...")
+
+        ranking_data = extract_ranking_data_from_pages(data_dir, filtered_teams_info)
+
+        # Load existing match tracking data
+        tracking_data = load_match_tracking_data(data_dir)
+
+        # Check which divisions need rescraping based on upcoming matches
+        divisions_to_scrape = set()
+        for division_name in ranking_data.keys():
+            if should_rescrape_division(division_name, tracking_data):
+                divisions_to_scrape.add(division_name)
 
         # Display extracted ranking data
         total_teams = 0
@@ -940,12 +989,20 @@ def main():
         print(f"Total teams found: {total_teams}")
         print(f"{'='*60}")
 
-        # Fetch all team rosters from all divisions
+        # Fetch team rosters from divisions that need rescraping
         print(f"\n{'='*60}")
-        print("FETCHING ALL TEAM ROSTERS:")
+        print("FETCHING TEAM ROSTERS:")
         print(f"{'='*60}")
 
-        all_team_rosters = fetch_all_team_rosters(ranking_data, data_dir)
+        # Filter ranking data to only include divisions that need rescraping
+        if divisions_to_scrape:
+            filtered_ranking_data = {div: ranking_data[div] for div in divisions_to_scrape if div in ranking_data}
+            print(f"Fetching team rosters from {len(filtered_ranking_data)} divisions that need rescraping...")
+        else:
+            filtered_ranking_data = ranking_data
+            print("No divisions need rescraping, but fetching all team rosters for complete data...")
+
+        all_team_rosters = fetch_all_team_rosters(filtered_ranking_data, data_dir)
 
         # Display summary of fetched team rosters
         total_fetched_teams = 0
@@ -966,15 +1023,6 @@ def main():
         print(f"Divisions processed: {len(all_team_rosters)}")
         print(f"Total team rosters fetched: {total_fetched_teams}")
         print(f"{'='*60}")
-
-        # Load existing match tracking data
-        tracking_data = load_match_tracking_data(data_dir)
-
-        # Check which divisions need rescraping based on upcoming matches
-        divisions_to_scrape = set()
-        for division_name in ranking_data.keys():
-            if should_rescrape_division(division_name, tracking_data):
-                divisions_to_scrape.add(division_name)
 
         if divisions_to_scrape:
             print(f"\n{'='*60}")
