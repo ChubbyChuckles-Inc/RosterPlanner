@@ -136,6 +136,14 @@ from .reduced_motion import (  # noqa: F401
     adjust_duration,
     temporarily_reduced_motion,
 )
+from .cursor_affordance import (  # noqa: F401
+    register_cursor_affordance,
+    get_cursor_affordance,
+    list_cursor_affordances,
+    clear_cursor_affordances,
+    ensure_default_cursor_affordances,
+    CursorAffordance,
+)
 
 __all__ = [
     "load_tokens",
@@ -240,4 +248,10 @@ __all__ = [
     "motion_scale",
     "adjust_duration",
     "temporarily_reduced_motion",
+    "register_cursor_affordance",
+    "get_cursor_affordance",
+    "list_cursor_affordances",
+    "clear_cursor_affordances",
+    "ensure_default_cursor_affordances",
+    "CursorAffordance",
 ]
