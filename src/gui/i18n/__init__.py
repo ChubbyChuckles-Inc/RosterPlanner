@@ -19,6 +19,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Dict, Any, Set, Iterable, Optional
+from .direction import (
+    get_layout_direction,
+    set_layout_direction,
+    is_rtl,
+    apply_qt_direction,
+)
 
 __all__ = [
     "register_catalog",
@@ -29,6 +35,10 @@ __all__ = [
     "tp",
     "translate_plural",
     "extract_translation_keys",
+    "get_layout_direction",
+    "set_layout_direction",
+    "is_rtl",
+    "apply_qt_direction",
 ]
 
 _DEFAULT_LOCALE = "en"

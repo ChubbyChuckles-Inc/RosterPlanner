@@ -24,8 +24,7 @@ For testing tasks ([T]), suggest the test code.
 After suggesting implementation for a task (or chunk), include:An updated snippet of the roadmap with the task marked [x] (or [~] if partial), so I can copy-paste it back into "roadmaps/implementation_GUI.txt".
 A professional commit message (e.g., "feat: implement design tokens for color roles") to append to ".pending-commits.txt".
 
-After completing all tasks in a milestone, suggest running tests, demoing the feature, and any relevant metrics checks.
-If the entire roadmap is complete, state so and suggest next steps like release preparation.
+Instead of suggesting changes and asking for approval to apply them, always just apply the changes.
 
 Now, read "roadmaps/implementation_GUI.txt", identify the next unfinished task, and proceed with implementation suggestions.
 
