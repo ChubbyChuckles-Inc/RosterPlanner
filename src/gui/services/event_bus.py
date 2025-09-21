@@ -24,7 +24,14 @@ from time import perf_counter
 from typing import Any, Dict, List, Protocol, Deque, Tuple
 from collections import deque
 
-__all__ = ["GUIEvent", "Event", "EventBus", "EventHandler", "Subscription"]
+__all__ = [
+    "GUIEvent",
+    "Event",
+    "EventBus",
+    "EventHandler",
+    "Subscription",
+    "TraceEntry",
+]
 
 
 class GUIEvent(str, Enum):  # Using str subclass for easier JSON/UI usage
@@ -58,6 +65,13 @@ class Subscription:
 
     def cancel(self) -> None:
         self.active = False
+
+
+@dataclass(frozen=True)
+class TraceEntry:
+    name: str
+    timestamp: float
+    summary: str
 
 
 class EventBus:
@@ -202,6 +216,10 @@ class EventBus:
     def recent_traces(self) -> list[Tuple[str, float, str]]:
         with self._lock:
             return list(self._traces)
+
+    def recent_trace_entries(self) -> list[TraceEntry]:
+        with self._lock:
+            return [TraceEntry(name=n, timestamp=ts, summary=s) for (n, ts, s) in self._traces]
 
     @property
     def tracing_enabled(self) -> bool:

@@ -188,3 +188,47 @@ Before starting, ensure the following are set up on your Windows 10 system:
 - `README.md`: This file.
 
 For further customization, edit `setup.py`, `docs/source/conf.py`, `.env`, or add Python modules to the repository.
+
+## Roadmap (Implemented Milestones Extract)
+
+The following internal milestones have been implemented to evolve the GUI/service infrastructure:
+
+- 1.2 / 1.2.1: Single-instance guard and bootstrap enhancements
+- 1.2.2: Startup timing logger with JSON export
+- 1.3 / 1.3.1: Config-driven startup and window geometry version invalidation
+- 1.4 / 1.4.1: Service locator enhancements and repository injection helpers
+- 1.5: Typed `EventBus` signals (core synchronous pub/sub)
+- 1.5.1: Event tracing (recent event ring buffer)
+
+### Milestone 1.5.1 – EventBus Tracing
+
+Adds lightweight, toggleable tracing for recently published GUI events to aid diagnostics and future debug overlays.
+
+Key points:
+
+- Disabled by default; enable via:
+  ```python
+  from gui.services import event_tracing
+  event_tracing.enable_event_tracing(capacity=100)  # optional custom capacity
+  ```
+- Captures a fixed-size ring buffer (default 50) of `TraceEntry` objects: `(name, timestamp, summary)`.
+- Summaries are a short string form of the payload (truncated to 40 chars, or '-' if None).
+- Access recent traces:
+  ```python
+  traces = event_tracing.get_recent_event_traces()
+  for t in traces:
+      print(t.timestamp, t.name, t.summary)
+  ```
+- Disable tracing to freeze the current buffer:
+  ```python
+  event_tracing.disable_event_tracing()
+  ```
+
+Test Coverage:
+
+- Basic capture and ordering
+- Ring buffer capacity / eviction behavior
+- Disable stops further capture while retaining existing entries
+- No-op behavior when disabled
+
+This foundation will support forthcoming debugging UIs (e.g., an in-app overlay listing the last N events).
