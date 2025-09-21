@@ -57,3 +57,4 @@ feat: implement 1.9 global error handling service (sys/thread hooks, ring buffer
 feat: implement 1.9.1 error deduplication (DedupEntry aggregation, enable/disable API, tests, roadmap)
 feat: implement 1.9.2 crash reproduction snippet generator (diagnostics module, build_crash_snippet helper, tests, roadmap)
 feat: implement 1.10 health metrics service (FPS/memory/db qps sampling, tests, roadmap)
+feat: implement 2.1 dockable main window (DockManager abstraction, navigation & availability docks, central placeholder, legacy shim, tests, roadmap)

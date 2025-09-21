@@ -98,7 +98,7 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.10 Add health check overlay (FPS, memory, DB query count)
 
 Milestone 2: Dockable Main Window Architecture
-[ ] 2.1 Implement MainWindow (QMainWindow) with QDockWidget manager
+[x] 2.1 Implement MainWindow (QMainWindow) with QDockWidget manager
 [ ] 2.1.1 Add central tabbed document area (multi-detail views)
 [ ] 2.2 Create core docks: Navigation Dock, Detail Dock, Stats Dock, Planner Dock, Logs Dock
 [ ] 2.2.1 Provide dock factory registry (extensible by plugins)
