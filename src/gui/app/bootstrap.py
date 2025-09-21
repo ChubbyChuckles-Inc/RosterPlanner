@@ -32,6 +32,7 @@ from gui.app.config_store import load_config, save_config, AppConfig
 from gui.services.service_locator import services, ServiceLocator
 from gui.services.event_bus import EventBus
 from .timing import TimingLogger
+import json
 
 try:  # Lazy / optional Qt import
     from PyQt6.QtCore import Qt  # type: ignore
@@ -154,6 +155,15 @@ def create_app(
         services.register("event_bus", EventBus(), allow_override=True)
 
     timing.stop()
+
+    # Optional JSON export for diagnostics if env var set.
+    export_path = os.environ.get("ROSTERPLANNER_STARTUP_TIMING_JSON")
+    if export_path:
+        try:  # Best-effort; never fail bootstrap for export issues
+            with open(export_path, "w", encoding="utf-8") as f:
+                json.dump(timing.as_dict(), f, indent=2, sort_keys=True)
+        except Exception:  # noqa: BLE001
+            pass
 
     ctx = AppContext(
         qt_app=qt_app,
