@@ -1,7 +1,7 @@
 """Runtime theme management (hot-reload capable).
 
 Provides a minimal `ThemeManager` responsible for:
- - Holding current theme variant (default | high-contrast)
+ - Holding current theme variant (default | high-contrast | brand-neutral)
  - Managing dynamic accent base & derived accent palette
  - Producing a flattened active color map (semantic -> hex)
  - Emitting diffs when updated (returns diff structure; future hook for EventBus)
@@ -18,7 +18,7 @@ from typing import Dict, Literal, Mapping, Optional
 from .loader import DesignTokens
 from .dynamic_accent import derive_accent_palette
 
-Variant = Literal["default", "high-contrast"]
+Variant = Literal["default", "high-contrast", "brand-neutral"]
 
 __all__ = ["ThemeManager", "ThemeDiff"]
 
@@ -75,7 +75,28 @@ class ThemeManager:
 
     # Internal -------------------------------------------------------------
     def _rebuild_active_map(self) -> None:
-        base = dict(self.tokens.theme_variant(self.variant))
+        # Extend variant selection: brand-neutral shares logic with high-contrast
+        # but uses custom *BrandNeutral groups where present.
+        base = dict(
+            self.tokens.theme_variant(
+                "high-contrast" if self.variant == "high-contrast" else "default"
+            )
+        )
+        if self.variant == "brand-neutral":
+            # Replace groups with BrandNeutral variants when available.
+            color = self.tokens.raw.get("color", {})  # type: ignore[attr-defined]
+
+            def _merge_group(target_prefix: str, group_key: str):
+                grp = color.get(group_key, {})
+                if isinstance(grp, Mapping):
+                    for k, v in grp.items():
+                        if isinstance(v, str):
+                            base[f"{target_prefix}.{k}"] = v
+
+            _merge_group("background", "backgroundBrandNeutral")
+            _merge_group("surface", "surfaceBrandNeutral")
+            _merge_group("text", "textBrandNeutral")
+            _merge_group("accent", "accentBrandNeutral")
         # Merge accent palette (dynamic)
         palette = self._accent_cache.get(self.accent_base)
         if palette is None:
