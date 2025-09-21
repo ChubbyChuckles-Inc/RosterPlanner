@@ -28,6 +28,7 @@ __all__ = [
     "save_config",
     "CONFIG_VERSION",
     "WINDOW_STATE_VERSION",
+    "ensure_window_state_version",
 ]
 
 CONFIG_VERSION = 1  # Increment when structure changes
@@ -115,13 +116,7 @@ def load_config(base_dir: str | Path | None = None) -> AppConfig:
             preserved_last = cfg.last_data_dir
             return AppConfig(last_data_dir=preserved_last)
         # Window state version mismatch => clear geometry but preserve other fields
-        if cfg.window_state_version != WINDOW_STATE_VERSION:
-            cfg.window_x = None
-            cfg.window_y = None
-            cfg.window_w = None
-            cfg.window_h = None
-            cfg.maximized = False
-            cfg.window_state_version = WINDOW_STATE_VERSION
+        ensure_window_state_version(cfg)
         return cfg
     except Exception:  # noqa: BLE001
         return AppConfig()
@@ -138,3 +133,21 @@ def save_config(cfg: AppConfig, base_dir: str | Path | None = None) -> Path:
     tmp.write_text(json.dumps(cfg.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
     tmp.replace(path)
     return path
+
+
+def ensure_window_state_version(cfg: AppConfig) -> bool:
+    """Ensure window geometry is valid relative to WINDOW_STATE_VERSION.
+
+    Returns True if geometry was invalidated (i.e., version mismatch detected
+    and fields cleared), else False. Call after loading or before using
+    geometry when a layout schema changes.
+    """
+    if cfg.window_state_version != WINDOW_STATE_VERSION:
+        cfg.window_x = None
+        cfg.window_y = None
+        cfg.window_w = None
+        cfg.window_h = None
+        cfg.maximized = False
+        cfg.window_state_version = WINDOW_STATE_VERSION
+        return True
+    return False

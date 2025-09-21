@@ -1,4 +1,5 @@
 from gui.app.config_store import load_config, save_config, AppConfig
+from gui.app.config_store import ensure_window_state_version, WINDOW_STATE_VERSION
 from gui.app.config_helpers import update_last_data_dir, record_window_geometry
 from pathlib import Path
 import json
@@ -35,3 +36,18 @@ def test_update_last_data_dir_history(tmp_path: Path):
     for i in range(20):
         update_last_data_dir(cfg, f"dir{i}")
     assert len(cfg.data_dir_history) == 10
+
+
+def test_window_state_version_invalidation(tmp_path: Path):
+    cfg = AppConfig()
+    cfg.window_x = 5
+    cfg.window_y = 6
+    cfg.window_w = 700
+    cfg.window_h = 500
+    cfg.maximized = True
+    # Simulate older persisted version
+    cfg.window_state_version = WINDOW_STATE_VERSION - 1 if WINDOW_STATE_VERSION > 0 else 0
+    invalidated = ensure_window_state_version(cfg)
+    assert invalidated is True
+    assert cfg.window_x is None and cfg.window_w is None and cfg.maximized is False
+    assert cfg.window_state_version == WINDOW_STATE_VERSION
