@@ -43,3 +43,4 @@ feat: implement 1.2.2 startup timing logger (TimingLogger, bootstrap integration
 feat: implement 1.3 config-driven startup (AppConfig extensions, helpers, atexit persistence, tests)
 feat: implement 1.3.1 window state version invalidation (helper, refactor, tests)
 feat: implement 1.4 service locator enhancements (typed get, override context manager, tests)
+feat: implement 1.4.1 repository injection helpers (register/get/inject context, tests)
