@@ -209,6 +209,7 @@ from .live_performance_overlay import (  # noqa: F401
     compute_stats,
     build_summary,
 )
+from .adaptive_scrollbar import build_scrollbar_styles  # noqa: F401
 
 __all__ = [
     "load_tokens",
@@ -370,4 +371,5 @@ __all__ = [
     "clear_paint_samples",
     "compute_stats",
     "build_summary",
+    "build_scrollbar_styles",
 ]
