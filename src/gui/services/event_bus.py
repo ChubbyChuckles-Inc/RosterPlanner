@@ -86,7 +86,9 @@ class EventBus:
     # ------------------------------------------------------------------
     # Subscription management
     # ------------------------------------------------------------------
-    def subscribe(self, name: str | GUIEvent, handler: EventHandler, *, once: bool = False) -> Subscription:
+    def subscribe(
+        self, name: str | GUIEvent, handler: EventHandler, *, once: bool = False
+    ) -> Subscription:
         key = name.value if isinstance(name, GUIEvent) else name
         sub = Subscription(event=key, handler=handler, once=once)
         with self._lock:

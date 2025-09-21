@@ -19,6 +19,7 @@ import time
 from typing import Optional, Any
 
 from gui.design import load_tokens, DesignTokens
+from gui.app.config_store import load_config, save_config, AppConfig
 from gui.services.service_locator import services, ServiceLocator
 from gui.services.event_bus import EventBus
 from .timing import TimingLogger
@@ -107,6 +108,8 @@ def create_app(*, safe_mode: bool | None = None, headless: bool | None = None) -
     # Core design tokens load early (may be needed by splash / theme system later)
     with timing.measure("load_design_tokens"):
         tokens = load_tokens()
+    with timing.measure("load_app_config"):
+        app_config = load_config()
     # Register services if not already present (idempotent behavior desired)
     # Use allow_override=False to avoid accidental replacement.
     with timing.measure("register_services"):
@@ -134,7 +137,11 @@ def create_app(*, safe_mode: bool | None = None, headless: bool | None = None) -
         services=services,
         started_at=started,
         duration_s=timing.total_duration,
-        metadata={"qt_available": _QT_AVAILABLE, "startup_timing": timing.as_dict()},
+        metadata={
+            "qt_available": _QT_AVAILABLE,
+            "startup_timing": timing.as_dict(),
+            "app_config": app_config.to_dict(),
+        },
         timing=timing,
     )
     return ctx
