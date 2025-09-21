@@ -1,4 +1,5 @@
 """CLI to compare two scrape directories."""
+
 from __future__ import annotations
 import argparse, json, sys, os
 from services.compare_scrapes import compare_dirs, unified_diff
@@ -8,7 +9,9 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Compare two roster scrape output directories")
     p.add_argument("old", help="Old/original data directory")
     p.add_argument("new", help="New modular scrape data directory")
-    p.add_argument("--diff", metavar="RELFILE", help="Show unified diff for a specific relative file")
+    p.add_argument(
+        "--diff", metavar="RELFILE", help="Show unified diff for a specific relative file"
+    )
     return p.parse_args()
 
 

@@ -1,0 +1,426 @@
+# GUI Implementation Roadmap (PyQt6) - RosterPlanner
+
+Already Implemented (Baseline) - Marked as [x]
+[x] Modular scraping pipeline (services.pipeline.run_full) producing HTML assets
+[x] Ranking & roster parsing with BeautifulSoup (division names, matches, players)
+[x] Club overview & team detail fetching (name-based filenames)
+[x] Flat L2P roster page generation for parity
+[x] Tracking state persistence (TrackingState) with upcoming match derivation
+[x] CLI commands: run-full, compare-scrapes
+[x] Naming utilities for safe filenames (including club names)
+[x] Basic PyQt6 scaffold (earlier placeholder - to be superseded)
+
+Legend / Conventions:
+[ ] = Not started  [~] = In progress  [>] = Blocked/Pending prerequisite  [!] = Requires user decision  [R] = Research/Spike  [T] = Testing task  [D] = Documentation task
+Milestones are grouped; each task should be small, testable, and demoable in the GUI.
+
+Milestone 0 (Parallel): Design System & Visual Language
+[ ] 0.1 Establish canonical design tokens (color roles, spacing scale, radius scale, elevation levels)
+[ ] 0.1.1 Script to export tokens to JSON + auto-generate QSS variables
+[ ] 0.1.2 Contrast validation (WCAG 2.2 AA) automated check for each color pairing
+[ ] 0.2 Typography scale (base size, modular scale ratios, heading hierarchy) with runtime scaling factor
+[ ] 0.3 Iconography guidelines (stroke width, grid alignment, semantic categories)
+[ ] 0.4 Motion design spec (standard easing curves, duration tiers: instant <120ms, subtle 180ms, pronounced 260ms)
+[ ] 0.4.1 Implement easing curve library (cubic-bezier presets) + helper API
+[ ] 0.5 Component library gallery app (internal) to showcase components in isolation for QA
+[ ] 0.5.1 Visual regression capture (screenshot diff harness)
+[ ] 0.5.2 Accessibility focus order & keyboard interaction tests
+[ ] 0.6 High contrast theme + auto-switch based on OS setting
+[ ] 0.7 Dynamic theming: derive tonal palette from a user-selected accent color (algorithmic tint/shade generation)
+[ ] 0.8 Theme hot-reload without full window refresh (apply diff approach)
+[ ] 0.9 Layout density modes (comfortable / compact) with token-driven spacing
+[ ] 0.10 Custom user CSS/QSS override layer sandbox + validation (only whitelisted properties)
+[ ] 0.11 Color blindness simulation filter (protanopia/deuteranopia) preview tool
+[ ] 0.12 Internationalization readiness audit (string externalization, pluralization hooks)
+[ ] 0.13 RTL layout simulation toggle (anticipate future localization)
+[ ] 0.14 Dark mode adaptive charts color palette with semantic mapping (background, grid, accent, alert)
+[ ] 0.15 Micro-interaction catalog (hover, press, selection, drag indicators) documented
+[ ] 0.16 Component performance budget matrix (max render time per component class)
+[ ] 0.17 Skeleton loader component variants (table rows, cards, charts) tied to token durations
+[ ] 0.18 Empty state design templates (actionable guidance + illustration placeholder)
+[ ] 0.19 Error state visual taxonomy (soft warning vs blocking error vs critical failure)
+[ ] 0.20 Notification style guidelines (toast stacking, priority, dismissal timing)
+[ ] 0.21 Responsive breakpoints strategy (even if desktop-only, prepare for narrow window use)
+[ ] 0.21.1 Adaptive reflow rules for <900px width (collapse side docks to icon rail)
+[ ] 0.22 Interaction latency instrumentation (log >100ms event->paint path)
+[ ] 0.23 Color token drift detector (alerts if ad-hoc hardcoded color introduced)
+[ ] 0.24 Developer lint rule: forbid inline styles outside approved token map
+[ ] 0.25 Usability heuristic review checklist integrated into PR template
+[ ] 0.26 User preference persistence for all opt-in visual customizations
+[ ] 0.27 Plugin UI style contract (tokens-only consumption, no arbitrary palettes)
+[ ] 0.28 Print-friendly stylesheet for exports (light, high-contrast variant)
+[ ] 0.29 Continuous design snapshot pipeline (nightly screenshot diff of key views)
+[ ] 0.30 Onboarding tour overlays (progressively educative) framework placeholder
+[ ] 0.31 Focus ring style unification (accessible but subtle; 2px inner outline + outer glow optional)
+[ ] 0.32 Live theming stress test script (iterate all themes rapidly to detect leaks)
+[ ] 0.33 Offline-friendly icon & font caching (hash-based invalidation)
+[ ] 0.34 Visual density A/B toggling harness (future UX experimentation)
+[ ] 0.35 State diagram documentation for complex interactive components (Command Palette, Planner scenario editor)
+[ ] 0.36 Adaptive motion reduction (respect OS "Reduce Motion" setting)
+[ ] 0.37 Cursor affordance guidelines (resize, drag, wait, grabbing consistency)
+[ ] 0.38 Multi-monitor DPI scaling validation script
+[ ] 0.39 Color mixing utilities (blend, alpha composite) for layered surfaces
+[ ] 0.40 Progressive enhancement ladder (baseline minimal UI vs full feature overlay)
+[ ] 0.41 Theming unit tests (assert token existence & non-null mappings)
+[ ] 0.42 Design tokens changelog generation (diff across versions)
+[ ] 0.43 Metadata annotation for tokens (usage counts, deprecation flags)
+[ ] 0.44 Brand-neutral fallback theme (for white-label potential)
+[ ] 0.45 Accessible drag & drop alternative (keyboard reordering flow)
+[ ] 0.46 Live performance overlay (paint times, layout passes) dev mode only
+[ ] 0.47 Adaptive scrollbar styling (consistent across platforms, theme-aware)
+[ ] 0.48 Heatmap color ramp perceptual uniformity validation (Lab space check)
+[ ] 0.49 Component maturity index (alpha/beta/stable) surfaced in gallery
+[ ] 0.50 Design debt register (tracked issues with severity & remediation target)
+
+Milestone 1: GUI Foundation & Infrastructure
+[ ] 1.1 Create dedicated GUI package structure (gui/app, gui/views, gui/viewmodels, gui/components, gui/services)
+[ ] 1.1.1 Define __all__ exports for public GUI API
+[ ] 1.1.2 Add __init__ docstrings for each subpackage
+[ ] 1.2 Implement Application bootstrap (QApplication factory, high DPI attributes, single-instance guard)
+[ ] 1.2.1 Add command-line flags for safe mode (disable plugins)
+[ ] 1.2.2 Add startup timing logger
+[ ] 1.3 Integrate config-driven startup (load last data directory, window geometry persistence)
+[ ] 1.3.1 Persist window state version tag (invalidate on layout schema change)
+[ ] 1.4 Add global dependency container/service locator (for data repo, analytics engine, event bus)
+[ ] 1.4.1 Provide test double injection hook for repositories
+[ ] 1.5 Implement EventBus (pub/sub) with typed signals for: DATA_REFRESHED, SELECTION_CHANGED, STATS_UPDATED
+[ ] 1.5.1 Event tracing toggle (debug overlay listing last 50 events)
+[ ] 1.6 Theme system: light/dark + accent colors (QSS loader, runtime switch action)
+[ ] 1.6.1 Theme validation lint (ensures required palette keys exist)
+[ ] 1.6.2 Add user custom theme JSON import
+[ ] 1.7 Icon & asset pipeline (SVG set, color adaptive to theme)
+[ ] 1.7.1 Provide asset hash map for cache busting
+[ ] 1.8 Logging panel integration (dockable QTextEdit + filtering by level)
+[ ] 1.8.1 Add structured log export (JSONL)
+[ ] 1.9 Global error handler (uncaught exception hook -> dialog + log)
+[ ] 1.9.1 Error deduplication (avoid spamming same trace)
+[ ] 1.9.2 Crash reproduction snippet generator (collect minimal context)
+[ ] 1.10 Add health check overlay (FPS, memory, DB query count)
+
+Milestone 2: Dockable Main Window Architecture
+[ ] 2.1 Implement MainWindow (QMainWindow) with QDockWidget manager
+[ ] 2.1.1 Add central tabbed document area (multi-detail views)
+[ ] 2.2 Create core docks: Navigation Dock, Detail Dock, Stats Dock, Planner Dock, Logs Dock
+[ ] 2.2.1 Provide dock factory registry (extensible by plugins)
+[ ] 2.3 Implement layout save/restore (QSettings, named layout profiles)
+[ ] 2.3.1 Add layout reset to defaults action
+[ ] 2.3.2 Detect invalid/legacy layout and auto-migrate
+[ ] 2.4 Add Command Palette (Ctrl+P) for quick actions (open team, search player, run scrape)
+[ ] 2.4.1 Fuzzy matcher scoring utility
+[ ] 2.4.2 Recently executed command weighting
+[ ] 2.5 Keyboard shortcuts map + in-app cheat sheet dialog
+[ ] 2.5.1 Shortcut conflicts detector
+[ ] 2.6 Drag handle affordances & visual docking preview enhancements
+[ ] 2.7 Focus ring styling for accessibility
+
+Milestone 3: Data Layer & SQLite Integration
+[ ] 3.1 Design SQLite schema (divisions, teams, matches, players, clubs, availability, planning_scenarios)
+[ ] 3.1.1 Create schema ER diagram doc (auto-generated via script)
+[ ] 3.1.2 Define naming conventions (snake_case, singular table names)
+[ ] 3.2 Implement migration manager (apply incremental migrations on startup)
+[ ] 3.2.1 Add migration checksum verification
+[ ] 3.2.2 Dry-run mode for migrations (preview SQL)
+[ ] 3.3 Build ingestion pipeline: HTML -> parsed objects -> DB upsert (idempotent)
+[ ] 3.3.1 Hash each raw HTML; skip unchanged ingestion
+[ ] 3.3.2 Record ingestion provenance table (timestamp, source file, parser version)
+[ ] 3.4 Add integrity checks (foreign keys, uniqueness of team_id per season)
+[ ] 3.4.1 Automated integrity test runnable from CLI
+[ ] 3.5 Abstract Repository layer (TeamRepo, MatchRepo, PlayerRepo, ClubRepo, AvailabilityRepo)
+[ ] 3.5.1 Introduce read-only vs write repo segregation interfaces
+[ ] 3.6 Implement unit tests for repositories (in-memory SQLite)
+[ ] 3.6.1 Add factory fixtures for test data
+[ ] 3.7 Add incremental refresh logic (only changed HTML re-parsed; hash-based caching)
+[ ] 3.7.1 Eviction policy for stale parsed objects (LRU / time-based)
+[ ] 3.8 Provide manual DB rebuild command (menu + command palette)
+[ ] 3.8.1 Rebuild progress dialog w/ partial rollback on error
+[ ] 3.9 Add query performance logging (slow query threshold)
+[ ] 3.10 Index advisor script (analyze EXPLAIN query plans)
+
+Milestone 4: Data Navigation UI
+[ ] 4.1 Navigation Dock: tree model (Season -> Division -> Team -> Roster) using QAbstractItemModel
+[ ] 4.1.1 Virtualization for large node counts (lazy children loading)
+[ ] 4.2 Search bar (incremental fuzzy search across teams & players)
+[ ] 4.2.1 Debounce + background thread indexing
+[ ] 4.3 Filter chips (Division type: Erwachsene / Jugend, Level: Bezirksliga/Stadtklasse, Status: Active)
+[ ] 4.3.1 Persist active filters to settings
+[ ] 4.4 Persist navigation state (expanded nodes, last selection)
+[ ] 4.5 Context menu: Open in new tab (Detail view), Copy ID, Export JSON
+[ ] 4.5.1 Permission model placeholder (future multi-user roles)
+[ ] 4.6 Breadcrumb trail for current selection
+[ ] 4.7 Recently viewed list panel
+
+Milestone 5: Detail Views
+[ ] 5.1 Team Detail View: roster table, match list, LivePZ summary
+[ ] 5.1.1 Column visibility toggles persisted
+[ ] 5.1.2 Inline player hover card (quick stats)
+[ ] 5.2 Player Detail View: career summary (historical LivePZ delta, per-match performance placeholder)
+[ ] 5.2.1 Sparkline micro charts next to player rows
+[ ] 5.3 Division Table View: ranking table parsed normalization (points, differential, form)
+[ ] 5.3.1 Sort multi-column by holding modifier keys
+[ ] 5.4 Club Detail View: all teams grouped by category + aggregated stats
+[ ] 5.5 HTML source preview panel (syntax-highlighted, diff vs previous scrape)
+[ ] 5.5.1 Toggle raw vs cleaned DOM
+[ ] 5.6 Export actions (CSV/JSON) per view
+[ ] 5.6.1 Export presets management
+[ ] 5.7 Split view mode (side-by-side comparison of two teams)
+[ ] 5.8 Tab pinning & color tagging
+
+Milestone 6: Advanced Statistics Engine
+[ ] 6.1 Stats service: compute aggregated KPIs (win %, avg LivePZ per lineup, player participation rate)
+[ ] 6.1.1 KPI registry (declarative definitions + metadata)
+[ ] 6.2 Time-series builder (date-indexed match density, availability coverage)
+[ ] 6.3 Player strength distribution histograms (binning LivePZ)
+[ ] 6.4 Match outcome predictor (baseline heuristic: average top N player LivePZ vs opponent)
+[ ] 6.4.1 Add calibration metrics logging (Brier score placeholder)
+[ ] 6.5 Division strength index (ELO-like aggregate per division)
+[ ] 6.5.1 Expose rating history graph ready endpoint
+[ ] 6.6 Trend detection (rolling 5-match form per team)
+[ ] 6.7 Caching & invalidation for stats (inputs hashed, DB triggers or timestamp checks)
+[ ] 6.8 Unit tests for stats calculations (edge: empty team, partial season, missing LivePZ)
+[ ] 6.9 Stats profiling harness (time + memory, large synthetic dataset)
+
+Milestone 7: Visualization Layer
+[ ] 7.1 Common charting wrapper (e.g., PyQtGraph or Matplotlib embed abstraction)
+[ ] 7.1.1 Chart plugin interface (register new chart types dynamically)
+[ ] 7.2 Theme-aware color palette manager for charts
+[ ] 7.3 Implement charts: Player LivePZ progression line chart
+[ ] 7.4 Implement charts: Team availability heatmap (player vs date)
+[ ] 7.5 Implement charts: Division standings evolution (round-based positions)
+[ ] 7.6 Implement charts: Match volume timeline & cumulative win %
+[ ] 7.7 Interactive tooltips + export as PNG/SVG
+[ ] 7.8 Performance tuning (lazy loading large datasets)
+[ ] 7.9 Responsive layout adaptation (minimum sizes, hide secondary legends)
+[ ] 7.10 Snapshot caching for unchanged charts
+
+Milestone 8: Availability & Match Planning Module
+[ ] 8.1 Schema: availability (player_id, date, status, confidence, note)
+[ ] 8.1.1 Add constraint: unique (player_id, date)
+[ ] 8.2 UI: availability calendar (month & agenda view, toggle statuses)
+[ ] 8.2.1 Keyboard navigation & multi-select drag
+[ ] 8.3 Bulk import / paste availability (spreadsheet-style dialog)
+[ ] 8.4 Auto-suggest availability based on past participation heuristics
+[ ] 8.5 Scenario builder: define upcoming match, propose candidate lineup
+[ ] 8.6 Optimization engine (Phase 1): maximize total LivePZ subject to min players constraint & availability
+[ ] 8.6.1 Linear solver adapter interface (switch between OR-Tools / pulp / heuristic)
+[ ] 8.7 Optimization engine (Phase 2): consider fairness (balance appearances) with adjustable weights
+[ ] 8.8 Reschedule advisor: find alternative match dates (within league constraints) improving predicted strength
+[ ] 8.9 Conflict detector: highlight clashes (two matches same date for shared players)
+[ ] 8.10 What-if comparison: side-by-side two proposed lineups with projected outcome probability
+[ ] 8.11 Export lineup plan (PDF / Markdown)
+[ ] 8.12 Add unit tests for optimization core (constraint satisfaction, tie-breaking)
+[ ] 8.13 Refactor optimization parameters into strategy objects
+[ ] 8.14 Scenario versioning & rollback
+
+Milestone 9: Data Acquisition & Refresh UX
+[ ] 9.1 GUI Scrape Runner dock: choose club id, season, output dir
+[ ] 9.1.1 Validate club id numeric & season range
+[ ] 9.2 Progress signals + cancellable tasks (QThreadPool + QRunnable)
+[ ] 9.2.1 Add cancellation safety checkpoints inside long loops
+[ ] 9.3 Live log streaming into Logs Dock
+[ ] 9.4 Post-scrape diff summary (files added/removed/changed)
+[ ] 9.5 Automatic DB ingest after successful scrape
+[ ] 9.6 Notification system (toast bubbles) for completion/errors
+[ ] 9.7 Scheduled scrape (cron-like simple scheduler within app lifetime)
+[ ] 9.7.1 Missed schedule detection (app was closed)
+[ ] 9.8 Retry policy customization (timeouts, backoff)
+[ ] 9.9 Proxy / network settings UI
+
+Milestone 10: Data Quality & Validation
+[ ] 10.1 Consistency checker: ensure every match references existing teams
+[ ] 10.2 Player duplication resolver (same name, multiple IDs) with merge wizard
+[ ] 10.3 Missing data report (teams without any players, matches missing scores after date passed)
+[ ] 10.4 Integrity dashboard dock (traffic-light statuses)
+[ ] 10.5 Auto-fix routines (optional apply) + preview
+[ ] 10.6 Validation rule configuration UI
+[ ] 10.7 Scheduled nightly validation run
+
+Milestone 11: Persistence & Settings
+[ ] 11.1 Settings model (json or sqlite table) with categories (UI, Data, Planner)
+[ ] 11.1.1 Settings schema versioning & migration
+[ ] 11.2 Settings dialog (tabbed) with live preview for theme/fonts
+[ ] 11.3 Recent projects / data directories quick switcher
+[ ] 11.4 Backup & restore (zip export of DB + HTML snapshot)
+[ ] 11.5 Auto-clean old HTML snapshots (retention policy)
+[ ] 11.6 Encrypted sensitive settings (future expansion)
+
+Milestone 12: Extensibility & Plugin Hooks
+[ ] 12.1 Define plugin interface (entrypoint for stats transformers, planners)
+[ ] 12.2 Plugin discovery & sandboxing (separate thread / process for heavy compute?)
+[ ] 12.3 Sample plugin: custom ELO rating variant
+[ ] 12.4 Plugin management UI (enable/disable, reload)
+[ ] 12.5 Plugin manifest validation (semantic version, compatibility)
+[ ] 12.6 Plugin error isolation with fallback disable
+
+Milestone 13: Testing & QA Strategy
+[ ] 13.1 Unit test harness for GUI-neutral logic (stats, repositories, optimization)
+[ ] 13.1.1 Parametrized tests for edge-case rosters (empty, single player, large roster)
+[ ] 13.2 Lightweight GUI smoke tests (QTest) for critical flows
+[ ] 13.3 Performance tests (timing statistics computation with N matches)
+[ ] 13.4 Memory leak watch (periodic snapshot of object counts)
+[ ] 13.5 Manual exploratory test checklist document
+[ ] 13.6 Test data generator (synthetic season generator script)
+[ ] 13.7 Deterministic seeding for optimization tests
+[ ] 13.8 CI coverage threshold gate (fail < 80% critical modules)
+
+Milestone 14: Documentation & Onboarding
+[ ] 14.1 Developer README: architecture + data flow diagrams
+[ ] 14.2 User Guide: Getting started, scraping, planning scenarios
+[ ] 14.3 Inline help tooltips & Help panel
+[ ] 14.4 Glossary of terms (LivePZ, availability states)
+[ ] 14.5 Changelog automation (commit tag extraction)
+[ ] 14.6 ADR (Architecture Decision Records) template + first 5 ADRs (DB choice, plugin model, theming approach, optimization strategy, event bus)
+[ ] 14.7 Contributor guide (branching model, code style, review checklist)
+
+Milestone 15: Polishing & UX Enhancements
+[ ] 15.1 Animated dock transitions & micro-interactions (hover states, subtle fades)
+[ ] 15.2 Busy indicators & skeleton loading placeholders
+[ ] 15.3 Accessibility pass (font scaling, contrast validation, keyboard nav)
+[ ] 15.4 Undo/redo stack for planner adjustments
+[ ] 15.5 Quick action bar (frequent tasks pinned)
+[ ] 15.6 Intelligent prefetch (when user selects division, pre-load adjacent teams)
+[ ] 15.7 Handoff animation between detail views
+[ ] 15.8 User satisfaction survey hook (optional telemetry off by default)
+[ ] 15.9 Latency budget tracking (warn if UI thread blocked > 120ms)
+
+Milestone 16: Deployment & Distribution
+[ ] 16.1 Freeze app (PyInstaller or Briefcase) for Windows initial build
+[ ] 16.2 Create version metadata endpoint (local JSON) & update checker
+[ ] 16.3 Crash report bundling (log + environment snapshot)
+[ ] 16.4 Installer packaging (MSIX or Inno Setup script)
+[ ] 16.5 Release pipeline script (tag -> build -> artifacts)
+[ ] 16.6 Code signing strategy doc (future)
+[ ] 16.7 Artifact integrity checksum generation
+
+Cross-Cutting Spikes / Research Tasks
+[ ] R1 Evaluate PyQtGraph vs Matplotlib vs QtCharts for performance & theming
+[ ] R2 Explore OR-Tools or pulp for optimization engine vs custom heuristic
+[ ] R3 Assess plugin sandbox security constraints
+[ ] R4 Research caching strategy for large historical seasons
+[ ] R5 Evaluate use of Polars or DuckDB for advanced analytics
+[ ] R6 Assess feasibility of real-time collaboration architecture
+[ ] R7 Investigate incremental parsing with lxml for speed
+
+Early Demonstration Sequence (Incremental Value Delivery)
+[ ] Demo 1: Basic navigation (Milestones 1-2 partial) + ingest to SQLite (3.1-3.4)
+[ ] Demo 2: Team & player detail views (5.1, 5.2) + basic stats (6.1)
+[ ] Demo 3: Charts (7.3, 7.4) + availability entry (8.1, 8.2)
+[ ] Demo 4: Optimization Phase 1 (8.6) + match predictor (6.4)
+[ ] Demo 5: Division evolution + planning scenarios + export (7.5, 8.10, 8.11)
+[ ] Demo 6: Plugin sample + integrity dashboard + scheduler (12.3, 10.4, 9.7)
+[ ] Demo 7: Packaging + theming polish + accessibility (16.1, 15.3)
+
+Risk & Mitigation Tasks
+[ ] Risk: HTML layout changes -> add parser contract tests
+[ ] Risk: Parser drift -> schedule weekly snapshot diff job
+[ ] Risk: Large DB performance -> add indexes & query planner review
+[ ] Risk: Optimization complexity -> implement fallback greedy heuristic
+[ ] Risk: Plugin instability -> isolate via process boundary (future)
+[ ] Risk: Visualization performance -> lazy load, limit points, windowing
+[ ] Risk: Memory bloat -> periodic cache pruning task
+[ ] Risk: Event storm -> rate limit or batch events in EventBus
+
+Metrics / Success Criteria
+[ ] Metric: Load + display 5000 matches < 2s post-ingest
+[ ] Metric: Optimization run (12-team round) < 1s
+[ ] Metric: Memory footprint < 500MB with full season loaded
+[ ] Metric: >90% code coverage on analytics/optimization layer
+[ ] Metric: UI thread idle time > 70% during idle baseline
+[ ] Metric: Cold start < 3s on reference machine
+[ ] Metric: P95 stats recompute latency < 400ms
+[ ] Metric: P99 scrape-to-ingest pipeline completion < 2.5x median
+[ ] Metric: DB vacuum/maintenance window < 60s weekly
+[ ] Metric: Peak memory during bulk ingest < 1.4x steady state
+[ ] Metric: Background optimization CPU usage cap < 60% single core equivalent
+
+Documentation Tasks Interleaved
+[ ] D1 Architecture diagram after Milestone 2
+[ ] D2 Schema ERD after Milestone 3
+[ ] D3 Stats formula reference after Milestone 6
+[ ] D4 Planner algorithm note after Milestone 8
+[ ] D5 Plugin API doc after Milestone 12
+[ ] D6 Theming guide after Milestone 15
+[ ] D7 Deployment handbook after Milestone 16
+
+Testing Hooks for Each Milestone
+[ ] T1 Unit tests for migration + repo (Milestone 3)
+[ ] T2 Mock stats inputs vs expected outputs (Milestone 6)
+[ ] T3 GUI smoke test: open 10 teams sequentially w/out crash (Milestone 5)
+[ ] T4 Performance baseline test script (Milestone 6/7)
+[ ] T5 Optimization scenario assertions (Milestone 8)
+[ ] T6 Plugin load/unload lifecycle test (Milestone 12)
+[ ] T7 Visualization regression image diff tests (Milestone 7)
+[ ] T8 Accessibility automated contrast checks (Milestone 15)
+[ ] T9 Cold start timing regression test (Milestone 16)
+
+Optional Nice-to-Haves (Defer if time constrained)
+[ ] NH1 Multi-season comparison dashboards
+[ ] NH2 Cloud sync for availability (remote JSON endpoint)
+[ ] NH3 Sharing planning scenarios (export/import bundle)
+[ ] NH4 Real-time collaboration (future; websockets stub)
+[ ] NH5 Interactive query console (SQL / DSL hybrid)
+[ ] NH6 AI-assisted lineup suggestion (experimental)
+[ ] NH7 Export animated GIF of standings evolution
+
+Endgame / Release Checklist
+[ ] RC1 All demos validated
+[ ] RC2 All metrics thresholds met or documented exceptions
+[ ] RC3 Accessibility checklist passed
+[ ] RC4 Crash log path documented
+[ ] RC5 Versioned release artifacts published
+[ ] RC6 Security review (dependencies, licenses)
+[ ] RC7 Final ADR review & freeze
+
+Performance & Concurrency (Cross-Cutting) Milestone P (can run in parallel with 3, 6, 7, 8)
+[ ] P1 Establish profiling harness (cProfile + pyinstrument) with scenario scripts (ingest, stats recompute, optimization run)
+[ ] P1.1 Automated weekly performance baseline job (store JSON metrics history)
+[ ] P2 Introduce timing decorator/context manager utility (records to ring buffer + optional log)
+[ ] P3 Build flamegraph generation script (using py-spy or pyinstrument HTML export)
+[ ] P4 Identify CPU hot paths in parsing (BeautifulSoup) -> evaluate lxml fallback experiment
+[ ] P4.1 Prototype lxml-based parser for ranking table; compare speed & parity
+[ ] P5 Introduce job scheduler abstraction (priority queues: USER_INTERACTIVE, BACKGROUND, MAINTENANCE)
+[ ] P6 Multithreaded HTML parsing pool (ThreadPoolExecutor) with concurrency cap (IO-bound)
+[ ] P6.1 Adaptive concurrency scaling (based on average task latency)
+[ ] P7 Multiprocessing for CPU-bound analytics (stats batch compute) with process pool + shared read-only memory snapshot
+[ ] P7.1 Graceful child process restart on memory growth threshold
+[ ] P8 Async HTTP fetching prototype (httpx/asyncio) behind interface; fallback to sync until stable
+[ ] P8.1 Connection pooling & backoff strategy centralization
+[ ] P9 Caching layer tiers: in-memory LRU (per run), persistent SQLite materialized views, serialized stats blobs
+[ ] P9.1 Cache invalidation triggers (HTML hash change, season boundary, manual flush)
+[ ] P9.2 Cache metrics (hit %, evictions, stale serves) dashboard stub
+[ ] P10 Batch DB writes (use transactions around per-division ingest) to reduce fsync overhead
+[ ] P10.1 WAL mode evaluation & configuration (trade-offs doc)
+[ ] P11 Prepared statement reuse / statement cache wrapper
+[ ] P12 Introduce read replicas concept (future) or query routing stub for scaling plan
+[ ] P13 Stats engine incremental update (only recompute impacted aggregates on new match)
+[ ] P13.1 Dependency graph of aggregates (topological order for recompute)
+[ ] P14 Optimizer engine profiling (track constraint build time vs solver time)
+[ ] P14.1 Parallel scenario evaluation (multiple what-if lineups concurrently)
+[ ] P15 Vectorization spike: experiment with numpy/polars for bulk stat aggregations
+[ ] P15.1 Benchmark: Python loops vs numpy vs polars vs SQLite window functions
+[ ] P16 Memory audit: identify large objects (tracemalloc snapshot diff after scenarios)
+[ ] P16.1 Retained reference cycle detector (gc.get_referrers scan utility)
+[ ] P17 Add fast path for small datasets (disable heavy caches, animations)
+[ ] P18 Idle-time maintenance tasks (cache compaction, DB VACUUM) scheduler window
+[ ] P19 Progressive loading: show partial division results while remainder still computing
+[ ] P20 UI thread watchdog (detect blocking operations > 120ms; emit warning event)
+[ ] P21 Background task cancellation & cooperative checkpoints (long stats loops)
+[ ] P22 Integrate concurrency stress test (spawn N parallel scrapes with mock server)
+[ ] P23 Structured performance regression alerts (compare current baseline to N-1 median; flag >15% regression)
+[ ] P24 Add fallback path for low-resource mode (reduced animations, smaller caches) toggle
+[ ] P25 Pre-warm caches on startup (lazy schedule after initial UI idle)
+[ ] P26 Optimize roster diff computation (switch to diff-match-patch or O(N) hashing approach) spike
+[ ] P27 Columnar in-memory representation for player stats (array-of-struct vs struct-of-arrays comparison)
+[ ] P28 Adaptive prediction model selection (lightweight heuristic if < X matches) to reduce compute
+[ ] P29 Fast approximate string matching (RapidFuzz) for search vs pure Python fallback
+[ ] P29.1 Cache normalized tokens for fuzzy search index
+[ ] P30 Introduce metrics exporter (Prometheus textfile style) for external observability
+[ ] P31 Add optional tracing (OpenTelemetry spans) around ingest, stats, optimization pipelines
+[ ] P32 Benchmark environment container (fixed hardware constraints) for reproducible runs
+[ ] P33 Scenario optimization parallel neighborhood search (multi-process branching)
+[ ] P34 Heuristic warm start for solver (use last successful lineup) to cut solve time
+[ ] P35 Rolling window stats materialization (avoid full-season recompute each query)
+[ ] P36 Precompiled regex pool (central registry) to avoid recompilation overhead
+[ ] P37 HTML parsing micro-benchmark suite (per tag selection cost)
+[ ] P38 GIL contention analysis (py-spy gil stats) after multithread prototype
+[ ] P39 Evaluate PyPy or CPython 3.x future features (e.g., nogil proposals) feasibility note
+[ ] P40 ADR: Chosen concurrency model (threads + processes hybrid) rationale

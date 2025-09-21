@@ -1,4 +1,5 @@
 """Utilities to compare two scrape output directories and report discrepancies."""
+
 from __future__ import annotations
 import os
 import difflib

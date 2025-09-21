@@ -11,7 +11,9 @@ def ensure_dir(path: str) -> None:
 
 
 def write_text(path: str, content: str, encoding: str = "utf-8") -> None:
-    ensure_dir(os.path.dirname(path))
+    dir_part = os.path.dirname(path)
+    if dir_part:
+        ensure_dir(dir_part)
     with open(path, "w", encoding=encoding) as fh:
         fh.write(content)
 

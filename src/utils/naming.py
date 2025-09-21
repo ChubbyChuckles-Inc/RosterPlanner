@@ -40,5 +40,16 @@ def club_team_filename(club_id: str, team_name: str, team_id: str | None) -> str
     return f"club_team_{club_id}_{team}_{suffix}.html"
 
 
+# New name-based variants (use sanitized club name rather than numeric id)
+def club_overview_by_name_filename(club_name: str) -> str:
+    return f"club_overview_{sanitize(club_name)}.html"
+
+
+def club_team_by_name_filename(club_name: str, team_name: str, team_id: str | None) -> str:
+    team = sanitize(team_name)
+    suffix = team_id if team_id else "unknown"
+    return f"club_team_{sanitize(club_name)}_{team}_{suffix}.html"
+
+
 def data_dir() -> str:
     return settings.DATA_DIR

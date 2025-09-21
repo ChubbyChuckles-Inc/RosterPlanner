@@ -119,9 +119,16 @@ def extract_players(html: str, *, team_id: str) -> List[Player]:
 def extract_club_link(html: str) -> str | None:
     """Return the first club link (anchor text 'Verein')."""
     soup = BeautifulSoup(html, "html.parser")
+    # First attempt: existing strict pattern
     a = soup.find(
         "a",
         href=lambda h: h and "L2=Verein" in h,
         string=lambda s: s and s.strip().lower() == "verein",
     )
-    return a["href"] if a and a.has_attr("href") else None
+    if a and a.has_attr("href"):
+        return a["href"]
+    # Relaxed: any anchor whose visible text is 'Verein'
+    relaxed = soup.find("a", string=lambda s: s and s.strip().lower() == "verein")
+    if relaxed and relaxed.has_attr("href"):
+        return relaxed["href"]
+    return None

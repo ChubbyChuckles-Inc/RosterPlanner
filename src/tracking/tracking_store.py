@@ -34,6 +34,7 @@ def load_state(base: str | None = None) -> TrackingState:
 def save_state(state: TrackingState, base: str | None = None) -> None:
     p = _path(base)
     os.makedirs(os.path.dirname(p), exist_ok=True)
+
     def _serialize_match(m: Match) -> Dict[str, Any]:
         if is_dataclass(m):
             return asdict(m)

@@ -15,6 +15,12 @@ def fetch_and_parse_overview(url: str) -> Dict[str, Team]:
 
 
 def fetch_ranking_table(url: str, division_name_hint: str, data_dir: str) -> str:
+    """Fetch and persist a ranking table using a provided division name hint.
+
+    Note: The pipeline now prefers to fetch HTML and parse the real division name
+    before persisting. This helper remains for backwards compatibility or ad-hoc
+    usage (e.g. tests) and still writes using the hint.
+    """
     html = http_client.fetch(url)
     filename = naming.ranking_table_filename(division_name_hint)
     path = os.path.join(data_dir, filename)

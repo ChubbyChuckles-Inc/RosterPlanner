@@ -10,11 +10,16 @@ from domain.models import Match, Player
 
 
 def fetch_roster(
-    url: str, division: str, team_name: str, team_id: str | None, data_dir: str
+    url: str, division: str, team_name: str, team_id: str | None, division_dir: str
 ) -> str:
+    """Fetch a team roster page.
+
+    division_dir should already be the filesystem path of the (sanitized) division
+    directory. This avoids creating nested duplicate division folders (previous
+    behavior nested division twice).
+    """
     html = http_client.fetch(url)
     filename = naming.team_roster_filename(division, team_name, team_id)
-    division_dir = naming.division_dir(data_dir, division)
     path = os.path.join(division_dir, filename)
     filesystem.write_text(path, html)
     return path
