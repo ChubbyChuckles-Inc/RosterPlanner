@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import json
-from typing import Any, Dict, Mapping, Iterable
+from typing import Any, Dict, Mapping, Iterable, Literal
 
 _TOKEN_FILE = Path(__file__).parent / "tokens.json"
 
@@ -103,6 +103,39 @@ class DesignTokens:
         for key, val in scale.items():
             lines.append(f"/* font-size-{key}: {val}px; */")
         return "\n".join(lines) + "\n"
+
+    # --- Theme Variant Helpers --------------------------------------------
+    def theme_variant(
+        self, variant: Literal["default", "high-contrast"] = "default"
+    ) -> Mapping[str, str]:
+        """Return a flattened mapping of semantic colors for a theme variant.
+
+        High contrast variant uses *HighContrast groups when present, otherwise
+        falls back to base groups. This is a lightweight indirection layer;
+        full theming system (runtime switching + QSS regen) will build atop this.
+        """
+        color = self.raw.get("color", {})
+        result: Dict[str, str] = {}
+
+        def _copy(prefix: str, group_name: str, alt_group: str | None = None):
+            grp = color.get(group_name, {})
+            if variant == "high-contrast" and alt_group:
+                grp = color.get(alt_group, grp)
+            if isinstance(grp, Mapping):
+                for k, v in grp.items():
+                    if isinstance(v, str):
+                        result[f"{prefix}.{k}"] = v
+
+        _copy("background", "background", "backgroundHighContrast")
+        _copy("surface", "surface", "surfaceHighContrast")
+        _copy("text", "text", "textHighContrast")
+        _copy("accent", "accent", "accentHighContrast")
+        _copy("border", "border", None)
+        return result
+
+    def is_high_contrast_supported(self) -> bool:
+        col = self.raw.get("color", {})
+        return any(k.endswith("HighContrast") for k in col.keys())
 
 
 def load_tokens(path: str | Path | None = None) -> DesignTokens:
