@@ -7,6 +7,8 @@ import sys
 from typing import Any
 import os
 
+from gui.i18n import t  # lightweight import (pure-Python)
+
 from services import pipeline
 from config import settings
 from utils import naming
@@ -94,7 +96,8 @@ def main(argv: list[str] | None = None) -> int:
         # Treat absence of explicit argv as empty to avoid pytest's own args.
         argv = []
     if len(argv) == 0:
-        print("Hello from project-template!")
+        # Legacy simple greeting now routed through i18n for readiness.
+        print(t("greeting.hello"))
         return 0
     parser = build_parser()
     args = parser.parse_args(argv)
