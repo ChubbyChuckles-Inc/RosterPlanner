@@ -60,6 +60,16 @@ from .reflow import (  # noqa: F401
     get_reflow_actions,
     ReflowRule,
 )
+from .interaction_latency import (  # noqa: F401
+    instrument_latency,
+    latency_block,
+    get_latency_records,
+    clear_latency_records,
+    list_thresholds,
+    register_threshold,
+    LatencyRecord,
+    LatencyThreshold,
+)
 
 __all__ = [
     "load_tokens",
@@ -112,4 +122,12 @@ __all__ = [
     "list_reflow_rules",
     "get_reflow_actions",
     "ReflowRule",
+    "instrument_latency",
+    "latency_block",
+    "get_latency_records",
+    "clear_latency_records",
+    "list_thresholds",
+    "register_threshold",
+    "LatencyRecord",
+    "LatencyThreshold",
 ]
