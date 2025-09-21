@@ -29,7 +29,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.7 Dynamic theming: derive tonal palette from a user-selected accent color (accent palette derivation utility + tests)
 [x] 0.8 Theme hot-reload without full window refresh (ThemeManager diff logic + tests; UI propagation pending)
 [x] 0.9 Layout density modes (comfortable / compact) with token-driven spacing
-[~] 0.10 Custom user CSS/QSS override layer sandbox + validation (only whitelisted properties)
+[x] 0.10 Custom user CSS/QSS override layer sandbox + validation (only whitelisted properties)
 [ ] 0.11 Color blindness simulation filter (protanopia/deuteranopia) preview tool
 [ ] 0.12 Internationalization readiness audit (string externalization, pluralization hooks)
 [ ] 0.13 RTL layout simulation toggle (anticipate future localization)
