@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import json
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Iterable
 
 _TOKEN_FILE = Path(__file__).parent / "tokens.json"
 
@@ -56,6 +56,32 @@ class DesignTokens:
         if not isinstance(value, int):
             raise TypeError(f"Font size token {key} must be int, got {type(value)}")
         return value
+
+    # --- Typography Helpers -------------------------------------------------
+    def heading_levels(self) -> Iterable[str]:
+        headings = self.raw.get("typography", {}).get("headings", {})
+        return headings.keys()
+
+    def heading_font_size(self, heading: str, scale_factor: float = 1.0) -> int:
+        """Return pixel font size for a heading key (e.g., 'h1').
+
+        Applies an optional scale_factor (user preference / accessibility). Result
+        is rounded to nearest integer to keep pixel alignment predictable.
+        """
+        typography = self.raw.get("typography", {})
+        headings = typography.get("headings", {})
+        token_key = headings.get(heading)
+        if token_key is None:
+            raise KeyError(f"Unknown heading level: {heading}")
+        base_px = self.font_size(token_key)
+        scaled = int(round(base_px * scale_factor))
+        return max(1, scaled)
+
+    def font_family(self) -> str:
+        fam = self.raw.get("typography", {}).get("fontFamily")
+        if not isinstance(fam, str):
+            raise TokenValidationError("typography.fontFamily must be a string")
+        return fam
 
     def generate_qss(self) -> str:
         """Generate a QSS variable block mapping tokens to --rp-* custom props.
@@ -103,8 +129,19 @@ def _validate_tokens(data: Mapping[str, Any]) -> None:
     # Spot-check some mandatory nested keys
     if "background" not in data["color"]:
         raise TokenValidationError("color.background group required")
-    if "scale" not in data["typography"]:
+    typo = data["typography"]
+    if "scale" not in typo:
         raise TokenValidationError("typography.scale group required")
+    if "headings" not in typo:
+        raise TokenValidationError("typography.headings group required")
+    # Validate heading mapping references existing scale entries
+    scale = typo.get("scale", {})
+    headings = typo.get("headings", {})
+    if not isinstance(headings, Mapping):
+        raise TokenValidationError("typography.headings must be a mapping")
+    for h, token_ref in headings.items():
+        if token_ref not in scale:
+            raise TokenValidationError(f"Heading {h} references unknown scale token '{token_ref}'")
 
 
 __all__ = ["DesignTokens", "load_tokens", "TokenValidationError"]

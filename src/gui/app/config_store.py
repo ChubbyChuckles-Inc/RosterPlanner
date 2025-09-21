@@ -73,9 +73,7 @@ class AppConfig:
             window_h=data.get("window_h"),
             maximized=bool(data.get("maximized", False)),
             last_data_dir=data.get("last_data_dir"),
-            window_state_version=int(
-                data.get("window_state_version", WINDOW_STATE_VERSION)
-            ),
+            window_state_version=int(data.get("window_state_version", WINDOW_STATE_VERSION)),
         )
         return inst
 
