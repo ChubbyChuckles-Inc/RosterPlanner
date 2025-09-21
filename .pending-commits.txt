@@ -55,3 +55,4 @@ feat: implement 1.8 logging service (ring buffer handler, event emission, filter
 feat: implement 1.8.1 structured log export (export_jsonl, filtering, append mode, tests, roadmap)
 feat: implement 1.9 global error handling service (sys/thread hooks, ring buffer, logging + event emission, tests, roadmap)
 feat: implement 1.9.1 error deduplication (DedupEntry aggregation, enable/disable API, tests, roadmap)
+feat: implement 1.9.2 crash reproduction snippet generator (diagnostics module, build_crash_snippet helper, tests, roadmap)

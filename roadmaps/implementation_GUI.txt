@@ -94,7 +94,7 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.8.1 Add structured log export (JSONL)
 [x] 1.9 Global error handler (uncaught exception hook -> dialog + log)
 [x] 1.9.1 Error deduplication (avoid spamming same trace)
-[ ] 1.9.2 Crash reproduction snippet generator (collect minimal context)
+[x] 1.9.2 Crash reproduction snippet generator (collect minimal context)
 [ ] 1.10 Add health check overlay (FPS, memory, DB query count)
 
 Milestone 2: Dockable Main Window Architecture

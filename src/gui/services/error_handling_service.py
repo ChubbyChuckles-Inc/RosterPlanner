@@ -264,3 +264,27 @@ class ErrorHandlingService:
         self._errors.clear()
         self._dedup.clear()
         self._dedup_order.clear()
+
+    # ------------------------------------------------------------------
+    # Diagnostics integration (Milestone 1.9.2)
+    # ------------------------------------------------------------------
+    def build_crash_snippet(
+        self,
+        *,
+        logging_service: Any | None = None,
+        event_bus: Any | None = None,
+        max_errors: int = 5,
+        max_logs: int = 50,
+        max_events: int = 30,
+    ) -> dict[str, Any]:
+        """Return structured crash snippet (delegates to diagnostics module)."""
+        from .diagnostics import generate_crash_snippet
+
+        return generate_crash_snippet(
+            error_service=self,
+            logging_service=logging_service,
+            event_bus=event_bus,
+            max_errors=max_errors,
+            max_logs=max_logs,
+            max_events=max_events,
+        )
