@@ -49,6 +49,12 @@ from .notifications import (  # noqa: F401
     get_notification_style,
     NotificationStyle,
 )
+from .responsive import (  # noqa: F401
+    list_breakpoints,
+    get_breakpoint,
+    classify_width,
+    Breakpoint,
+)
 
 __all__ = [
     "load_tokens",
@@ -94,4 +100,8 @@ __all__ = [
     "list_notification_styles",
     "get_notification_style",
     "NotificationStyle",
+    "list_breakpoints",
+    "get_breakpoint",
+    "classify_width",
+    "Breakpoint",
 ]
