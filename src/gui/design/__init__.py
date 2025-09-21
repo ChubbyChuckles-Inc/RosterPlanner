@@ -120,6 +120,15 @@ from .asset_cache import (  # noqa: F401
     clear_assets,
     AssetCacheEntry,
 )
+from .density_experiment import (  # noqa: F401
+    set_density_variant,
+    current_density_variant,
+    list_density_variants,
+    register_density_listener,
+    density_history,
+    clear_density_state,
+    DensityExperimentState,
+)
 
 __all__ = [
     "load_tokens",
@@ -212,4 +221,11 @@ __all__ = [
     "compute_file_hash",
     "clear_assets",
     "AssetCacheEntry",
+    "set_density_variant",
+    "current_density_variant",
+    "list_density_variants",
+    "register_density_listener",
+    "density_history",
+    "clear_density_state",
+    "DensityExperimentState",
 ]

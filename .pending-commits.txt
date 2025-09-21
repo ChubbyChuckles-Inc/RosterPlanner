@@ -19,3 +19,4 @@ feat: implement 0.30 onboarding tour framework placeholder (dataclasses, registr
 feat: implement 0.31 focus ring style unification (builder, contrast enforcement, tests, exports)
 feat: implement 0.32 live theming stress test script (iteration harness, report dataclass, tests, exports)
 feat: implement 0.33 offline-friendly icon & font caching (asset registry, hash invalidation, manifest, tests, exports)
+feat: implement 0.34 visual density A/B toggling harness (state, listeners, history, tests, exports)

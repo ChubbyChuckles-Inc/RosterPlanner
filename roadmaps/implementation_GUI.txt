@@ -54,7 +54,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.31 Focus ring style unification (accessible but subtle; 2px inner outline + outer glow optional)
 [x] 0.32 Live theming stress test script (iterate all themes rapidly to detect leaks)
 [x] 0.33 Offline-friendly icon & font caching (hash-based invalidation)
-[ ] 0.34 Visual density A/B toggling harness (future UX experimentation)
+[x] 0.34 Visual density A/B toggling harness (future UX experimentation)
 [ ] 0.35 State diagram documentation for complex interactive components (Command Palette, Planner scenario editor)
 [ ] 0.36 Adaptive motion reduction (respect OS "Reduce Motion" setting)
 [ ] 0.37 Cursor affordance guidelines (resize, drag, wait, grabbing consistency)
