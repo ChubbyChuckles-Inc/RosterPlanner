@@ -24,7 +24,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from threading import RLock
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Type, TypeVar, Generator, Callable
+from contextlib import contextmanager
+
+T = TypeVar("T")
 
 __all__ = ["ServiceLocator", "services", "ServiceAlreadyRegisteredError", "ServiceNotFoundError"]
 
@@ -79,6 +82,18 @@ class ServiceLocator:
                 raise ServiceNotFoundError(key)
             return record.value
 
+    def get_typed(self, key: str, expected_type: Type[T]) -> T:
+        """Retrieve a service and assert it matches expected_type.
+
+        Raises TypeError with a clear message if mismatch.
+        """
+        value = self.get(key)
+        if not isinstance(value, expected_type):
+            raise TypeError(
+                f"Service '{key}' expected type {expected_type!r} but got {type(value)!r}"
+            )
+        return value
+
     def try_get(self, key: str, default: Any = None) -> Any:
         with self._lock:
             record = self._services.get(key)
@@ -89,6 +104,35 @@ class ServiceLocator:
             if key not in self._services:
                 raise ServiceNotFoundError(key)
             self._services[key] = ServiceRecord(key=key, value=value, origin="override")
+
+    @contextmanager
+    def override_context(self, **overrides: Any) -> Generator[None, None, None]:
+        """Temporarily override one or more services within a context.
+
+        Example:
+            with services.override_context(event_bus=FakeBus()):
+                ... test code ...
+        Restores previous values (if present) on exit.
+        """
+        previous: Dict[str, ServiceRecord | None] = {}
+        with self._lock:
+            for key, new_value in overrides.items():
+                previous[key] = self._services.get(key)
+                if key not in self._services:
+                    # Register new ephemeral service
+                    self._services[key] = ServiceRecord(key=key, value=new_value, origin="temp")
+                else:
+                    self._services[key] = ServiceRecord(key=key, value=new_value, origin="override")
+        try:
+            yield
+        finally:
+            with self._lock:
+                for key, prior in previous.items():
+                    if prior is None:
+                        # Was created ephemeral; remove
+                        self._services.pop(key, None)
+                    else:
+                        self._services[key] = prior
 
     def unregister(self, key: str) -> None:
         with self._lock:
