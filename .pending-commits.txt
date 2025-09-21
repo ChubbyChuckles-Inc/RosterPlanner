@@ -23,3 +23,4 @@ feat: implement 0.34 visual density A/B toggling harness (state, listeners, hist
 feat: implement 0.35 state diagram documentation (command palette + planner scenario editor, diagrams, validator, tests)
 feat: implement 0.36 adaptive motion reduction (module, env bootstrap, scaling helpers, context manager, tests, exports)
 feat: implement 0.37 cursor affordance guidelines (registry, defaults, tests, exports)
+feat: implement 0.38 multi-monitor DPI scaling validation (dataclasses, heuristics, tests, exports)

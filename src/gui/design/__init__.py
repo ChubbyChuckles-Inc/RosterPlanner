@@ -144,6 +144,12 @@ from .cursor_affordance import (  # noqa: F401
     ensure_default_cursor_affordances,
     CursorAffordance,
 )
+from .dpi_scaling_validation import (  # noqa: F401
+    DpiScaleSample,
+    DpiScalingIssue,
+    DpiScalingReport,
+    validate_scaling,
+)
 
 __all__ = [
     "load_tokens",
@@ -254,4 +260,8 @@ __all__ = [
     "clear_cursor_affordances",
     "ensure_default_cursor_affordances",
     "CursorAffordance",
+    "DpiScaleSample",
+    "DpiScalingIssue",
+    "DpiScalingReport",
+    "validate_scaling",
 ]
