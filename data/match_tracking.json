@@ -1,5 +1,519 @@
 {
-  "last_scrape": "2025-09-21T18:38:57.492390",
+  "last_scrape": "2025-09-21T18:43:57.472878",
   "divisions": {},
-  "upcoming_matches": []
+  "upcoming_matches": [
+    {
+      "team_id": "20336",
+      "team_name": "2. Erwachsene",
+      "division": "2. Bezirksliga Erwachsene",
+      "date": "04.10.25",
+      "time": "14:00",
+      "home_team": "Brandiser TTC 1946",
+      "guest_team": "SSV Stötteritz 2"
+    },
+    {
+      "team_id": "20336",
+      "team_name": "2. Erwachsene",
+      "division": "2. Bezirksliga Erwachsene",
+      "date": "18.10.25",
+      "time": "15:00",
+      "home_team": "SSV Stötteritz 2",
+      "guest_team": "LSV Mörtitz"
+    },
+    {
+      "team_id": "20336",
+      "team_name": "2. Erwachsene",
+      "division": "2. Bezirksliga Erwachsene",
+      "date": "25.10.25",
+      "time": "14:00",
+      "home_team": "TTC Holzhausen 4",
+      "guest_team": "SSV Stötteritz 2"
+    },
+    {
+      "team_id": "20336",
+      "team_name": "2. Erwachsene",
+      "division": "2. Bezirksliga Erwachsene",
+      "date": "01.11.25",
+      "time": "15:00",
+      "home_team": "SSV Stötteritz 2",
+      "guest_team": "TTV 1990 Wurzen 2"
+    },
+    {
+      "team_id": "20336",
+      "team_name": "2. Erwachsene",
+      "division": "2. Bezirksliga Erwachsene",
+      "date": "22.11.25",
+      "time": "15:00",
+      "home_team": "SSV Stötteritz 2",
+      "guest_team": "Leutzscher Füchse 4"
+    },
+    {
+      "team_id": "20336",
+      "team_name": "2. Erwachsene",
+      "division": "2. Bezirksliga Erwachsene",
+      "date": "14.12.25",
+      "time": "10:00",
+      "home_team": "SG C. Zetkin Leipzig 3",
+      "guest_team": "SSV Stötteritz 2"
+    },
+    {
+      "team_id": "20337",
+      "team_name": "1. Erwachsene",
+      "division": "1. Bezirksliga Erwachsene",
+      "date": "04.10.25",
+      "time": "14:00",
+      "home_team": "Leutzscher Füchse 2",
+      "guest_team": "SSV Stötteritz"
+    },
+    {
+      "team_id": "20337",
+      "team_name": "1. Erwachsene",
+      "division": "1. Bezirksliga Erwachsene",
+      "date": "05.10.25",
+      "time": "10:00",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "TTC Oschatz"
+    },
+    {
+      "team_id": "20337",
+      "team_name": "1. Erwachsene",
+      "division": "1. Bezirksliga Erwachsene",
+      "date": "19.10.25",
+      "time": "10:00",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "TTC Großpösna 1968 2"
+    },
+    {
+      "team_id": "20337",
+      "team_name": "1. Erwachsene",
+      "division": "1. Bezirksliga Erwachsene",
+      "date": "02.11.25",
+      "time": "10:00",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "Leutzscher Füchse 3"
+    },
+    {
+      "team_id": "20337",
+      "team_name": "1. Erwachsene",
+      "division": "1. Bezirksliga Erwachsene",
+      "date": "16.11.25",
+      "time": "10:00",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "SV Arzberg"
+    },
+    {
+      "team_id": "20337",
+      "team_name": "1. Erwachsene",
+      "division": "1. Bezirksliga Erwachsene",
+      "date": "29.11.25",
+      "time": "14:00",
+      "home_team": "TTC Großpösna 1968",
+      "guest_team": "SSV Stötteritz"
+    },
+    {
+      "team_id": "20337",
+      "team_name": "1. Erwachsene",
+      "division": "1. Bezirksliga Erwachsene",
+      "date": "07.12.25",
+      "time": "10:00",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "SV Groitzsch 1861"
+    },
+    {
+      "team_id": "20459",
+      "team_name": "4. Erwachsene",
+      "division": "1. Stadtliga Gruppe 1",
+      "date": "25.09.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 4",
+      "guest_team": "SV Leipzig 1910"
+    },
+    {
+      "team_id": "20459",
+      "team_name": "4. Erwachsene",
+      "division": "1. Stadtliga Gruppe 1",
+      "date": "02.10.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 4",
+      "guest_team": "MDR SG"
+    },
+    {
+      "team_id": "20459",
+      "team_name": "4. Erwachsene",
+      "division": "1. Stadtliga Gruppe 1",
+      "date": "24.10.25",
+      "time": "19:30",
+      "home_team": "Leutzscher Füchse 9",
+      "guest_team": "SSV Stötteritz 4"
+    },
+    {
+      "team_id": "20459",
+      "team_name": "4. Erwachsene",
+      "division": "1. Stadtliga Gruppe 1",
+      "date": "03.11.25",
+      "time": "19:15",
+      "home_team": "SG C. Zetkin Leipzig 5",
+      "guest_team": "SSV Stötteritz 4"
+    },
+    {
+      "team_id": "20459",
+      "team_name": "4. Erwachsene",
+      "division": "1. Stadtliga Gruppe 1",
+      "date": "13.11.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 4",
+      "guest_team": "TSV Grünau Leipzig"
+    },
+    {
+      "team_id": "20459",
+      "team_name": "4. Erwachsene",
+      "division": "1. Stadtliga Gruppe 1",
+      "date": "28.11.25",
+      "time": "19:00",
+      "home_team": "SV BW Lindenau",
+      "guest_team": "SSV Stötteritz 4"
+    },
+    {
+      "team_id": "20459",
+      "team_name": "4. Erwachsene",
+      "division": "1. Stadtliga Gruppe 1",
+      "date": "11.12.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 4",
+      "guest_team": "SV F. Leipzig-Thekla 2"
+    },
+    {
+      "team_id": "20464",
+      "team_name": "1. Jugend 15",
+      "division": "1. Stadtliga Jugend 15",
+      "date": "27.09.25",
+      "time": "10:45",
+      "home_team": "SG MoGoNo Leipzig",
+      "guest_team": "SSV Stötteritz"
+    },
+    {
+      "team_id": "20464",
+      "team_name": "1. Jugend 15",
+      "division": "1. Stadtliga Jugend 15",
+      "date": "01.11.25",
+      "time": "09:30",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "SG C. Zetkin Leipzig"
+    },
+    {
+      "team_id": "20464",
+      "team_name": "1. Jugend 15",
+      "division": "1. Stadtliga Jugend 15",
+      "date": "08.11.25",
+      "time": "09:30",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "TTC MWL"
+    },
+    {
+      "team_id": "20464",
+      "team_name": "1. Jugend 15",
+      "division": "1. Stadtliga Jugend 15",
+      "date": "29.11.25",
+      "time": "10:15",
+      "home_team": "ATV Volkmarsdorf",
+      "guest_team": "SSV Stötteritz"
+    },
+    {
+      "team_id": "20464",
+      "team_name": "1. Jugend 15",
+      "division": "1. Stadtliga Jugend 15",
+      "date": "06.12.25",
+      "time": "09:30",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "Leutzscher Füchse"
+    },
+    {
+      "team_id": "20464",
+      "team_name": "1. Jugend 15",
+      "division": "1. Stadtliga Jugend 15",
+      "date": "13.12.25",
+      "time": "08:30",
+      "home_team": "SV DKF Böhlitz-Ehr.",
+      "guest_team": "SSV Stötteritz"
+    },
+    {
+      "team_id": "20465",
+      "team_name": "7. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 1",
+      "date": "26.09.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 7",
+      "guest_team": "SG MoGoNo Leipzig 5"
+    },
+    {
+      "team_id": "20465",
+      "team_name": "7. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 1",
+      "date": "21.10.25",
+      "time": "19:30",
+      "home_team": "SV DKF Böhlitz-Ehr. 2",
+      "guest_team": "SSV Stötteritz 7"
+    },
+    {
+      "team_id": "20465",
+      "team_name": "7. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 1",
+      "date": "07.11.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 7",
+      "guest_team": "SV F. Leipzig-Thekla 4"
+    },
+    {
+      "team_id": "20465",
+      "team_name": "7. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 1",
+      "date": "12.11.25",
+      "time": "19:15",
+      "home_team": "SV Weißblau Allianz  3",
+      "guest_team": "SSV Stötteritz 7"
+    },
+    {
+      "team_id": "20465",
+      "team_name": "7. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 1",
+      "date": "28.11.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 7",
+      "guest_team": "SV Mölkau 04 4"
+    },
+    {
+      "team_id": "20465",
+      "team_name": "7. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 1",
+      "date": "11.12.25",
+      "time": "20:15",
+      "home_team": "ATV Volkmarsdorf 2",
+      "guest_team": "SSV Stötteritz 7"
+    },
+    {
+      "team_id": "20469",
+      "team_name": "6. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 2",
+      "date": "26.09.25",
+      "time": "19:30",
+      "home_team": "Leutzscher Füchse 14",
+      "guest_team": "SSV Stötteritz 6"
+    },
+    {
+      "team_id": "20469",
+      "team_name": "6. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 2",
+      "date": "22.10.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 6",
+      "guest_team": "TTC Holzhausen 9"
+    },
+    {
+      "team_id": "20469",
+      "team_name": "6. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 2",
+      "date": "05.11.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 6",
+      "guest_team": "SV Eintracht Leipzig 7"
+    },
+    {
+      "team_id": "20469",
+      "team_name": "6. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 2",
+      "date": "13.11.25",
+      "time": "19:15",
+      "home_team": "SV Leipzig 1910 2",
+      "guest_team": "SSV Stötteritz 6"
+    },
+    {
+      "team_id": "20469",
+      "team_name": "6. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 2",
+      "date": "26.11.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 6",
+      "guest_team": "TTC Taucha 4"
+    },
+    {
+      "team_id": "20469",
+      "team_name": "6. Erwachsene",
+      "division": "2. Stadtklasse Gruppe 2",
+      "date": "11.12.25",
+      "time": "19:00",
+      "home_team": "SG MoGoNo Leipzig 4",
+      "guest_team": "SSV Stötteritz 6"
+    },
+    {
+      "team_id": "20473",
+      "team_name": "3. Erwachsene",
+      "division": "Stadtoberliga",
+      "date": "08.10.25",
+      "time": "19:15",
+      "home_team": "Leipziger SV Südwest",
+      "guest_team": "SSV Stötteritz 3"
+    },
+    {
+      "team_id": "20473",
+      "team_name": "3. Erwachsene",
+      "division": "Stadtoberliga",
+      "date": "21.10.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 3",
+      "guest_team": "SV Eintracht Leipzig 2"
+    },
+    {
+      "team_id": "20473",
+      "team_name": "3. Erwachsene",
+      "division": "Stadtoberliga",
+      "date": "27.10.25",
+      "time": "19:30",
+      "home_team": "Leutzscher Füchse 6",
+      "guest_team": "SSV Stötteritz 3"
+    },
+    {
+      "team_id": "20473",
+      "team_name": "3. Erwachsene",
+      "division": "Stadtoberliga",
+      "date": "07.11.25",
+      "time": "19:30",
+      "home_team": "TTV Markranstädt",
+      "guest_team": "SSV Stötteritz 3"
+    },
+    {
+      "team_id": "20473",
+      "team_name": "3. Erwachsene",
+      "division": "Stadtoberliga",
+      "date": "11.11.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 3",
+      "guest_team": "TTC Taucha"
+    },
+    {
+      "team_id": "20473",
+      "team_name": "3. Erwachsene",
+      "division": "Stadtoberliga",
+      "date": "25.11.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 3",
+      "guest_team": "SG Lindenthal/STOV"
+    },
+    {
+      "team_id": "20473",
+      "team_name": "3. Erwachsene",
+      "division": "Stadtoberliga",
+      "date": "04.12.25",
+      "time": "19:15",
+      "home_team": "SV Rot. Süd Leipzig 6",
+      "guest_team": "SSV Stötteritz 3"
+    },
+    {
+      "team_id": "20473",
+      "team_name": "3. Erwachsene",
+      "division": "Stadtoberliga",
+      "date": "09.12.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 3",
+      "guest_team": "SV Eintracht Leipzig 3"
+    },
+    {
+      "team_id": "20477",
+      "team_name": "5. Erwachsene",
+      "division": "2. Stadtliga Gruppe 2",
+      "date": "24.09.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 5",
+      "guest_team": "SV F. Leipzig-Thekla 3"
+    },
+    {
+      "team_id": "20477",
+      "team_name": "5. Erwachsene",
+      "division": "2. Stadtliga Gruppe 2",
+      "date": "24.10.25",
+      "time": "19:00",
+      "home_team": "SV BW Lindenau 2",
+      "guest_team": "SSV Stötteritz 5"
+    },
+    {
+      "team_id": "20477",
+      "team_name": "5. Erwachsene",
+      "division": "2. Stadtliga Gruppe 2",
+      "date": "05.11.25",
+      "time": "19:15",
+      "home_team": "SV Lindenau 1848 2",
+      "guest_team": "SSV Stötteritz 5"
+    },
+    {
+      "team_id": "20477",
+      "team_name": "5. Erwachsene",
+      "division": "2. Stadtliga Gruppe 2",
+      "date": "12.11.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 5",
+      "guest_team": "Leutzscher Füchse 11"
+    },
+    {
+      "team_id": "20477",
+      "team_name": "5. Erwachsene",
+      "division": "2. Stadtliga Gruppe 2",
+      "date": "25.11.25",
+      "time": "19:15",
+      "home_team": "TTV Liebertwolkwitz 3",
+      "guest_team": "SSV Stötteritz 5"
+    },
+    {
+      "team_id": "20477",
+      "team_name": "5. Erwachsene",
+      "division": "2. Stadtliga Gruppe 2",
+      "date": "10.12.25",
+      "time": "19:00",
+      "home_team": "SSV Stötteritz 5",
+      "guest_team": "SV Eintracht Leipzig 5"
+    },
+    {
+      "team_id": "21137",
+      "team_name": "1. Jugend 19",
+      "division": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2",
+      "date": "20.09.25",
+      "time": "09:30",
+      "home_team": "TTC Taucha",
+      "guest_team": "SSV Stötteritz"
+    },
+    {
+      "team_id": "21137",
+      "team_name": "1. Jugend 19",
+      "division": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2",
+      "date": "15.11.25",
+      "time": "10:15",
+      "home_team": "ATV Volkmarsdorf",
+      "guest_team": "SSV Stötteritz"
+    },
+    {
+      "team_id": "21137",
+      "team_name": "1. Jugend 19",
+      "division": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2",
+      "date": "22.11.25",
+      "time": "09:30",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "SV F. Leipzig-Thekla"
+    },
+    {
+      "team_id": "21137",
+      "team_name": "1. Jugend 19",
+      "division": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2",
+      "date": "29.11.25",
+      "time": "09:30",
+      "home_team": "SSV Stötteritz",
+      "guest_team": "TSV Einh. Lindenthal"
+    },
+    {
+      "team_id": "21137",
+      "team_name": "1. Jugend 19",
+      "division": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2",
+      "date": "06.12.25",
+      "time": "09:00",
+      "home_team": "TTC Holzhausen 2",
+      "guest_team": "SSV Stötteritz"
+    }
+  ]
 }

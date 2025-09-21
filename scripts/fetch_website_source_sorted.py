@@ -551,10 +551,12 @@ def extract_match_data_from_rosters(data_dir: str = "data") -> dict:
                                 match_info['guest_score'] = score_match.group(2)
                                 match_info['status'] = 'completed'
                             else:
-                                match_info['status'] = 'completed'
+                                # No score found, this is an upcoming match
+                                match_info['status'] = 'upcoming'
                                 match_info['home_score'] = ''
                                 match_info['guest_score'] = ''
                         else:
+                            # No content in score column, this is an upcoming match
                             match_info['status'] = 'upcoming'
                             match_info['home_score'] = ''
                             match_info['guest_score'] = ''
