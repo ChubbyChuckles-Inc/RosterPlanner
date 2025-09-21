@@ -50,7 +50,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.27 Plugin UI style contract (tokens-only consumption, no arbitrary palettes)
 [x] 0.28 Print-friendly stylesheet for exports (light, high-contrast variant)
 [x] 0.29 Continuous design snapshot pipeline (nightly screenshot diff of key views)
-[ ] 0.30 Onboarding tour overlays (progressively educative) framework placeholder
+[x] 0.30 Onboarding tour overlays (progressively educative) framework placeholder
 [ ] 0.31 Focus ring style unification (accessible but subtle; 2px inner outline + outer glow optional)
 [ ] 0.32 Live theming stress test script (iterate all themes rapidly to detect leaks)
 [ ] 0.33 Offline-friendly icon & font caching (hash-based invalidation)

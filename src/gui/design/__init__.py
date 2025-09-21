@@ -93,6 +93,14 @@ from .snapshot_pipeline import (  # noqa: F401
     capture_bytes_placeholder,
     SnapshotRecord,
 )
+from .onboarding_tour import (  # noqa: F401
+    register_tour,
+    get_tour,
+    list_tours,
+    clear_tours,
+    TourDefinition,
+    TourStep,
+)
 
 __all__ = [
     "load_tokens",
@@ -166,4 +174,10 @@ __all__ = [
     "compute_image_hash",
     "capture_bytes_placeholder",
     "SnapshotRecord",
+    "register_tour",
+    "get_tour",
+    "list_tours",
+    "clear_tours",
+    "TourDefinition",
+    "TourStep",
 ]

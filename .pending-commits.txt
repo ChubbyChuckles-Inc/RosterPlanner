@@ -15,3 +15,4 @@ feat: implement 0.26 user preference persistence (dataclass, load/save, tests, e
 feat: implement 0.27 plugin style contract (validation, scan, tests, exports)
 feat: implement 0.28 print stylesheet generator (builder, metadata, tests, exports)
 feat: implement 0.29 snapshot pipeline primitives (hashing, placeholder capture, tests, exports)
+feat: implement 0.30 onboarding tour framework placeholder (dataclasses, registry, tests, exports)
