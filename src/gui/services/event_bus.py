@@ -43,6 +43,7 @@ class GUIEvent(str, Enum):  # Using str subclass for easier JSON/UI usage
     DATA_REFRESHED = "data_refreshed"  # aggregated signal post-refresh pipeline
     SELECTION_CHANGED = "selection_changed"
     STATS_UPDATED = "stats_updated"
+    LOG_RECORD_ADDED = "log_record_added"
 
 
 @dataclass
