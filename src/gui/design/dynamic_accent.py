@@ -27,6 +27,7 @@ Determinism: For the same input hex the function produces consistent output.
 
 Note: We intentionally avoid external color libraries to minimize dependencies.
 """
+
 from __future__ import annotations
 
 from typing import Dict
@@ -75,20 +76,21 @@ def _hsl_to_rgb(h: float, s: float, l: float) -> tuple[float, float, float]:
             t += 1
         if t > 1:
             t -= 1
-        if t < 1/6:
+        if t < 1 / 6:
             return p + (q - p) * 6 * t
-        if t < 1/2:
+        if t < 1 / 2:
             return q
-        if t < 2/3:
-            return p + (q - p) * (2/3 - t) * 6
+        if t < 2 / 3:
+            return p + (q - p) * (2 / 3 - t) * 6
         return p
+
     if s == 0:
         return l, l, l
     q = l + s - l * s if l < 0.5 else l + s - l * s
     p = 2 * l - q
-    r = hue(p, q, h + 1/3)
+    r = hue(p, q, h + 1 / 3)
     g = hue(p, q, h)
-    b = hue(p, q, h - 1/3)
+    b = hue(p, q, h - 1 / 3)
     return r, g, b
 
 

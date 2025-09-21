@@ -27,7 +27,10 @@ def test_accent_palette_contrast_improvement_paths():
     # Hover should be lighter than active (approx by luminance)
     from gui.design.contrast import relative_luminance
 
-    assert relative_luminance(palette["primaryHover"]) >= relative_luminance(palette["primaryActive"]) - 0.01
+    assert (
+        relative_luminance(palette["primaryHover"])
+        >= relative_luminance(palette["primaryActive"]) - 0.01
+    )
 
 
 def test_subtle_border_darker_than_subtle_bg():
@@ -35,4 +38,6 @@ def test_subtle_border_darker_than_subtle_bg():
     palette = derive_accent_palette(base)
     from gui.design.contrast import relative_luminance
 
-    assert relative_luminance(palette["subtleBorder"]) < relative_luminance(palette["subtleBg"]) + 0.05
+    assert (
+        relative_luminance(palette["subtleBorder"]) < relative_luminance(palette["subtleBg"]) + 0.05
+    )
