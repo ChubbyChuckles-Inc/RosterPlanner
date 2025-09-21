@@ -211,6 +211,14 @@ from .live_performance_overlay import (  # noqa: F401
 )
 from .adaptive_scrollbar import build_scrollbar_styles  # noqa: F401
 from .heatmap_ramp_validation import HeatmapRampReport, validate_heatmap_ramp  # noqa: F401
+from .component_maturity import (  # noqa: F401
+    ComponentMaturity,
+    register_component_maturity,
+    get_component_maturity,
+    list_component_maturity,
+    clear_component_maturity,
+    summarize_maturity,
+)
 
 __all__ = [
     "load_tokens",
@@ -375,4 +383,10 @@ __all__ = [
     "build_scrollbar_styles",
     "HeatmapRampReport",
     "validate_heatmap_ramp",
+    "ComponentMaturity",
+    "register_component_maturity",
+    "get_component_maturity",
+    "list_component_maturity",
+    "clear_component_maturity",
+    "summarize_maturity",
 ]

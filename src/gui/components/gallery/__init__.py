@@ -19,12 +19,21 @@ __all__ = [
     "list_demos",
     "get_demo",
     "clear_demos",
+    "build_list_item_label",
 ]
 
 DemoFactory = Callable[[], object]  # returns a QWidget (when PyQt available)
 
 _lock = RLock()
 _registry: Dict[str, "GalleryEntry"] = {}
+
+# Optional import of component maturity registry (design system Milestone 0.49)
+try:  # pragma: no cover - import side-effect only
+    from gui.design.component_maturity import (  # type: ignore
+        get_component_maturity,  # noqa: F401
+    )
+except Exception:  # pragma: no cover - graceful fallback if design layer not present
+    get_component_maturity = None  # type: ignore
 
 
 @dataclass
@@ -37,6 +46,30 @@ class GalleryEntry:
 
     def create(self) -> object:
         return self.factory()
+
+
+# ---------------------------- Maturity Integration Helpers -----------------------
+def _maturity_badge(component_name: str) -> str:
+    """Return a maturity badge string (e.g., " [ALPHA]") for a component name.
+
+    If the component maturity registry is unavailable or the component is not
+    registered, returns an empty string. Stable components still receive a
+    badge for explicit transparency.
+    """
+    if get_component_maturity is None:  # type: ignore
+        return ""
+    try:
+        entry = get_component_maturity(component_name)  # type: ignore
+    except Exception:  # noqa: BLE001
+        return ""
+    return f" [{entry.status.upper()}]"
+
+
+def build_list_item_label(demo: GalleryEntry) -> str:
+    """Build the list label for a gallery demo, including maturity badge.
+
+    Pure function for easy testing (no Qt dependency)."""
+    return f"{demo.category} / {demo.name}{_maturity_badge(demo.name)}"
 
 
 def register_demo(
@@ -112,7 +145,7 @@ def build_gallery_window(parent=None):  # pragma: no cover - minimal placeholder
 
         demos = sorted(list_demos(), key=lambda d: (d.category, d.name))
         for demo in demos:
-            item = QListWidgetItem(f"{demo.category} / {demo.name}")
+            item = QListWidgetItem(build_list_item_label(demo))
             item.setData(256, demo.name)  # Qt.UserRole = 256
             list_widget.addItem(item)
 
