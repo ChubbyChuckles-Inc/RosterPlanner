@@ -41,7 +41,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.19 Error state visual taxonomy (soft warning vs blocking error vs critical failure)
 [x] 0.20 Notification style guidelines (toast stacking, priority, dismissal timing)
 [x] 0.21 Responsive breakpoints strategy (even if desktop-only, prepare for narrow window use)
-[ ] 0.21.1 Adaptive reflow rules for <900px width (collapse side docks to icon rail)
+[x] 0.21.1 Adaptive reflow rules for <900px width (collapse side docks to icon rail)
 [ ] 0.22 Interaction latency instrumentation (log >100ms event->paint path)
 [ ] 0.23 Color token drift detector (alerts if ad-hoc hardcoded color introduced)
 [ ] 0.24 Developer lint rule: forbid inline styles outside approved token map

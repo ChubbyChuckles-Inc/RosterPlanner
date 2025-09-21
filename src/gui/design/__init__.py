@@ -55,6 +55,11 @@ from .responsive import (  # noqa: F401
     classify_width,
     Breakpoint,
 )
+from .reflow import (  # noqa: F401
+    list_reflow_rules,
+    get_reflow_actions,
+    ReflowRule,
+)
 
 __all__ = [
     "load_tokens",
@@ -104,4 +109,7 @@ __all__ = [
     "get_breakpoint",
     "classify_width",
     "Breakpoint",
+    "list_reflow_rules",
+    "get_reflow_actions",
+    "ReflowRule",
 ]
