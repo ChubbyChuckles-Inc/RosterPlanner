@@ -79,6 +79,11 @@ from .inline_style_lint import (  # noqa: F401
     scan_for_inline_styles,
     InlineStyleIssue,
 )
+from .plugin_style_contract import (  # noqa: F401
+    validate_style_mapping,
+    scan_plugin_style_files,
+    PluginStyleIssue,
+)
 
 __all__ = [
     "load_tokens",
@@ -144,4 +149,7 @@ __all__ = [
     "ColorDriftIssue",
     "scan_for_inline_styles",
     "InlineStyleIssue",
+    "validate_style_mapping",
+    "scan_plugin_style_files",
+    "PluginStyleIssue",
 ]
