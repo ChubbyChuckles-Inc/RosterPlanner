@@ -29,6 +29,7 @@ from gui.i18n.direction import (
     get_layout_direction,
 )
 from gui.app.config_store import load_config, save_config, AppConfig
+import atexit
 from gui.services.service_locator import services, ServiceLocator
 from gui.services.event_bus import EventBus
 from .timing import TimingLogger
@@ -140,14 +141,15 @@ def create_app(
     # Register services if not already present (idempotent behavior desired)
     # Use allow_override=False to avoid accidental replacement.
     with timing.measure("register_services"):
-        try:
-            services.register("design_tokens", tokens)
-        except Exception:  # noqa: BLE001 - ignore double registration
-            pass
-        try:
-            services.register("safe_mode", safe_mode)
-        except Exception:  # noqa: BLE001
-            pass
+        for name, value in [
+            ("design_tokens", tokens),
+            ("safe_mode", safe_mode),
+            ("app_config", app_config),
+        ]:
+            try:
+                services.register(name, value)
+            except Exception:  # noqa: BLE001 - ignore duplicate
+                pass
         # Always override previous startup timing (each bootstrap has its own session metrics)
         services.register("startup_timing", timing, allow_override=True)
         # Register EventBus if not already present
@@ -181,6 +183,15 @@ def create_app(
         },
         timing=timing,
     )
+
+    # Ensure config is saved on interpreter shutdown (best-effort).
+    def _persist_config() -> None:  # pragma: no cover - atexit not easily covered
+        try:
+            save_config(app_config)
+        except Exception:
+            pass
+
+    atexit.register(_persist_config)
     return ctx
 
 

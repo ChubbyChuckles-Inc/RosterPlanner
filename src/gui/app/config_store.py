@@ -56,6 +56,10 @@ class AppConfig:
     window_h: Optional[int] = None
     maximized: bool = False
     last_data_dir: Optional[str] = None
+    # Raw geometry blob (e.g., from QMainWindow.saveGeometry()) for future fidelity.
+    window_geometry_raw: Optional[str] = None
+    # History of previously used data directories (most recent first, capped later if needed)
+    data_dir_history: list[str] | None = None
     window_state_version: int = WINDOW_STATE_VERSION
 
     def to_dict(self) -> Dict[str, Any]:
@@ -73,6 +77,8 @@ class AppConfig:
             window_h=data.get("window_h"),
             maximized=bool(data.get("maximized", False)),
             last_data_dir=data.get("last_data_dir"),
+            window_geometry_raw=data.get("window_geometry_raw"),
+            data_dir_history=data.get("data_dir_history"),
             window_state_version=int(data.get("window_state_version", WINDOW_STATE_VERSION)),
         )
         return inst

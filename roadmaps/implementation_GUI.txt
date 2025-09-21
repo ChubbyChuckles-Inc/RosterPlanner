@@ -79,7 +79,7 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.2 Implement Application bootstrap (QApplication factory, high DPI attributes, single-instance guard)
 [x] 1.2.1 Add command-line flags for safe mode (disable plugins)
 [x] 1.2.2 Add startup timing logger
-[ ] 1.3 Integrate config-driven startup (load last data directory, window geometry persistence)
+[x] 1.3 Integrate config-driven startup (load last data directory, window geometry persistence)
 [ ] 1.3.1 Persist window state version tag (invalidate on layout schema change)
 [~] 1.4 Add global dependency container/service locator (for data repo, analytics engine, event bus)
 [ ] 1.4.1 Provide test double injection hook for repositories
