@@ -177,6 +177,16 @@ from .token_changelog import (  # noqa: F401
     diff_tokens,
     generate_changelog,
 )
+from .token_metadata import (  # noqa: F401
+    TokenMetadata,
+    annotate_usage,
+    mark_deprecated,
+    get_metadata,
+    list_metadata,
+    list_deprecated,
+    clear_metadata,
+    flatten_design_tokens,
+)
 
 __all__ = [
     "load_tokens",
@@ -312,4 +322,12 @@ __all__ = [
     "flatten_tokens",
     "diff_tokens",
     "generate_changelog",
+    "TokenMetadata",
+    "annotate_usage",
+    "mark_deprecated",
+    "get_metadata",
+    "list_metadata",
+    "list_deprecated",
+    "clear_metadata",
+    "flatten_design_tokens",
 ]
