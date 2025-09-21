@@ -26,3 +26,4 @@ feat: implement 0.37 cursor affordance guidelines (registry, defaults, tests, ex
 feat: implement 0.38 multi-monitor DPI scaling validation (dataclasses, heuristics, tests, exports)
 feat: implement 0.39 color mixing utilities (parsing, interpolation, alpha composite, gamma option, tests, exports)
 feat: implement 0.40 progressive enhancement ladder (tiers, feature registry, predicates, evaluation, tests, exports)
+test: add 0.41 theming unit tests (token groups, variants, headings, qss generation assertions)

@@ -61,7 +61,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.38 Multi-monitor DPI scaling validation script
 [x] 0.39 Color mixing utilities (blend, alpha composite) for layered surfaces
 [x] 0.40 Progressive enhancement ladder (baseline minimal UI vs full feature overlay)
-[ ] 0.41 Theming unit tests (assert token existence & non-null mappings)
+[x] 0.41 Theming unit tests (assert token existence & non-null mappings)
 [ ] 0.42 Design tokens changelog generation (diff across versions)
 [ ] 0.43 Metadata annotation for tokens (usage counts, deprecation flags)
 [ ] 0.44 Brand-neutral fallback theme (for white-label potential)
