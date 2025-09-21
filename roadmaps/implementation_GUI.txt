@@ -93,7 +93,7 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.8 Logging panel integration (dockable QTextEdit + filtering by level)
 [x] 1.8.1 Add structured log export (JSONL)
 [x] 1.9 Global error handler (uncaught exception hook -> dialog + log)
-[ ] 1.9.1 Error deduplication (avoid spamming same trace)
+[x] 1.9.1 Error deduplication (avoid spamming same trace)
 [ ] 1.9.2 Crash reproduction snippet generator (collect minimal context)
 [ ] 1.10 Add health check overlay (FPS, memory, DB query count)
 

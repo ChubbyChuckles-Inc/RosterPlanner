@@ -29,8 +29,31 @@ import traceback
 
 __all__ = [
     "ErrorRecord",
+    "DedupEntry",
     "ErrorHandlingService",
 ]
+
+
+@dataclass
+class DedupEntry:
+    """Aggregated repeated exception occurrences.
+
+    Attributes
+    ----------
+    key: str
+        Hash key (traceback text hash + exception type name) for grouping.
+    first: ErrorRecord
+        First captured instance (anchor metadata / full traceback).
+    count: int
+        Total number of occurrences (including first).
+    last_timestamp: float
+        Timestamp of the most recent occurrence.
+    """
+
+    key: str
+    first: ErrorRecord
+    count: int
+    last_timestamp: float
 
 
 @dataclass(frozen=True)
@@ -90,6 +113,10 @@ class ErrorHandlingService:
         self._prev_threading_hook = None  # type: ignore[assignment]
         self._logger = logger  # expected interface subset: .error(msg)
         self._event_bus = event_bus  # expected subset: .publish(name, payload)
+        # Deduplication state (added Milestone 1.9.1)
+        self._dedup_enabled = True
+        self._dedup: dict[str, DedupEntry] = {}
+        self._dedup_order: list[str] = []  # preserve stable ordering for introspection
 
     # ------------------------------------------------------------------
     # Installation / Removal
@@ -145,6 +172,12 @@ class ErrorHandlingService:
 
         Exposed publicly to allow tests (and future layers) to feed synthetic
         exceptions without altering global hooks.
+
+        Deduplication:
+            When enabled (default), repeated exceptions with identical
+            traceback text + type aggregate into a ``DedupEntry`` whose count
+            increments; all individual occurrences still reside in the raw
+            ring buffer for chronological inspection until capacity eviction.
         """
         trace_text = "".join(traceback.format_exception(exc_type, exc_value, tb))
         ts = datetime.utcnow().timestamp()
@@ -157,6 +190,18 @@ class ErrorHandlingService:
             thread_name=(thread.name if thread else threading.current_thread().name),
         )
         self._errors.append(record)
+        # Deduplication aggregation
+        if self._dedup_enabled:
+            key = f"{record.exc_type.__name__}|{hash(record.traceback_str)}"
+            entry = self._dedup.get(key)
+            if entry is None:
+                self._dedup[key] = DedupEntry(
+                    key=key, first=record, count=1, last_timestamp=record.timestamp
+                )
+                self._dedup_order.append(key)
+            else:
+                entry.count += 1
+                entry.last_timestamp = record.timestamp
         # Structured log emission (simple message for now)
         if self._logger is not None:
             try:  # pragma: no cover - defensive
@@ -188,9 +233,34 @@ class ErrorHandlingService:
     def recent_errors(self) -> List[ErrorRecord]:
         return list(self._errors)
 
+    def dedup_entries(self) -> List[DedupEntry]:
+        """Return aggregated deduplicated exception groups in stable order.
+
+        Ordering reflects first-seen sequence (not severity or recency).
+        Each ``DedupEntry`` provides the first full ``ErrorRecord`` plus a
+        running count of occurrences and the timestamp of the most recent
+        occurrence (``last_timestamp``).
+        """
+        return [self._dedup[k] for k in self._dedup_order]
+
+    def enable_dedup(self, enabled: bool = True) -> None:
+        """Enable/disable deduplication aggregation.
+
+        Disabling clears current aggregation state to avoid stale counts.
+        Re-enabling starts fresh accumulation; past raw errors remain only
+        in the rolling error buffer (subject to its capacity).
+        """
+        self._dedup_enabled = enabled
+        if not enabled:
+            # Clear to avoid stale groups when re-enabled later
+            self._dedup.clear()
+            self._dedup_order.clear()
+
     @property
     def installed(self) -> bool:
         return self._installed
 
     def clear(self) -> None:
         self._errors.clear()
+        self._dedup.clear()
+        self._dedup_order.clear()
