@@ -21,14 +21,19 @@ LANDING_URL_TEMPLATE = (
 )
 
 
-def run_basic(club_id: int, season: int | None = None) -> dict:
+def run_basic(club_id: int, season: int | None = None, data_dir: str | None = None) -> dict:
+    """Run lightweight discovery only scrape.
+
+    data_dir is optional (used only for reading tracking state); defaults to settings.DATA_DIR.
+    """
     season = season or settings.DEFAULT_SEASON
+    target_dir = data_dir or settings.DATA_DIR
     url = LANDING_URL_TEMPLATE.format(club_id=club_id, season=season)
     html = ranking_scraper.http_client.fetch(url)  # type: ignore[attr-defined]
     roster_links = link_extractor.extract_team_roster_links(html)
     ranking_links = link_extractor.derive_ranking_table_links(roster_links)
     teams_overview = ranking_scraper.fetch_and_parse_overview(url)
-    state = tracking_store.load_state(settings.DATA_DIR)
+    state = tracking_store.load_state(target_dir)
     return {
         "landing_url": url,
         "team_roster_links_found": len(roster_links),
@@ -38,9 +43,10 @@ def run_basic(club_id: int, season: int | None = None) -> dict:
     }
 
 
-def run_full(club_id: int, season: int | None = None) -> dict:
+def run_full(club_id: int, season: int | None = None, data_dir: str | None = None) -> dict:
+    """Run full scrape pipeline writing HTML assets to data_dir (or default)."""
     season = season or settings.DEFAULT_SEASON
-    data_dir = settings.DATA_DIR
+    data_dir = data_dir or settings.DATA_DIR
     os.makedirs(data_dir, exist_ok=True)
     landing_url = LANDING_URL_TEMPLATE.format(club_id=club_id, season=season)
 
@@ -135,4 +141,5 @@ def run_full(club_id: int, season: int | None = None) -> dict:
         "upcoming_matches": len(upcoming),
         "players_total": sum(len(v) for v in all_players.values()),
         "tracking_saved": True,
+        "output_dir": data_dir,
     }

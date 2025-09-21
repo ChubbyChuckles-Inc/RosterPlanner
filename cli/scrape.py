@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 from services import pipeline
+import os
 
 
 def parse_args() -> argparse.Namespace:
@@ -12,15 +13,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--season", type=int, default=2025, help="Season year")
     p.add_argument("--json", action="store_true", help="Output JSON summary")
     p.add_argument("--full", action="store_true", help="Run full scrape workflow")
+    p.add_argument("--output-dir", type=str, help="Override output data directory")
     return p.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    data_dir = args.output_dir
+    if data_dir:
+        os.makedirs(data_dir, exist_ok=True)
     if args.full:
-        result = pipeline.run_full(club_id=args.club_id, season=args.season)
+        result = pipeline.run_full(club_id=args.club_id, season=args.season, data_dir=data_dir)
     else:
-        result = pipeline.run_basic(club_id=args.club_id, season=args.season)
+        result = pipeline.run_basic(club_id=args.club_id, season=args.season, data_dir=data_dir)
     if args.json:
         print(json.dumps(result, indent=2))
     else:

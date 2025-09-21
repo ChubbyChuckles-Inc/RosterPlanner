@@ -22,6 +22,7 @@ dependencies = [
 [project.scripts]
 roster-scrape = "cli.scrape:main"
 roster-planner-gui = "gui.app:main"
+compare-scrapes = "cli.compare_scrapes:main"
 
 [project.urls]
 Homepage = "https://github.com/ChubbyChuckles/project-template"
