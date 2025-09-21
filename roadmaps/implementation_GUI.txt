@@ -22,9 +22,9 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.3 Iconography guidelines (stroke width, grid alignment, semantic categories)
 [x] 0.4 Motion design spec (standard easing curves, duration tiers: instant <120ms, subtle 180ms, pronounced 260ms)
 [x] 0.4.1 Implement easing curve library (cubic-bezier presets) + helper API
-[ ] 0.5 Component library gallery app (internal) to showcase components in isolation for QA
-[ ] 0.5.1 Visual regression capture (screenshot diff harness)
-[ ] 0.5.2 Accessibility focus order & keyboard interaction tests
+[x] 0.5 Component library gallery app (internal) to showcase components in isolation for QA
+[x] 0.5.1 Visual regression capture (screenshot diff harness) - baseline hashing + storage implemented (no pixel diff yet)
+[~] 0.5.2 Accessibility focus order & keyboard interaction tests (focus order harness scaffolding + placeholder test; real PyQt traversal pending)
 [ ] 0.6 High contrast theme + auto-switch based on OS setting
 [ ] 0.7 Dynamic theming: derive tonal palette from a user-selected accent color (algorithmic tint/shade generation)
 [ ] 0.8 Theme hot-reload without full window refresh (apply diff approach)
