@@ -6,6 +6,9 @@ Contains design tokens, loaders, QSS generator utilities, and future theming ext
 from .loader import load_tokens, DesignTokens, TokenValidationError  # noqa: F401
 from .icons import register_icon, get_icon_path, list_icons, clear_icons  # noqa: F401
 from .motion import get_duration_ms, get_easing_curve, parse_cubic_bezier  # noqa: F401
+from .theme_manager import ThemeManager, ThemeDiff  # noqa: F401
+from .dynamic_accent import derive_accent_palette  # noqa: F401
+from .density_manager import DensityManager, DensityDiff  # noqa: F401
 
 __all__ = [
     "load_tokens",
@@ -18,4 +21,9 @@ __all__ = [
     "get_duration_ms",
     "get_easing_curve",
     "parse_cubic_bezier",
+    "ThemeManager",
+    "ThemeDiff",
+    "derive_accent_palette",
+    "DensityManager",
+    "DensityDiff",
 ]
