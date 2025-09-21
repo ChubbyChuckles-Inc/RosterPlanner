@@ -14,6 +14,8 @@ __all__ = [
     "VisualDiffResult",
     "compute_logical_focus_order",
     "focus_order_names",
+    "tab_traversal_widgets",
+    "tab_traversal_names",
 ]
 
 from .visual_regression import (
@@ -22,4 +24,9 @@ from .visual_regression import (
     compare_or_update_baseline,
     VisualDiffResult,
 )
-from .focus import compute_logical_focus_order, focus_order_names
+from .focus import (
+    compute_logical_focus_order,
+    focus_order_names,
+    tab_traversal_widgets,
+    tab_traversal_names,
+)

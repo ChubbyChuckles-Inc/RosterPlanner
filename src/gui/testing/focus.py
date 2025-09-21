@@ -28,6 +28,8 @@ __all__ = [
     "FocusEntry",
     "compute_logical_focus_order",
     "focus_order_names",
+    "tab_traversal_widgets",
+    "tab_traversal_names",
 ]
 
 try:  # Import guarded for environments without PyQt during non-GUI tests
@@ -117,4 +119,87 @@ def focus_order_names(entries: List[FocusEntry]) -> List[str]:
             names.append(n)
         else:
             names.append(e.widget.__class__.__name__)
+    return names
+
+
+# Real Tab traversal (best-effort) ---------------------------------------------------
+
+
+def tab_traversal_widgets(root_factory: Callable[[], QWidget], *, max_steps: int = 50) -> List[QWidget]:  # type: ignore[name-defined]
+    """Attempt to perform real Tab traversal using QTest.
+
+    Returns the ordered list of distinct focus widgets visited until the
+    cycle repeats or `max_steps` reached.
+
+    Skips quietly (returns empty list) if PyQt test utilities are missing
+    or a QApplication cannot be created.
+    """
+    try:  # Runtime imports (avoid hard dependency when unused)
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtTest import QTest  # type: ignore
+        from PyQt6.QtCore import Qt
+    except Exception:  # pragma: no cover - environment w/out PyQt test stack
+        return []
+
+    app = QApplication.instance()
+    if app is None:  # pragma: no cover - usually created elsewhere
+        try:
+            app = QApplication([])  # type: ignore[arg-type]
+        except Exception:
+            return []
+
+    root = root_factory()
+    try:
+        root.show()
+    except Exception:  # pragma: no cover - defensive
+        return []
+    app.processEvents()
+
+    # Seed initial focus: pick first logical focusable widget if none focused
+    if not app.focusWidget():
+        logical = compute_logical_focus_order(lambda: root)
+        if logical:
+            logical[0].widget.setFocus()
+            app.processEvents()
+
+    visited: List[QWidget] = []  # type: ignore[name-defined]
+    first: QWidget | None = None  # type: ignore[name-defined]
+
+    for _ in range(max_steps):
+        current = app.focusWidget()
+        if current is None:
+            break
+        if not visited:
+            first = current
+        if current not in visited:
+            visited.append(current)
+        else:
+            if current is first:
+                break  # Completed a cycle
+        # Advance focus
+        try:
+            QTest.keyClick(current, Qt.Key.Key_Tab)
+        except Exception:  # pragma: no cover - defensive
+            break
+        app.processEvents()
+
+    try:  # Cleanup
+        root.close()
+    except Exception:
+        pass
+    return visited
+
+
+def tab_traversal_names(root_factory: Callable[[], QWidget], *, max_steps: int = 50) -> List[str]:  # type: ignore[name-defined]
+    widgets = tab_traversal_widgets(root_factory, max_steps=max_steps)
+    names: List[str] = []
+    for w in widgets:
+        try:
+            name = w.objectName()  # type: ignore[attr-defined]
+            if name:
+                names.append(name)
+            else:
+                names.append(w.__class__.__name__)
+        except Exception:  # pragma: no cover - defensive
+            names.append("<unknown>")
     return names
