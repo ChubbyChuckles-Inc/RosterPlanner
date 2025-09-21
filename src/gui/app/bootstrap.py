@@ -19,6 +19,12 @@ import time
 from typing import Optional, Any
 
 from gui.design import load_tokens, DesignTokens
+from gui.i18n.direction import (
+    set_layout_direction,
+    apply_qt_direction,
+    init_direction_from_env,
+    get_layout_direction,
+)
 from gui.app.config_store import load_config, save_config, AppConfig
 from gui.services.service_locator import services, ServiceLocator
 from gui.services.event_bus import EventBus
@@ -74,15 +80,23 @@ def _configure_high_dpi() -> None:
 
 
 def parse_safe_mode(argv: list[str] | None = None) -> bool:
-    """Parse a --safe-mode flag from argv (non-destructive).
+    """Parse a `--safe-mode` flag from argv (non-destructive)."""
+    args = argv if argv is not None else sys.argv[1:]
+    return "--safe-mode" in args
 
-    This helper is intentionally lightweight; full CLI integration may live elsewhere.
+
+def parse_rtl(argv: list[str] | None = None) -> bool:
+    """Parse a `--rtl` flag from argv.
+
+    This flag forces RTL layout direction regardless of environment variable.
     """
     args = argv if argv is not None else sys.argv[1:]
-    return any(a == "--safe-mode" for a in args)
+    return "--rtl" in args
 
 
-def create_app(*, safe_mode: bool | None = None, headless: bool | None = None) -> AppContext:
+def create_app(
+    *, safe_mode: bool | None = None, headless: bool | None = None, rtl: bool | None = None
+) -> AppContext:
     """Create and initialize the GUI application context.
 
     Parameters
@@ -93,6 +107,8 @@ def create_app(*, safe_mode: bool | None = None, headless: bool | None = None) -
     started = time.perf_counter()
     if safe_mode is None:
         safe_mode = parse_safe_mode()
+    if rtl is None:
+        rtl = parse_rtl()
     if headless is None:
         headless = not _QT_AVAILABLE
 
@@ -104,6 +120,13 @@ def create_app(*, safe_mode: bool | None = None, headless: bool | None = None) -
             _configure_high_dpi()
         with timing.measure("create_qapplication"):
             qt_app = QApplication.instance() or QApplication(sys.argv[:1])  # minimal argv
+        # Determine initial direction: env variable first then CLI override
+        with timing.measure("init_layout_direction"):
+            init_direction_from_env()
+            if rtl:
+                set_layout_direction("rtl")
+            # Apply to QApplication object
+            apply_qt_direction(qt_app)
 
     # Core design tokens load early (may be needed by splash / theme system later)
     with timing.measure("load_design_tokens"):
@@ -141,10 +164,11 @@ def create_app(*, safe_mode: bool | None = None, headless: bool | None = None) -
             "qt_available": _QT_AVAILABLE,
             "startup_timing": timing.as_dict(),
             "app_config": app_config.to_dict(),
+            "layout_direction": get_layout_direction(),
         },
         timing=timing,
     )
     return ctx
 
 
-__all__ = ["AppContext", "create_app", "parse_safe_mode"]
+__all__ = ["AppContext", "create_app", "parse_safe_mode", "parse_rtl"]
