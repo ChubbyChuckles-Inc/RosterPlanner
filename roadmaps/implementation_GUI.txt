@@ -75,7 +75,7 @@ Milestone 0 (Parallel): Design System & Visual Language
 Milestone 1: GUI Foundation & Infrastructure
 [x] 1.1 Create dedicated GUI package structure (gui/app, gui/views, gui/viewmodels, gui/components, gui/services)
 [x] 1.1.1 Define __all__ exports for public GUI API
-[ ] 1.1.2 Add __init__ docstrings for each subpackage
+[x] 1.1.2 Add __init__ docstrings for each subpackage
 [x] 1.2 Implement Application bootstrap (QApplication factory, high DPI attributes, single-instance guard)
 [x] 1.2.1 Add command-line flags for safe mode (disable plugins)
 [ ] 1.2.2 Add startup timing logger

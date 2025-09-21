@@ -1,7 +1,11 @@
 """GUI components package.
 
-Exports component gallery registration API (internal QA tooling). Future
-components (buttons, tables, etc.) will live in submodules.
+Contains reusable UI widgets & supporting infrastructure. Presently exposes
+only the internal component gallery registration API used for visual QA.
+
+Stability:
+ - Gallery API is internal (alpha); subject to change when component set expands.
+ - Future public widgets will be documented individually with maturity levels.
 """
 
 from __future__ import annotations

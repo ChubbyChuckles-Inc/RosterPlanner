@@ -37,3 +37,4 @@ feat: implement 0.48 heatmap ramp perceptual uniformity validation (Lab approxim
 feat: implement 0.49 component maturity index (registry, gallery badges, tests, exports)
 feat: implement 0.50 design debt register (registry, filtering, summary, tests, exports)
 feat: implement 1.1.1 public GUI API exports (curated __all__, tests)
+docs: add 1.1.2 subpackage __init__ docstrings + quality test

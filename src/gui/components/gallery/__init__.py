@@ -1,10 +1,16 @@
-"""Component Gallery infrastructure.
+"""Component Gallery infrastructure (internal QA tool).
 
-Provides a lightweight registration system for showcasing GUI components in
-an internal-only gallery window. This supports visual QA and iteration.
+Purpose:
+ - Register lightweight demo factories for components and surface them in a
+     simple inspection window (when PyQt available).
+ - Provide maturity badges (alpha/beta/stable) inline using design registry.
 
-The registry is pure-Python and does not require PyQt at import time; the
-actual window construction is lazy and guarded by availability checks.
+Design Constraints:
+ - Pure-Python at import time (no Qt hard dependency) for testability.
+ - Thread-safe registration via `RLock`.
+ - Graceful degradation if maturity registry not present.
+
+Stability: Alpha – internal tooling; API may evolve as gallery features grow.
 """
 
 from __future__ import annotations
