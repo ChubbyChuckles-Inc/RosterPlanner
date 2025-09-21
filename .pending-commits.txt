@@ -31,3 +31,4 @@ feat: implement 0.42 design tokens changelog generation (flatten, diff, summary,
 feat: implement 0.43 token metadata annotation (usage counts, deprecation flags, registry, tests, exports)
 feat: implement 0.44 brand-neutral fallback theme (new token groups, ThemeManager variant, tests)
 feat: implement 0.45 accessible drag & drop alternative (keyboard reorder logic module, tests, exports)
+feat: implement 0.46 live performance overlay metrics (capture module, stats, tests, exports)

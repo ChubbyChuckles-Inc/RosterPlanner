@@ -198,6 +198,17 @@ from .accessible_reorder import (  # noqa: F401
     move_after,
     interpret_key_command,
 )
+from .live_performance_overlay import (  # noqa: F401
+    PaintSample,
+    enable_capture,
+    disable_capture,
+    is_enabled,
+    record_paint_cycle,
+    get_paint_samples,
+    clear_paint_samples,
+    compute_stats,
+    build_summary,
+)
 
 __all__ = [
     "load_tokens",
@@ -350,4 +361,13 @@ __all__ = [
     "move_to",
     "move_after",
     "interpret_key_command",
+    "PaintSample",
+    "enable_capture",
+    "disable_capture",
+    "is_enabled",
+    "record_paint_cycle",
+    "get_paint_samples",
+    "clear_paint_samples",
+    "compute_stats",
+    "build_summary",
 ]
