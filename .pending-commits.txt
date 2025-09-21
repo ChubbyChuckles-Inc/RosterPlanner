@@ -47,3 +47,4 @@ feat: implement 1.4.1 repository injection helpers (register/get/inject context,
 feat: implement 1.5 EventBus typed signals (DATA_REFRESHED, SELECTION_CHANGED, STATS_UPDATED, tests)
 feat: implement 1.5.1 EventBus tracing (TraceEntry, helper module, tests, README roadmap)
 feat: implement 1.6 theme system service (ThemeService, variant & accent switching, event emission, tests)
+feat: implement 1.6.1 theme validation lint (validate required keys, API + tests)

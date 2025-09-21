@@ -15,13 +15,46 @@ for consumers (e.g., style builders) and publishes theme change events.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, Iterable, List
 
 from gui.design import ThemeManager, ThemeDiff, load_tokens
 from .event_bus import EventBus, GUIEvent
 from .service_locator import services
 
-__all__ = ["ThemeService", "get_theme_service"]
+__all__ = ["ThemeService", "get_theme_service", "validate_theme_keys", "ThemeValidationError"]
+
+
+REQUIRED_COLOR_KEYS: tuple[str, ...] = (
+    # Core surface/text roles (subset; extendable later)
+    "background.primary",
+    "background.secondary",
+    "surface.card",
+    "text.primary",
+    "text.muted",
+    "accent.base",
+    "accent.hover",
+    "accent.active",
+)
+
+
+class ThemeValidationError(RuntimeError):
+    """Raised when required theme keys are missing."""
+
+
+def validate_theme_keys(
+    mapping: Mapping[str, str], required: Iterable[str] = REQUIRED_COLOR_KEYS
+) -> List[str]:
+    """Return list of missing keys from mapping.
+
+    Parameters
+    ----------
+    mapping : Mapping[str, str]
+        Flattened theme semantic -> hex color map.
+    required : Iterable[str]
+        Collection of required keys to validate.
+    """
+    missing = [k for k in required if k not in mapping or not mapping[k]]
+    return missing
 
 
 @dataclass
@@ -53,6 +86,15 @@ class ThemeService:
             self._cached_map = dict(self.manager.active_map())
             self._publish_theme_changed(diff)
         return diff
+
+    # Validation --------------------------------------------------------
+    def validate(self, *, raise_on_error: bool = False) -> List[str]:
+        missing = validate_theme_keys(self._cached_map)
+        if missing and raise_on_error:
+            raise ThemeValidationError(
+                f"Missing required theme keys: {', '.join(missing)}"  # noqa: EM101
+            )
+        return missing
 
     # Internal ----------------------------------------------------------
     def _publish_theme_changed(self, diff: ThemeDiff) -> None:
