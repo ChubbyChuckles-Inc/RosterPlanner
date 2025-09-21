@@ -37,7 +37,7 @@ _lock = RLock()
 _registry: Dict[str, "IconDescriptor"] = {}
 
 
-@dataclass(slots=True)
+@dataclass
 class IconDescriptor:
     name: str
     path: Path

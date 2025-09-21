@@ -35,7 +35,7 @@ except Exception:  # noqa: BLE001
     _QT_AVAILABLE = False
 
 
-@dataclass(slots=True)
+@dataclass
 class AppContext:
     """Container with references created during bootstrap.
 

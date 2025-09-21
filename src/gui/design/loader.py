@@ -25,7 +25,7 @@ class TokenValidationError(RuntimeError):
     """Raised when required token fields are missing or malformed."""
 
 
-@dataclass(slots=True)
+@dataclass
 class DesignTokens:
     raw: Mapping[str, Any]
 

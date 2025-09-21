@@ -36,7 +36,7 @@ WINDOW_STATE_VERSION = 1  # Increment to invalidate persisted geometry
 DEFAULT_FILENAME = "app_state.json"
 
 
-@dataclass(slots=True)
+@dataclass
 class AppConfig:
     """Serializable application state configuration.
 

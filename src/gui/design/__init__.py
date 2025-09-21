@@ -5,6 +5,7 @@ Contains design tokens, loaders, QSS generator utilities, and future theming ext
 
 from .loader import load_tokens, DesignTokens, TokenValidationError  # noqa: F401
 from .icons import register_icon, get_icon_path, list_icons, clear_icons  # noqa: F401
+from .motion import get_duration_ms, get_easing_curve, parse_cubic_bezier  # noqa: F401
 
 __all__ = [
     "load_tokens",
@@ -14,4 +15,7 @@ __all__ = [
     "get_icon_path",
     "list_icons",
     "clear_icons",
+    "get_duration_ms",
+    "get_easing_curve",
+    "parse_cubic_bezier",
 ]

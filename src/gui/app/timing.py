@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-@dataclass(slots=True)
+@dataclass
 class TimingEvent:
     name: str
     start: float

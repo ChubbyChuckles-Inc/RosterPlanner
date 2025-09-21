@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 
-@dataclass(slots=True)
+@dataclass
 class Team:
     id: str
     name: str
@@ -16,13 +16,13 @@ class Team:
     is_additional_club_team: bool = False
 
 
-@dataclass(slots=True)
+@dataclass
 class Division:
     name: str
     teams: List[Team] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class Match:
     team_id: str
     match_number: Optional[str]
@@ -36,20 +36,20 @@ class Match:
     status: str = "upcoming"  # or "completed"
 
 
-@dataclass(slots=True)
+@dataclass
 class Player:
     team_id: str
     name: str
     live_pz: Optional[int]
 
 
-@dataclass(slots=True)
+@dataclass
 class Club:
     id: str
     teams: List[Team] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class TrackingState:
     last_scrape: Optional[datetime]
     divisions: Dict[str, Division]

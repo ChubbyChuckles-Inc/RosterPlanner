@@ -35,7 +35,7 @@ class GUIEvent(str, Enum):  # Using str subclass for easier JSON/UI usage
     ERROR_OCCURRED = "error_occurred"
 
 
-@dataclass(slots=True)
+@dataclass
 class Event:
     name: str  # matches GUIEvent value or custom string
     payload: Any
@@ -46,7 +46,7 @@ class EventHandler(Protocol):  # noqa: D401 - protocol signature docs implicit
     def __call__(self, event: Event) -> None: ...  # pragma: no cover - structural
 
 
-@dataclass(slots=True)
+@dataclass
 class Subscription:
     event: str
     handler: EventHandler
