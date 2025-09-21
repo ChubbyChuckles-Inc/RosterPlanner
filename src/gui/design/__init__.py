@@ -16,6 +16,7 @@ from .qss_overrides import (
     QSSValidationError,
     SanitizeResult,
 )  # noqa: F401
+from .color_blind import simulate_color_blindness, simulate_rgb_buffer  # noqa: F401
 
 __all__ = [
     "load_tokens",
@@ -38,4 +39,6 @@ __all__ = [
     "apply_user_overrides",
     "SanitizeResult",
     "QSSValidationError",
+    "simulate_color_blindness",
+    "simulate_rgb_buffer",
 ]
