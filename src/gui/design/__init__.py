@@ -157,6 +157,18 @@ from .color_mixing import (  # noqa: F401
     alpha_composite,
     blend_over,
 )
+from .progressive_enhancement import (  # noqa: F401
+    EnhancementTier,
+    EnhancementFeature,
+    register_tier,
+    list_tiers,
+    get_tier,
+    register_feature,
+    list_features,
+    evaluate_active_features,
+    clear_enhancement_registry,
+    ensure_default_tiers,
+)
 
 __all__ = [
     "load_tokens",
@@ -276,4 +288,14 @@ __all__ = [
     "mix",
     "alpha_composite",
     "blend_over",
+    "EnhancementTier",
+    "EnhancementFeature",
+    "register_tier",
+    "list_tiers",
+    "get_tier",
+    "register_feature",
+    "list_features",
+    "evaluate_active_features",
+    "clear_enhancement_registry",
+    "ensure_default_tiers",
 ]
