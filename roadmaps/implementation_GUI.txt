@@ -89,7 +89,7 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.6.1 Theme validation lint (ensures required palette keys exist)
 [x] 1.6.2 Add user custom theme JSON import
 [x] 1.7 Icon & asset pipeline (SVG set, color adaptive to theme)
-[ ] 1.7.1 Provide asset hash map for cache busting
+[x] 1.7.1 Provide asset hash map for cache busting
 [ ] 1.8 Logging panel integration (dockable QTextEdit + filtering by level)
 [ ] 1.8.1 Add structured log export (JSONL)
 [ ] 1.9 Global error handler (uncaught exception hook -> dialog + log)
