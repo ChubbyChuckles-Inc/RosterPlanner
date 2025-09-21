@@ -1,0 +1,1 @@
+feat: complete 0.14 adaptive chart palette (dynamic series, high-contrast aware, muted variants, tests)

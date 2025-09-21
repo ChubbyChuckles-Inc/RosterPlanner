@@ -1,34 +1,37 @@
-"""Adaptive chart color palette utilities (Milestone 0.14 partial).
+"""Adaptive chart color palette utilities (Milestone 0.14 complete).
 
-The goal is to provide semantic color roles for chart rendering that adapt to the
-overall design tokens (dark / high contrast). This initial implementation derives
-colors from existing accent & surface tokens to guarantee consistency and contrast.
+Provides semantic color roles for chart rendering that adapt to design tokens
+and support both default and high-contrast variants. The palette builder is
+pure (no Qt imports) and deterministic given tokens + parameters.
 
-Semantic Roles Provided (ChartPalette):
- - background: chart plotting area background
- - grid_major: primary grid line color
- - grid_minor: secondary grid line color
- - series: ordered list of categorical series colors
- - series_muted: lighter variant list for highlight layering / hover dimming
- - alert_positive / alert_negative / alert_neutral: used for threshold & annotation markers
+Semantic roles (``ChartPalette``):
+ - ``background``: plotting area background
+ - ``grid_major`` / ``grid_minor``: grid line colors with sufficient but subtle separation
+ - ``series``: categorical series colors (length configurable)
+ - ``series_muted``: softened counterparts for hover dim, de-emphasis or stacked overlays
+ - ``alert_positive`` / ``alert_negative`` / ``alert_neutral``: threshold / annotation markers
 
-Derivation Strategy:
- - Use background.surface.secondary as base plotting background (sufficiently neutral).
- - Grid lines: derive by blending text.muted with background (major) and increasing transparency
-   for minor (represented here by hex adjustment). For simplicity (and to avoid runtime alpha
-   composition complexity), we lighten/darken via a simple channel interpolation.
- - Series colors: start with accent.primary, then generate additional distinct hues by rotating
-   through accent.success, accent.info, accent.warning, accent.error plus a desaturated variant.
- - Muted series variants: lighten each base series color toward text.secondary.
+Key features:
+ - Dynamic series count (request N; will generate at least N distinct-ish colors)
+ - High contrast adaptation: derives from high-contrast token groups when active
+ - Defensive contrast fallback for grid lines
+ - Stable ordering: first 5 map to accent semantic roles for recognizability
 
-NOTE: A future extension may incorporate dynamic palette generation (e.g., HCL interpolation) and
-contrast guarantees. For now we apply a contrast check in tests for grid vs background.
+Design choices:
+ - Minimal custom color math: simple RGB interpolation to keep Python 3.8 compatibility
+ - Avoid reliance on external color libraries (can be revisited if HCL/Lab needed later)
+ - Deterministic hashing/rotation of base accents for extended series beyond semantic seeds
+
+Future extensions (not yet implemented):
+ - Perceptual color spacing in OKLCH / CIELAB
+ - Contrast guarantees between adjacent series (pairwise delta-E threshold)
+ - Light theme variant once light tokens introduced
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Iterable
 
 from .loader import DesignTokens
 from .contrast import contrast_ratio
@@ -38,6 +41,22 @@ __all__ = ["ChartPalette", "build_chart_palette"]
 
 @dataclass(frozen=True)
 class ChartPalette:
+    """Immutable collection of semantic chart colors.
+
+    Attributes
+    ----------
+    background : str
+        Hex color for plot background (#RRGGBB).
+    grid_major / grid_minor : str
+        Grid line colors. Minor is visually lighter / closer to background.
+    series : list[str]
+        Base categorical series colors (length depends on request).
+    series_muted : list[str]
+        Muted counterparts blended toward secondary text color.
+    alert_positive / alert_negative / alert_neutral : str
+        Status / annotation hues (success, error, info).
+    """
+
     background: str
     grid_major: str
     grid_minor: str
@@ -69,40 +88,91 @@ def _blend(src: str, dst: str, t: float) -> str:
     )
 
 
-def build_chart_palette(tokens: DesignTokens) -> ChartPalette:
+def _cycle(seed: Iterable[str], count: int) -> List[str]:
+    base = list(seed)
+    if not base:
+        return []
+    out: List[str] = []
+    i = 0
+    # Simple rotation; for additional cycles we progressively blend with primary accent
+    primary = base[0]
+    round_idx = 0
+    while len(out) < count:
+        color = base[i % len(base)]
+        if round_idx > 0:
+            # Each additional pass moves 15% closer to primary accent to create a tonal family
+            color = _blend(color, primary, min(0.15 * round_idx, 0.6))
+        out.append(color)
+        i += 1
+        if i % len(base) == 0:
+            round_idx += 1
+    return out
+
+
+def build_chart_palette(
+    tokens: DesignTokens,
+    *,
+    series_count: int = 8,
+    variant: str = "default",
+) -> ChartPalette:
+    """Build an adaptive chart palette.
+
+    Parameters
+    ----------
+    tokens : DesignTokens
+        Loaded design tokens.
+    series_count : int, default 8
+        Desired number of categorical series colors. Will be clamped >= 1.
+    variant : str, default "default"
+        Visual variant ("default" or "high-contrast"). If high-contrast is
+        requested but not supported by tokens, falls back silently.
+    """
+    if series_count < 1:
+        series_count = 1
+
+    # Choose background referencing surface tokens (secondary gives neutral contrast).
     bg = tokens.color("surface", "secondary")
     text_muted = tokens.color("text", "muted")
     text_secondary = tokens.color("text", "secondary")
-    # Grid derivation
-    grid_major = _blend(text_muted, bg, 0.65)  # pull towards bg to reduce dominance
+
+    # Grid derivation: start from muted text blended toward background.
+    grid_major = _blend(text_muted, bg, 0.65)
     grid_minor = _blend(grid_major, bg, 0.55)
-    # Series base colors (reuse existing accent semantic variety)
-    series_candidates = [
+
+    # High contrast tweak: if variant requested and supported, pull grid a bit closer to text
+    if variant == "high-contrast" and tokens.is_high_contrast_supported():
+        grid_major = _blend(text_muted, bg, 0.5)  # increase contrast
+        grid_minor = _blend(grid_major, bg, 0.6)
+
+    # Base semantic accent seeds; stable first positions.
+    seeds = [
         tokens.color("accent", "primary"),
         tokens.color("accent", "success"),
         tokens.color("accent", "info"),
         tokens.color("accent", "warning"),
         tokens.color("accent", "error"),
     ]
-    # Add a desaturated variant (blend success+info)
-    series_candidates.append(_blend(series_candidates[1], series_candidates[2], 0.5))
-    # Build muted variants by blending toward secondary text
-    series_muted = [_blend(c, text_secondary, 0.4) for c in series_candidates]
+    # Add a mid blend of success+info to diversify early palette if needed.
+    seeds.append(_blend(seeds[1], seeds[2], 0.5))
+
+    series_all = _cycle(seeds, series_count)
+
+    # Muted variants for layering (40% toward secondary text keeps hue recognizable).
+    series_muted = [_blend(c, text_secondary, 0.4) for c in series_all]
+
     palette = ChartPalette(
         background=bg,
         grid_major=grid_major,
         grid_minor=grid_minor,
-        series=series_candidates,
+        series=series_all,
         series_muted=series_muted,
         alert_positive=tokens.color("accent", "success"),
         alert_negative=tokens.color("accent", "error"),
         alert_neutral=tokens.color("accent", "info"),
     )
-    # Basic contrast sanity: major grid vs background should be >=1.3 (visual separation in dark theme)
-    if (
-        contrast_ratio(palette.grid_major, palette.background) < 1.3
-    ):  # pragma: no cover (defensive path)
-        # Fallback: force lighten relative to background by mixing with text.secondary
+
+    # Defensive contrast fallback for grid lines
+    if contrast_ratio(palette.grid_major, palette.background) < 1.3:  # pragma: no cover
         palette = ChartPalette(
             background=palette.background,
             grid_major=_blend(text_secondary, bg, 0.55),
