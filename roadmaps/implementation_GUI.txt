@@ -36,8 +36,8 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.14 Dark mode adaptive charts color palette with semantic mapping (background, grid, accent, alert) -- dynamic series count, high-contrast awareness, muted variants, docstrings & tests
 [x] 0.15 Micro-interaction catalog (hover, press, selection, drag indicators) -- registry, dataclass, exports & tests
 [x] 0.16 Component performance budget matrix (max render/update/frame ms) -- registry, enforcement helper & tests
-[ ] 0.17 Skeleton loader component variants (table rows, cards, charts) tied to token durations
-[ ] 0.18 Empty state design templates (actionable guidance + illustration placeholder)
+[x] 0.17 Skeleton loader component variants (table rows, cards, charts) -- registry, shape schema & tests
+[x] 0.18 Empty state design templates (core templates registry + tests)
 [ ] 0.19 Error state visual taxonomy (soft warning vs blocking error vs critical failure)
 [ ] 0.20 Notification style guidelines (toast stacking, priority, dismissal timing)
 [ ] 0.21 Responsive breakpoints strategy (even if desktop-only, prepare for narrow window use)

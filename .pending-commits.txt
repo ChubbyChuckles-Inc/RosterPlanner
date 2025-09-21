@@ -1,3 +1,5 @@
 feat: complete 0.14 adaptive chart palette (dynamic series, high-contrast aware, muted variants, tests)
 feat: implement 0.15 micro-interaction catalog (registry, dataclass, tests)
 feat: implement 0.16 performance budget matrix (registry, enforcement helper, tests)
+feat: implement 0.17 skeleton loader variants (registry, shape schema, tests)
+feat: implement 0.18 empty state templates (registry & tests)
