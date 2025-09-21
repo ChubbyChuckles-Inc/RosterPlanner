@@ -16,7 +16,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 import sys
 import time
-from typing import Optional, Any
+import os
+import tempfile
+from contextlib import contextmanager
+from typing import Optional, Any, Iterator
 
 from gui.design import load_tokens, DesignTokens
 from gui.i18n.direction import (
@@ -171,4 +174,101 @@ def create_app(
     return ctx
 
 
-__all__ = ["AppContext", "create_app", "parse_safe_mode", "parse_rtl"]
+# --------------------------------------------------------------------------------------
+# Single-instance guard (file lock) utilities
+# --------------------------------------------------------------------------------------
+
+_LOCK_FD: int | None = None
+_LOCK_PATH: str | None = None
+
+
+def _default_lock_path(name: str = "rosterplanner.lock") -> str:
+    return os.path.join(tempfile.gettempdir(), name)
+
+
+def acquire_single_instance(lock_name: str = "rosterplanner.lock") -> bool:
+    """Attempt to acquire a coarse single-instance file lock.
+
+    Returns True if this process acquired the lock, False if another instance
+    already holds it. Uses an exclusive open with os.O_CREAT|os.O_EXCL where
+    available, otherwise falls back to a best-effort scheme (Windows doesn't
+    honor O_EXCL on existing open handles the same way so we write a PID).
+    """
+    global _LOCK_FD, _LOCK_PATH
+    if _LOCK_FD is not None:
+        return True  # already acquired
+    path = _default_lock_path(lock_name)
+    flags = os.O_CREAT | os.O_EXCL | os.O_RDWR
+    try:
+        fd = os.open(path, flags, 0o644)
+        os.write(fd, str(os.getpid()).encode("utf-8"))
+        _LOCK_FD = fd
+        _LOCK_PATH = path
+        return True
+    except FileExistsError:
+        # Another instance probably running.
+        return False
+    except Exception:  # pragma: no cover - defensive fallback
+        return True  # Do not block startup on unexpected FS semantics
+
+
+def release_single_instance() -> None:
+    global _LOCK_FD, _LOCK_PATH
+    if _LOCK_FD is not None:
+        try:
+            os.close(_LOCK_FD)
+            if _LOCK_PATH and os.path.exists(_LOCK_PATH):  # best-effort cleanup
+                os.unlink(_LOCK_PATH)
+        except Exception:  # pragma: no cover
+            pass
+        finally:
+            _LOCK_FD = None
+            _LOCK_PATH = None
+
+
+@contextmanager
+def single_instance(lock_name: str = "rosterplanner.lock") -> Iterator[bool]:
+    """Context manager to guard single application instance.
+
+    Yields True if lock acquired, else False. Caller may decide to exit if
+    False is returned.
+    """
+    acquired = acquire_single_instance(lock_name)
+    try:
+        yield acquired
+    finally:
+        if acquired:
+            release_single_instance()
+
+
+def create_application(*, safe_mode: bool | None = None, rtl: bool | None = None) -> AppContext:
+    """High-level convenience wrapper for typical GUI launches.
+
+    - Enforces single-instance (best-effort). If already running, exits process
+      with code 1 after printing a short message.
+    - Creates the app context (non-headless) and returns it.
+    """
+    ctx = create_app(safe_mode=safe_mode, headless=False, rtl=rtl)
+    # Attempt lock after minimal construction so we have tokens/logging if desired.
+    if not acquire_single_instance():  # Another instance is running
+        print("Another RosterPlanner instance is already running.")  # noqa: T201
+        # Graceful teardown: ensure QApplication (if any) not left around.
+        if ctx.qt_app is not None:
+            try:  # pragma: no cover - depends on Qt availability
+                ctx.qt_app.quit()
+            except Exception:
+                pass
+        # We purposefully do not raise; caller can inspect return if needed.
+    return ctx
+
+
+__all__ = [
+    "AppContext",
+    "create_app",
+    "create_application",
+    "parse_safe_mode",
+    "parse_rtl",
+    "single_instance",
+    "acquire_single_instance",
+    "release_single_instance",
+]

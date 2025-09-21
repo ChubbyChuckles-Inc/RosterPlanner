@@ -38,3 +38,4 @@ feat: implement 0.49 component maturity index (registry, gallery badges, tests, 
 feat: implement 0.50 design debt register (registry, filtering, summary, tests, exports)
 feat: implement 1.1.1 public GUI API exports (curated __all__, tests)
 docs: add 1.1.2 subpackage __init__ docstrings + quality test
+feat: implement 1.2 application bootstrap single-instance guard (file lock, wrapper, tests)
