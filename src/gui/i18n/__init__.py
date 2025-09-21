@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, Any, Set, Iterable
+from typing import Dict, Any, Set, Iterable, Optional
 
 __all__ = [
     "register_catalog",
@@ -55,7 +55,7 @@ def get_locale() -> str:
     return _current_locale
 
 
-def _lookup(locale: str, key: str) -> str | None:
+def _lookup(locale: str, key: str) -> Optional[str]:
     catalog = _catalogs.get(locale)
     if not catalog:
         return None
