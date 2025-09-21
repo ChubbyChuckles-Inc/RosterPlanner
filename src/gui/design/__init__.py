@@ -110,6 +110,16 @@ from .theme_stress import (  # noqa: F401
     run_theme_stress,
     ThemeStressReport,
 )
+from .asset_cache import (  # noqa: F401
+    register_asset,
+    get_asset,
+    list_assets,
+    save_manifest,
+    load_manifest,
+    compute_file_hash,
+    clear_assets,
+    AssetCacheEntry,
+)
 
 __all__ = [
     "load_tokens",
@@ -194,4 +204,12 @@ __all__ = [
     "contrast_ratio",
     "run_theme_stress",
     "ThemeStressReport",
+    "register_asset",
+    "get_asset",
+    "list_assets",
+    "save_manifest",
+    "load_manifest",
+    "compute_file_hash",
+    "clear_assets",
+    "AssetCacheEntry",
 ]
