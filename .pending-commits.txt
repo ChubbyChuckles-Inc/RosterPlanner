@@ -33,3 +33,4 @@ feat: implement 0.44 brand-neutral fallback theme (new token groups, ThemeManage
 feat: implement 0.45 accessible drag & drop alternative (keyboard reorder logic module, tests, exports)
 feat: implement 0.46 live performance overlay metrics (capture module, stats, tests, exports)
 feat: implement 0.47 adaptive scrollbar styling (QSS generator, fallbacks, tests, exports)
+feat: implement 0.48 heatmap ramp perceptual uniformity validation (Lab approximation, report dataclass, tests, exports)

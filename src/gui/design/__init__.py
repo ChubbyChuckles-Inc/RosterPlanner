@@ -210,6 +210,7 @@ from .live_performance_overlay import (  # noqa: F401
     build_summary,
 )
 from .adaptive_scrollbar import build_scrollbar_styles  # noqa: F401
+from .heatmap_ramp_validation import HeatmapRampReport, validate_heatmap_ramp  # noqa: F401
 
 __all__ = [
     "load_tokens",
@@ -372,4 +373,6 @@ __all__ = [
     "compute_stats",
     "build_summary",
     "build_scrollbar_styles",
+    "HeatmapRampReport",
+    "validate_heatmap_ramp",
 ]
