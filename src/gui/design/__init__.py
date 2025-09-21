@@ -129,6 +129,13 @@ from .density_experiment import (  # noqa: F401
     clear_density_state,
     DensityExperimentState,
 )
+from .reduced_motion import (  # noqa: F401
+    set_reduced_motion,
+    is_reduced_motion,
+    motion_scale,
+    adjust_duration,
+    temporarily_reduced_motion,
+)
 
 __all__ = [
     "load_tokens",
@@ -228,4 +235,9 @@ __all__ = [
     "density_history",
     "clear_density_state",
     "DensityExperimentState",
+    "set_reduced_motion",
+    "is_reduced_motion",
+    "motion_scale",
+    "adjust_duration",
+    "temporarily_reduced_motion",
 ]

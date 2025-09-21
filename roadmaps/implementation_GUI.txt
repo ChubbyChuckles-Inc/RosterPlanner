@@ -55,8 +55,8 @@ Milestone 0 (Parallel): Design System & Visual Language
 [x] 0.32 Live theming stress test script (iterate all themes rapidly to detect leaks)
 [x] 0.33 Offline-friendly icon & font caching (hash-based invalidation)
 [x] 0.34 Visual density A/B toggling harness (future UX experimentation)
-[ ] 0.35 State diagram documentation for complex interactive components (Command Palette, Planner scenario editor)
-[ ] 0.36 Adaptive motion reduction (respect OS "Reduce Motion" setting)
+[x] 0.35 State diagram documentation for complex interactive components (Command Palette, Planner scenario editor)
+[x] 0.36 Adaptive motion reduction (respect OS "Reduce Motion" setting)
 [ ] 0.37 Cursor affordance guidelines (resize, drag, wait, grabbing consistency)
 [ ] 0.38 Multi-monitor DPI scaling validation script
 [ ] 0.39 Color mixing utilities (blend, alpha composite) for layered surfaces
