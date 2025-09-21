@@ -91,7 +91,7 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.7 Icon & asset pipeline (SVG set, color adaptive to theme)
 [x] 1.7.1 Provide asset hash map for cache busting
 [x] 1.8 Logging panel integration (dockable QTextEdit + filtering by level)
-[ ] 1.8.1 Add structured log export (JSONL)
+[x] 1.8.1 Add structured log export (JSONL)
 [ ] 1.9 Global error handler (uncaught exception hook -> dialog + log)
 [ ] 1.9.1 Error deduplication (avoid spamming same trace)
 [ ] 1.9.2 Crash reproduction snippet generator (collect minimal context)

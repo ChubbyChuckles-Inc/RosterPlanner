@@ -52,3 +52,4 @@ feat: implement 1.6.2 custom theme import (loader, apply_custom overlay, events,
 feat: implement 1.7 icon & asset pipeline (hashing utilities, registry enhancements, tests)
 feat: implement 1.7.1 asset hash map export (export_icon_hash_map, tests, cross-drive safe paths)
 feat: implement 1.8 logging service (ring buffer handler, event emission, filtering, tests; GUI panel stub TBD)
+feat: implement 1.8.1 structured log export (export_jsonl, filtering, append mode, tests, roadmap)

@@ -123,6 +123,42 @@ class LoggingService:
         with self._lock:
             self._entries.clear()
 
+    # Export ------------------------------------------------------------
+    def export_jsonl(
+        self,
+        path: str | None = None,
+        *,
+        level: str | None = None,
+        name_contains: str | None = None,
+        append: bool = False,
+    ) -> int:
+        """Export filtered log entries as JSON Lines.
+
+        Returns number of lines written.
+        """
+        import json, os  # local import to keep module import light
+
+        entries = self.filter(level=level, name_contains=name_contains)
+        mode = "a" if append else "w"
+        file_path = path or os.path.join(os.getcwd(), "logs.jsonl")
+        with open(file_path, mode, encoding="utf-8") as f:
+            for e in entries:
+                f.write(
+                    json.dumps(
+                        {
+                            "level": e.level,
+                            "name": e.name,
+                            "message": e.message,
+                            "created": e.created,
+                            "file": e.pathname,
+                            "line": e.lineno,
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+        return len(entries)
+
 
 def get_logging_service() -> LoggingService:
     return services.get_typed("logging_service", LoggingService)
