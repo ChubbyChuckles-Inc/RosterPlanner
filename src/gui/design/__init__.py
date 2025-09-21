@@ -75,6 +75,10 @@ from .color_drift import (  # noqa: F401
     normalize_hex,
     ColorDriftIssue,
 )
+from .inline_style_lint import (  # noqa: F401
+    scan_for_inline_styles,
+    InlineStyleIssue,
+)
 
 __all__ = [
     "load_tokens",
@@ -138,4 +142,6 @@ __all__ = [
     "scan_for_color_drift",
     "normalize_hex",
     "ColorDriftIssue",
+    "scan_for_inline_styles",
+    "InlineStyleIssue",
 ]
