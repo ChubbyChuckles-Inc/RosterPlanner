@@ -25,9 +25,9 @@ def _list_files(base: str) -> set[str]:
     collected: set[str] = set()
     for root, _dirs, files in os.walk(base):
         for f in files:
-            rel = root[len(base):].lstrip("/\\")
+            rel = root[len(base) :].lstrip("/\\")
             rel_path = f if not rel else f"{rel}/{f}"
-            collected.add(rel_path.replace('\\', '/'))
+            collected.add(rel_path.replace("\\", "/"))
     return collected
 
 
@@ -49,11 +49,18 @@ def cmd_compare(args: argparse.Namespace) -> None:
     }
     # Ensure directory if provided
     import os as _os
+
     out_dirname = _os.path.dirname(out_path)
     if out_dirname:
         filesystem.ensure_dir(out_dirname)
     filesystem.write_text(out_path, json.dumps(result, indent=2, ensure_ascii=False))
-    print(json.dumps({k: len(v) if isinstance(v, list) else v for k, v in result.items()}, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {k: len(v) if isinstance(v, list) else v for k, v in result.items()},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -24,7 +24,9 @@ def _extract_club_name(html: str) -> str | None:
     return None
 
 
-def fetch_and_parse_club(url: str, club_id: str, data_dir: str) -> tuple[str | None, Dict[str, Team]]:
+def fetch_and_parse_club(
+    url: str, club_id: str, data_dir: str
+) -> tuple[str | None, Dict[str, Team]]:
     html = http_client.fetch(url)
     club_name = _extract_club_name(html)
     # Persist using club name if available else fallback to id-based

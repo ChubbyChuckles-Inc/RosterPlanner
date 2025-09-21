@@ -65,7 +65,9 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
     for idx, rlink in enumerate(ranking_links, start=1):
         # Fetch ranking table HTML directly (do not persist with generic name first)
         ranking_html = ranking_scraper.http_client.fetch(rlink)  # type: ignore[attr-defined]
-        division_name, teams = ranking_parser.parse_ranking_table(ranking_html, source_hint=f"division_{idx}")
+        division_name, teams = ranking_parser.parse_ranking_table(
+            ranking_html, source_hint=f"division_{idx}"
+        )
         # Persist under division directory using real division name
         div_dir = os.path.join(data_dir, naming.sanitize(division_name))
         os.makedirs(div_dir, exist_ok=True)
@@ -134,7 +136,9 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
         # If we already have a full club link use it; otherwise synthesize typical pattern (landing Verein page)
         club_link = club_links.get(club_id_key)
         if club_link:
-            full_url = club_link if club_link.startswith("http") else f"{settings.ROOT_URL}{club_link}"
+            full_url = (
+                club_link if club_link.startswith("http") else f"{settings.ROOT_URL}{club_link}"
+            )
         else:
             # Synthesize landing Verein page for the given season
             full_url = LANDING_URL_TEMPLATE.format(club_id=club_id_key, season=season)
@@ -159,7 +163,9 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
     for team_id, team in club_extra_teams.items():
         # Construct roster detail URL using known template; if division id (L2P) is unknown leave blank
         roster_url = club_parser.build_roster_link(team_id)
-        full_url = roster_url if roster_url.startswith("http") else f"{settings.ROOT_URL}{roster_url}"
+        full_url = (
+            roster_url if roster_url.startswith("http") else f"{settings.ROOT_URL}{roster_url}"
+        )
         try:
             html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
         except Exception:
@@ -180,6 +186,7 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
     produced_flat_ids: set[str] = set()
     # Reconstruct from division_team_lists first
     import re as _re
+
     for division_name, teams in division_team_lists.items():
         for t in teams:
             m = _re.search(r"L3P=(\d+)", t.get("roster_link", ""))
@@ -193,7 +200,9 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
                     html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
                 except Exception:
                     continue
-                filesystem.write_text(os.path.join(flat_team_roster_dir, f"team_roster_L2P_{tid}.html"), html)
+                filesystem.write_text(
+                    os.path.join(flat_team_roster_dir, f"team_roster_L2P_{tid}.html"), html
+                )
                 produced_flat_ids.add(tid)
     # Include extra club teams not already in division list
     for tid, team in club_extra_teams.items():
@@ -205,7 +214,9 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
             html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
         except Exception:
             continue
-        filesystem.write_text(os.path.join(flat_team_roster_dir, f"team_roster_L2P_{tid}.html"), html)
+        filesystem.write_text(
+            os.path.join(flat_team_roster_dir, f"team_roster_L2P_{tid}.html"), html
+        )
         produced_flat_ids.add(tid)
 
     # Step 8: Persist tracking state

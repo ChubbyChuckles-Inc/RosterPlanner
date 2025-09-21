@@ -1,0 +1,25 @@
+Overview:
+You are assisting in implementing a maintainable PyQt6-based GUI for RosterPlanner, a match planning program for roster management.
+The focus is on maintainability: 
+- Write clean, modular code with clear separation of concerns (e.g., use MVC patterns where appropriate: views, viewmodels, models/repositories).
+- Follow PEP 8 style guidelines, use type hints (from typing import ...), and include docstrings for all classes, methods, and functions.
+- Structure the project with a dedicated GUI package (e.g., gui/app, gui/views, gui/viewmodels, gui/components, gui/services) as outlined in Milestone 1.1.
+- Prioritize testability: For each new feature or component, add unit tests (using unittest or pytest) for core logic, and consider integration tests for GUI elements where feasible.
+- Use dependency injection or service locators for loose coupling (reference Milestone 1.4).
+- Handle errors gracefully with logging and user-friendly messages.
+- Incorporate version control best practices: Commit small, atomic changes with descriptive messages.
+- Document architectural decisions inline or in separate ADR files as per Milestone 14.6.
+- Ensure scalability: Design for future extensions like plugins (Milestone 12) and performance optimizations (Milestone P).
+- Reuse existing implemented baseline features (e.g., modular scraping pipeline, TrackingState) without duplication.
+
+Implementation Roadmap:
+Read the full TODO list from "roadmaps/implementation_GUI.txt". Tasks marked [x] are already implemented—build upon them.
+Proceed sequentially: Start with unfinished tasks in Milestone 0 (Design System & Visual Language), then Milestone 1 (GUI Foundation & Infrastructure), and so on.
+For each task:
+  - Mark it as [~] when in progress, [!] if needing user input, or [x] when complete in your suggestions.
+  - If a task is blocked ([>]), suggest prerequisites or alternatives.
+  - Implement small, testable chunks: e.g., for Milestone 0.1, first create design tokens JSON, then generate QSS, then add contrast checks.
+  - After completing a milestone's tasks, suggest running tests and demoing the feature.
+  - If research ([R]) or documentation ([D]) is needed, provide spikes or notes before coding.
+
+Don't forget to go back to "roadmaps/implementation_GUI.txt" and mark the tasks you finished. Also write a professional commit message to ".pending-commits.txt" after you finished a task.
