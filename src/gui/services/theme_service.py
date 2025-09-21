@@ -18,10 +18,18 @@ from dataclasses import dataclass
 from typing import Mapping, Iterable, List
 
 from gui.design import ThemeManager, ThemeDiff, load_tokens
+from .custom_theme import load_custom_theme, CustomThemeError
 from .event_bus import EventBus, GUIEvent
 from .service_locator import services
 
-__all__ = ["ThemeService", "get_theme_service", "validate_theme_keys", "ThemeValidationError"]
+__all__ = [
+    "ThemeService",
+    "get_theme_service",
+    "validate_theme_keys",
+    "ThemeValidationError",
+    "load_custom_theme",
+    "CustomThemeError",
+]
 
 
 REQUIRED_COLOR_KEYS: tuple[str, ...] = (
@@ -86,6 +94,38 @@ class ThemeService:
             self._cached_map = dict(self.manager.active_map())
             self._publish_theme_changed(diff)
         return diff
+
+    def apply_custom(self, mapping: Mapping[str, str]) -> int:
+        """Overlay a flattened color mapping onto current theme.
+
+        Returns number of keys changed. Emits THEME_CHANGED if >0.
+        """
+        if not mapping:
+            return 0
+        old = self._cached_map.copy()
+        changed = 0
+        for k, v in mapping.items():
+            if (
+                k.startswith("background.")
+                or k.startswith("surface.")
+                or k.startswith("text.")
+                or k.startswith("accent.")
+                or k.startswith("border.")
+            ):
+                if old.get(k) != v:
+                    self._cached_map[k] = v
+                    changed += 1
+        if changed:
+            # publish synthetic diff
+            diff = ThemeDiff(
+                {
+                    k: (old.get(k), self._cached_map.get(k))
+                    for k in mapping.keys()
+                    if old.get(k) != self._cached_map.get(k)
+                }
+            )
+            self._publish_theme_changed(diff)
+        return changed
 
     # Validation --------------------------------------------------------
     def validate(self, *, raise_on_error: bool = False) -> List[str]:
