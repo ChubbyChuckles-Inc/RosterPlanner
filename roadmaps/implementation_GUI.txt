@@ -95,7 +95,7 @@ Milestone 1: GUI Foundation & Infrastructure
 [x] 1.9 Global error handler (uncaught exception hook -> dialog + log)
 [x] 1.9.1 Error deduplication (avoid spamming same trace)
 [x] 1.9.2 Crash reproduction snippet generator (collect minimal context)
-[ ] 1.10 Add health check overlay (FPS, memory, DB query count)
+[x] 1.10 Add health check overlay (FPS, memory, DB query count)
 
 Milestone 2: Dockable Main Window Architecture
 [ ] 2.1 Implement MainWindow (QMainWindow) with QDockWidget manager
