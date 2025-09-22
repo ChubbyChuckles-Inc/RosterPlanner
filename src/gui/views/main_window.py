@@ -65,6 +65,7 @@ from gui.services.navigation_state_persistence import (
     NavigationStatePersistenceService,
     NavigationState,
 )
+from gui.services.permissions import PermissionService
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
@@ -89,6 +90,8 @@ class MainWindow(QMainWindow):  # Dock-based
         # Navigation expansion/selection persistence (Milestone 4.4)
         self._nav_state_service = NavigationStatePersistenceService(base_dir=self.data_dir)
         self._nav_state = self._nav_state_service.load()
+        # Permissions (Milestone 4.5.1 placeholder)
+        self._perm_service = PermissionService()
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -590,16 +593,19 @@ class MainWindow(QMainWindow):  # Dock-based
         index = self.team_tree.indexAt(pos)
         team = self._team_entry_from_index(index)
         menu = QMenu(self)
-        act_open = QAction("Open in New Tab", self)
-        act_open.triggered.connect(lambda: team and self.open_team_detail(team))  # type: ignore
-        menu.addAction(act_open)
+        if self._perm_service.can_open_team():
+            act_open = QAction("Open in New Tab", self)
+            act_open.triggered.connect(lambda: team and self.open_team_detail(team))  # type: ignore
+            menu.addAction(act_open)
         if team:
-            act_copy = QAction("Copy Team ID", self)
-            act_copy.triggered.connect(lambda: self._copy_team_id(team.team_id))  # type: ignore
-            menu.addAction(act_copy)
-            act_export = QAction("Export Team JSON...", self)
-            act_export.triggered.connect(lambda: self._export_team_json(team))  # type: ignore
-            menu.addAction(act_export)
+            if self._perm_service.can_copy_team_id():
+                act_copy = QAction("Copy Team ID", self)
+                act_copy.triggered.connect(lambda: self._copy_team_id(team.team_id))  # type: ignore
+                menu.addAction(act_copy)
+            if self._perm_service.can_export_team():
+                act_export = QAction("Export Team JSON...", self)
+                act_export.triggered.connect(lambda: self._export_team_json(team))  # type: ignore
+                menu.addAction(act_export)
         menu.exec(self.team_tree.viewport().mapToGlobal(pos))
 
     def _copy_team_id(self, team_id: str):  # pragma: no cover - GUI path

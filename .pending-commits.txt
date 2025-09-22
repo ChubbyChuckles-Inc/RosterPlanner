@@ -53,3 +53,5 @@ feat(gui): persist navigation tree state (expanded divisions + last selected tea
 test(gui): navigation state persistence roundtrip & corrupt file backup (Milestone 4.4)
 feat(gui): navigation tree context menu (open tab, copy id, export JSON) (Milestone 4.5)
 test(gui): context menu helper tests (team entry lookup, export json) (Milestone 4.5)
+feat(gui): permission service placeholder and integration into context menu (Milestone 4.5.1)
+test(gui): permission service default allow + custom policy tests (Milestone 4.5.1)
