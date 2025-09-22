@@ -67,6 +67,7 @@ from gui.services.navigation_state_persistence import (
 )
 from gui.services.permissions import PermissionService
 from gui.components.breadcrumb import BreadcrumbBuilder
+from gui.services.recent_teams import RecentTeamsTracker
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
@@ -95,6 +96,8 @@ class MainWindow(QMainWindow):  # Dock-based
         self._perm_service = PermissionService()
         # Breadcrumb builder (Milestone 4.6)
         self._breadcrumb_builder = BreadcrumbBuilder()
+        # Recently viewed teams tracker (Milestone 4.7)
+        self._recent_tracker = RecentTeamsTracker()
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -136,6 +139,7 @@ class MainWindow(QMainWindow):  # Dock-based
             "stats": self._build_stats_dock,
             "planner": self._build_planner_dock,
             "logs": self._build_logs_dock,
+            "recent": self._build_recent_dock,
         }
         dock_registry.ensure_core_docks_registered(factories)
         # Register all definitions with local DockManager
@@ -404,6 +408,17 @@ class MainWindow(QMainWindow):  # Dock-based
         lay.addWidget(QLabel("Logs Dock Placeholder (future: live logging panel)"))
         return w
 
+    def _build_recent_dock(self) -> QWidget:  # Milestone 4.7
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(QLabel("Recently Viewed Teams"))
+        from PyQt6.QtWidgets import QListWidget
+
+        self.recent_list = QListWidget()
+        self.recent_list.itemActivated.connect(self._on_recent_item_activated)  # type: ignore
+        lay.addWidget(self.recent_list)
+        return w
+
     # Status helper --------------------------------------------------
     def _set_status(self, text: str):
         if hasattr(self, "status_label"):
@@ -586,6 +601,9 @@ class MainWindow(QMainWindow):  # Dock-based
             # Persist last selected team id
             self._nav_state.last_selected_team_id = team.team_id
             self._nav_state_service.save(self._nav_state)
+            # Update recent tracker
+            self._recent_tracker.add(team.team_id)
+            self._refresh_recent_list()
         # Update breadcrumb regardless of whether team found (divisions clear path)
         self._update_breadcrumb(index)
 
@@ -741,6 +759,45 @@ class MainWindow(QMainWindow):  # Dock-based
             src_node = node
         breadcrumb = self._breadcrumb_builder.build_for_node(src_node)
         self.breadcrumb_label.setText(breadcrumb)
+
+    # Recently Viewed (Milestone 4.7) ------------------------------
+    def _refresh_recent_list(self):  # pragma: no cover - GUI path
+        if not hasattr(self, "recent_list"):
+            return
+        self.recent_list.clear()
+        # We need team names map
+        by_id = {t.team_id: t for t in getattr(self, "teams", [])}
+        for tid in self._recent_tracker.items():
+            name = by_id.get(tid).name if tid in by_id else tid
+            self.recent_list.addItem(f"{name} ({tid})")
+
+    def _on_recent_item_activated(self, item):  # pragma: no cover - GUI path
+        if not item:
+            return
+        text = item.text()
+        if text.endswith(")") and "(" in text:
+            tid = text[text.rfind("(") + 1 : -1]
+        else:
+            tid = text
+        # Find team index and select
+        model_obj = self.team_tree.model()
+        rows = model_obj.rowCount()
+        for r in range(rows):
+            div_idx = model_obj.index(r, 0)
+            _ = model_obj.rowCount(div_idx)
+            child_rows = model_obj.rowCount(div_idx)
+            for c in range(child_rows):
+                t_idx = model_obj.index(c, 0, div_idx)
+                entry = None
+                if isinstance(model_obj, NavigationFilterProxyModel):
+                    src: NavigationTreeModel = model_obj.sourceModel()  # type: ignore
+                    entry = src.get_team_entry(model_obj.mapToSource(t_idx))
+                else:
+                    entry = model_obj.get_team_entry(t_idx)  # type: ignore
+                if entry and entry.team_id == tid:
+                    self.team_tree.setCurrentIndex(t_idx)
+                    self._on_tree_item_clicked(t_idx)
+                    return
 
 
 __all__ = ["MainWindow"]

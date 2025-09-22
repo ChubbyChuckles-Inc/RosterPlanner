@@ -57,3 +57,5 @@ feat(gui): permission service placeholder and integration into context menu (Mil
 test(gui): permission service default allow + custom policy tests (Milestone 4.5.1)
 feat(gui): breadcrumb builder and integration (navigation selection trail) (Milestone 4.6)
 test(gui): breadcrumb builder & integration tests (Milestone 4.6)
+feat(gui): recently viewed teams tracker + dock (Milestone 4.7)
+test(gui): recent teams tracker unit & integration tests (Milestone 4.7)
