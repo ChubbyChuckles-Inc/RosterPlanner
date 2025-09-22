@@ -1,3 +1,5 @@
+feat(export): add ExportService and integrate CSV/JSON export actions (Milestone 5.6)
+
 feat(detail): scaffold Team Detail View (Milestone 5.1) with TeamDetailView widget, ViewModel, summary metrics, and opening integration; add unit & integration tests and mark roadmap 5.1 partial
 feat(detail): complete Team Detail View (Milestone 5.1) adding bundle population, tests for population, and marking roadmap task complete
 feat(detail): add column visibility persistence (Milestone 5.1.1) with service, toggle UI, unit & integration tests, and roadmap update

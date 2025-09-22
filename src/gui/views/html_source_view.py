@@ -95,5 +95,21 @@ class HtmlSourceView(QWidget):
     def has_diff(self) -> bool:  # pragma: no cover - trivial
         return bool(self.txt_diff.toPlainText().strip())
 
+    # Export integration (Milestone 5.6) ---------------------------------
+    def get_export_rows(self):  # pragma: no cover - simple
+        # Provide tabular export with two columns: type, content lines
+        headers = ["Section", "Content"]
+        rows = [["source", self.txt_source.toPlainText()]]
+        diff_text = self.txt_diff.toPlainText()
+        rows.append(["diff", diff_text])
+        return headers, rows
+
+    def get_export_payload(self):  # pragma: no cover - simple
+        return {
+            "label": self.title_label.text(),
+            "source": self.txt_source.toPlainText(),
+            "diff": self.txt_diff.toPlainText(),
+        }
+
 
 __all__ = ["HtmlSourceView"]

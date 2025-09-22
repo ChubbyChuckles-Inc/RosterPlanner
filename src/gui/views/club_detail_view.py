@@ -97,5 +97,34 @@ class ClubDetailView(QWidget):
     def division_row_count(self) -> int:  # pragma: no cover - trivial
         return self.div_table.rowCount()
 
+    # Export integration (Milestone 5.6) ---------------------------------
+    def get_export_rows(self):  # pragma: no cover - simple
+        headers = ["Division", "Teams", "Type"]
+        rows: list[list[str]] = []
+        for r in range(self.div_table.rowCount()):
+            row_vals: list[str] = []
+            for c in range(self.div_table.columnCount()):
+                it = self.div_table.item(r, c)
+                row_vals.append(it.text() if it else "")
+            rows.append(row_vals)
+        return headers, rows
+
+    def get_export_payload(self):  # pragma: no cover - simple
+        return {
+            "team_count": len(self._teams),
+            "divisions": [
+                {
+                    "division": (
+                        self.div_table.item(r, 0).text() if self.div_table.item(r, 0) else ""
+                    ),
+                    "teams": (
+                        int(self.div_table.item(r, 1).text()) if self.div_table.item(r, 1) else 0
+                    ),
+                    "type": self.div_table.item(r, 2).text() if self.div_table.item(r, 2) else "",
+                }
+                for r in range(self.div_table.rowCount())
+            ],
+        }
+
 
 __all__ = ["ClubDetailView"]

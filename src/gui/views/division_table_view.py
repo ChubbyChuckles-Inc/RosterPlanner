@@ -135,3 +135,45 @@ class DivisionTableView(QWidget):
         """
         self._sort_priority = list(priority)
         self._populate(self.viewmodel.rows())
+
+    # Export integration (Milestone 5.6) ---------------------------------
+    def get_export_rows(self) -> tuple[List[str], List[List[str]]]:  # pragma: no cover - simple
+        headers = [
+            "Pos",
+            "Team",
+            "MP",
+            "W",
+            "D",
+            "L",
+            "+/-",
+            "Pts",
+            "Form",
+        ]
+        data: List[List[str]] = []
+        for r in range(self.table.rowCount()):
+            row_vals: List[str] = []
+            for c in range(self.table.columnCount()):
+                item = self.table.item(r, c)
+                row_vals.append(item.text() if item else "")
+            data.append(row_vals)
+        return headers, data
+
+    def get_export_payload(self):  # pragma: no cover - simple
+        # Provide richer JSON with typed fields using viewmodel normalized rows
+        payload = []
+        for nr in self.viewmodel.rows():
+            e = nr.entry
+            payload.append(
+                {
+                    "position": e.position,
+                    "team_name": e.team_name,
+                    "matches_played": e.matches_played,
+                    "wins": e.wins,
+                    "draws": e.draws,
+                    "losses": e.losses,
+                    "differential": nr.differential_text,
+                    "points": e.points,
+                    "form": nr.form,
+                }
+            )
+        return payload

@@ -73,6 +73,7 @@ from gui.services.scrape_runner import ScrapeRunner
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
+from gui.services.export_service import ExportService, ExportFormat
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -105,6 +106,8 @@ class MainWindow(QMainWindow):  # Dock-based
         self._scrape_runner.scrape_started.connect(self._on_scrape_started)  # type: ignore
         self._scrape_runner.scrape_finished.connect(self._on_scrape_finished)  # type: ignore
         self._scrape_runner.scrape_failed.connect(self._on_scrape_failed)  # type: ignore
+        # Export service (Milestone 5.6)
+        self._export_service = ExportService()
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -224,6 +227,41 @@ class MainWindow(QMainWindow):  # Dock-based
             mb.addMenu(help_menu)
         if data_menu is None:
             data_menu = QMenu("&Data", self)
+
+            def _current_document_widget(self):  # pragma: no cover - simple helper
+                try:
+                    return self.document_area.currentWidget()
+                except Exception:
+                    return None
+
+            def _export_current_view(self, fmt: str):  # pragma: no cover - GUI path
+                w = self._current_document_widget()
+                if not w:
+                    QMessageBox.warning(self, "Export", "No active view to export.")
+                    return
+                try:
+                    result = self._export_service.export(w, fmt)
+                except Exception as e:  # broad user feedback
+                    QMessageBox.critical(self, "Export Failed", f"Could not export: {e}")
+                    return
+                # Ask for destination path
+                suffix = result.suggested_extension
+                dlg_path, _ = QFileDialog.getSaveFileName(
+                    self,
+                    "Save Export",
+                    f"export{suffix}",
+                    f"*{suffix};;All Files (*)",
+                )
+                if not dlg_path:
+                    return
+                try:
+                    with open(dlg_path, "w", encoding="utf-8") as f:
+                        f.write(result.content)
+                except Exception as e:
+                    QMessageBox.critical(self, "Export Failed", f"Write error: {e}")
+                    return
+                QMessageBox.information(self, "Export", f"Export saved to {dlg_path}")
+
             mb.addMenu(data_menu)
         # Add actions via convenience overload (returns QAction object)
         reset_action = view_menu.addAction("Reset Layout")
@@ -320,6 +358,53 @@ class MainWindow(QMainWindow):  # Dock-based
             _rebuild_db,
             "Run database rebuild with progress dialog (preview on isolated file)",
         )
+        # Export commands (Milestone 5.6)
+        global_command_registry.register(
+            "export.current.csv",
+            "Export Current View (CSV)",
+            lambda: self._export_current_view(ExportFormat.CSV),
+            "Serialize current active document tab to CSV",
+        )
+        global_command_registry.register(
+            "export.current.json",
+            "Export Current View (JSON)",
+            lambda: self._export_current_view(ExportFormat.JSON),
+            "Serialize current active document tab to JSON",
+        )
+
+    # Export helpers -------------------------------------------------
+    def _current_document_widget(self):  # pragma: no cover - simple helper
+        try:
+            return self.document_area.currentWidget()
+        except Exception:
+            return None
+
+    def _export_current_view(self, fmt: str):  # pragma: no cover - GUI path
+        w = self._current_document_widget()
+        if not w:
+            QMessageBox.warning(self, "Export", "No active view to export.")
+            return
+        try:
+            result = self._export_service.export(w, fmt)
+        except Exception as e:
+            QMessageBox.critical(self, "Export Failed", f"Could not export: {e}")
+            return
+        suffix = result.suggested_extension
+        dlg_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Export",
+            f"export{suffix}",
+            f"*{suffix};;All Files (*)",
+        )
+        if not dlg_path:
+            return
+        try:
+            with open(dlg_path, "w", encoding="utf-8") as f:
+                f.write(result.content)
+        except Exception as e:
+            QMessageBox.critical(self, "Export Failed", f"Write error: {e}")
+            return
+        QMessageBox.information(self, "Export", f"Export saved to {dlg_path}")
 
     # Shortcuts / Help --------------------------------------------
     def _open_shortcut_cheatsheet(self):

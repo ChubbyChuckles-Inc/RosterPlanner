@@ -250,5 +250,37 @@ class TeamDetailView(QWidget):
     def bundle(self) -> Optional[TeamRosterBundle]:  # pragma: no cover - trivial
         return self._bundle
 
+    # Export integration (Milestone 5.6) ---------------------------------
+    def get_export_rows(self):  # pragma: no cover - simple
+        headers = ["Player", "LivePZ", "Trend"]
+        rows: list[list[str]] = []
+        for r in range(self.roster_table.rowCount()):
+            row_vals: list[str] = []
+            for c in range(self.roster_table.columnCount()):
+                it = self.roster_table.item(r, c)
+                row_vals.append(it.text() if it else "")
+            rows.append(row_vals)
+        return headers, rows
+
+    def get_export_payload(self):  # pragma: no cover - simple
+        if not self._bundle:
+            return {"team": None, "players": []}
+        return {
+            "team": self._bundle.team.name,
+            "players": [
+                {
+                    "name": p.name,
+                    "live_pz": p.live_pz,
+                    "trend": (
+                        self.roster_table.item(i, 2).text()
+                        if self.roster_table.item(i, 2)
+                        else None
+                    ),
+                }
+                for i, p in enumerate(self._bundle.players)
+            ],
+            "matches": [m.display for m in self._bundle.match_dates],
+        }
+
 
 __all__ = ["TeamDetailView"]
