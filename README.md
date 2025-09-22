@@ -164,6 +164,18 @@ Future enhancements (tracked/planned):
 
 Manual override: If you want to force a fresh end‑to‑end scrape even after auto-ingest, just use `Data > Run Full Scrape`; existing DB entries will be augmented/updated according to the scrape + ingestion rules.
 
+### Division Persistence & GUI Fallback (New)
+
+After a successful full scrape the application now serializes the complete division → teams mapping into `data/match_tracking.json`. If the SQLite ingestion has not yet been performed (or the DB was cleared) but that JSON exists, the GUI landing tree will populate divisions/teams directly from the tracking file. This prevents an empty navigation tree immediately after a scrape and before (or in lieu of) ingestion.
+
+Implications:
+
+- Running a scrape alone gives you a browsable division/team tree on next launch (even without DB ingest).
+- Once ingestion runs, the DB remains the primary source and the fallback is bypassed.
+- If you delete the DB but keep `match_tracking.json`, the tree still appears (until a new ingest occurs).
+
+To disable this behavior temporarily, remove or rename `match_tracking.json` before launching the GUI.
+
 - **Pre-Commit Hook Failures**:
 
   - If `scripts/commit-push.ps1` fails due to pre-commit hooks (e.g., `black`, `flake8`, `sphinx-build`), check the error output in the terminal.

@@ -14,6 +14,7 @@ from gui.models import TeamEntry, PlayerEntry, MatchDate, TeamRosterBundle
 from gui.services.team_data_service import TeamDataService  # Milestone 5.9.6 integration
 import os
 import re
+from tracking import tracking_store
 
 
 class LandingLoadWorker(QThread):
@@ -79,6 +80,19 @@ class LandingLoadWorker(QThread):
 
                             print(f"[LandingLoadWorker] Auto-ingest failed: {_e}", file=sys.stderr)
             # If we reach here, no ingested data present: return empty (gate)
+            # Fallback: attempt to load divisions from tracking JSON (non-ingested path) so tree is at least populated
+            try:
+                state = tracking_store.load_state()
+                if state.divisions:
+                    teams: list[TeamEntry] = []
+                    for d in state.divisions.values():
+                        for t in getattr(d, "teams", []):
+                            teams.append(TeamEntry(team_id=t.id, name=t.name, division=d.name))
+                    teams.sort(key=lambda t: (t.division, t.name))
+                    self.finished.emit(teams, "")
+                    return
+            except Exception:
+                pass
             self.finished.emit([], "")
         except Exception:
             self.finished.emit([], traceback.format_exc())

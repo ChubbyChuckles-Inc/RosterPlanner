@@ -10,7 +10,7 @@ from scraping import ranking_scraper, roster_scraper, club_scraper
 from parsing import link_extractor, ranking_parser, roster_parser, club_parser
 from core import filesystem
 from utils import naming
-from domain.models import Team, Match, Player, TrackingState
+from domain.models import Team, Match, Player, TrackingState, Division
 from domain import mapping as domain_mapping
 from tracking import tracking_store, rescrape_policy, upcoming_matches
 
@@ -354,12 +354,25 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
                     except Exception:
                         continue
 
-    state = TrackingState(last_scrape=datetime.utcnow(), divisions={}, upcoming_matches=upcoming)
+    # Build divisions structure for tracking state (used by GUI tree)
+    divisions_map: dict[str, Division] = {}
+    for team in merged_teams.values():
+        div_name = team.division_name or "Unknown_Division"
+        if div_name not in divisions_map:
+            divisions_map[div_name] = Division(name=div_name, teams=[])
+        divisions_map[div_name].teams.append(team)
+    # Sort teams in each division for deterministic UI ordering
+    for d in divisions_map.values():
+        d.teams.sort(key=lambda t: t.name)
+
+    state = TrackingState(
+        last_scrape=datetime.utcnow(), divisions=divisions_map, upcoming_matches=upcoming
+    )
     tracking_store.save_state(state, data_dir)
 
     return {
         "landing_url": landing_url,
-        "divisions_discovered": len(division_team_lists),
+        "divisions_discovered": len(divisions_map),
         "teams_overview": len(teams_overview),
         "club_extra_teams": len(club_extra_teams),
         "club_team_pages": len(club_extra_teams),

@@ -5,7 +5,7 @@ import json
 import os
 from datetime import datetime
 from typing import Any, Dict
-from domain.models import TrackingState, Match
+from domain.models import TrackingState, Match, Division, Team
 from dataclasses import asdict, is_dataclass
 from config import settings
 
@@ -25,8 +25,24 @@ def load_state(base: str | None = None) -> TrackingState:
         with open(p, "r", encoding="utf-8") as fh:
             raw = json.load(fh)
         last = datetime.fromisoformat(raw["last_scrape"]) if raw.get("last_scrape") else None
-        # Divisions reconstruction deferred (requires richer serialization)
-        return TrackingState(last_scrape=last, divisions={}, upcoming_matches=[])
+        divisions_raw = raw.get("divisions", {})
+        divisions: dict[str, Division] = {}
+        if isinstance(divisions_raw, dict):
+            for dname, dobj in divisions_raw.items():
+                try:
+                    teams_list = []
+                    for tobj in dobj.get("teams", []):
+                        teams_list.append(
+                            Team(
+                                id=tobj.get("id"),
+                                name=tobj.get("name"),
+                                division_name=tobj.get("division_name") or dname,
+                            )
+                        )
+                    divisions[dname] = Division(name=dname, teams=teams_list)
+                except Exception:
+                    continue
+        return TrackingState(last_scrape=last, divisions=divisions, upcoming_matches=[])
     except Exception:
         return TrackingState.empty()
 
@@ -52,9 +68,23 @@ def save_state(state: TrackingState, base: str | None = None) -> None:
             "status": getattr(m, "status", None),
         }
 
+    # Serialize divisions with nested team ids & names for GUI bootstrapping
+    serialized_divisions: Dict[str, Any] = {}
+    for dname, division in state.divisions.items():
+        try:
+            serialized_divisions[dname] = {
+                "name": division.name,
+                "teams": [
+                    {"id": t.id, "name": t.name, "division_name": t.division_name}
+                    for t in getattr(division, "teams", [])  # type: ignore[attr-defined]
+                ],
+            }
+        except Exception:
+            serialized_divisions[dname] = {"name": dname, "teams": []}
+
     payload: Dict[str, Any] = {
         "last_scrape": state.last_scrape.isoformat() if state.last_scrape else None,
-        "divisions": list(state.divisions.keys()),
+        "divisions": serialized_divisions,
         "upcoming_matches": [_serialize_match(m) for m in state.upcoming_matches],
     }
     with open(p, "w", encoding="utf-8") as fh:

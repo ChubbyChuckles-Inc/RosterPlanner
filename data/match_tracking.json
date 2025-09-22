@@ -1,6 +1,1492 @@
 {
-  "last_scrape": "2025-09-22T12:43:34.588023",
-  "divisions": [],
+  "last_scrape": "2025-09-22T13:00:59.203437",
+  "divisions": {
+    "1. Bezirksliga Erwachsene": {
+      "name": "1. Bezirksliga Erwachsene",
+      "teams": [
+        {
+          "id": "20337",
+          "name": "1. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129868",
+          "name": "1. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "128805",
+          "name": "1. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "128910",
+          "name": "1. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129095",
+          "name": "1. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129200",
+          "name": "1. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129451",
+          "name": "1. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "128854",
+          "name": "2. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129452",
+          "name": "2. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "128855",
+          "name": "3. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129284",
+          "name": "3. Erwachsene",
+          "division_name": "1. Bezirksliga Erwachsene"
+        }
+      ]
+    },
+    "2. Bezirksliga Erwachsene": {
+      "name": "2. Bezirksliga Erwachsene",
+      "teams": [
+        {
+          "id": "128770",
+          "name": "1. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "128848",
+          "name": "1. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129118",
+          "name": "1. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129169",
+          "name": "1. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "20336",
+          "name": "2. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129869",
+          "name": "2. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129536",
+          "name": "2. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129661",
+          "name": "3. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "128856",
+          "name": "4. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129285",
+          "name": "4. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        },
+        {
+          "id": "129463",
+          "name": "4. Erwachsene",
+          "division_name": "2. Bezirksliga Erwachsene"
+        }
+      ]
+    },
+    "Stadtoberliga": {
+      "name": "Stadtoberliga",
+      "teams": [
+        {
+          "id": "134216",
+          "name": "1. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "128840",
+          "name": "1. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "129058",
+          "name": "1. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "129714",
+          "name": "1. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "129170",
+          "name": "2. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "129581",
+          "name": "2. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "20473",
+          "name": "3. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "129898",
+          "name": "3. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "129171",
+          "name": "3. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "129699",
+          "name": "4. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "128858",
+          "name": "6. Erwachsene",
+          "division_name": "Stadtoberliga"
+        },
+        {
+          "id": "130168",
+          "name": "6. Erwachsene",
+          "division_name": "Stadtoberliga"
+        }
+      ]
+    },
+    "1. Stadtliga Gruppe 1": {
+      "name": "1. Stadtliga Gruppe 1",
+      "teams": [
+        {
+          "id": "129755",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129864",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129955",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "130023",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129409",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129186",
+          "name": "2. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "20459",
+          "name": "4. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129961",
+          "name": "4. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129749",
+          "name": "5. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "128859",
+          "name": "7. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "128861",
+          "name": "9. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 1"
+        }
+      ]
+    },
+    "2. Stadtliga Gruppe 2": {
+      "name": "2. Stadtliga Gruppe 2",
+      "teams": [
+        {
+          "id": "130010",
+          "name": "1. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129700",
+          "name": "11. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129785",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129756",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129410",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129187",
+          "name": "3. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129573",
+          "name": "3. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "20477",
+          "name": "5. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "130170",
+          "name": "5. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129173",
+          "name": "5. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "130372",
+          "name": "7. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 2"
+        }
+      ]
+    },
+    "2. Stadtklasse Gruppe 2": {
+      "name": "2. Stadtklasse Gruppe 2",
+      "teams": [
+        {
+          "id": "130162",
+          "name": "14. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130024",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130051",
+          "name": "3. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "129658",
+          "name": "4. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "129958",
+          "name": "4. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "129717",
+          "name": "4. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130235",
+          "name": "5. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "20469",
+          "name": "6. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130279",
+          "name": "6. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130107",
+          "name": "7. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "133811",
+          "name": "9. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 2"
+        }
+      ]
+    },
+    "2. Stadtklasse Gruppe 1": {
+      "name": "2. Stadtklasse Gruppe 1",
+      "teams": [
+        {
+          "id": "130042",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "129924",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "129957",
+          "name": "3. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "134392",
+          "name": "3. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "130013",
+          "name": "4. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "129188",
+          "name": "4. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "129910",
+          "name": "4. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "129927",
+          "name": "5. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "20465",
+          "name": "7. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "130511",
+          "name": "7. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "130509",
+          "name": "8. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 1"
+        }
+      ]
+    },
+    "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2": {
+      "name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2",
+      "teams": [
+        {
+          "id": "21137",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2"
+        },
+        {
+          "id": "130179",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2"
+        },
+        {
+          "id": "130546",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2"
+        },
+        {
+          "id": "129189",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2"
+        },
+        {
+          "id": "129720",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2"
+        },
+        {
+          "id": "132421",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2"
+        },
+        {
+          "id": "130408",
+          "name": "2. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2"
+        },
+        {
+          "id": "134062",
+          "name": "2. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 2"
+        }
+      ]
+    },
+    "1. Stadtliga Jugend 15": {
+      "name": "1. Stadtliga Jugend 15",
+      "teams": [
+        {
+          "id": "20464",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "130440",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "129894",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "132429",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "130020",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "130247",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "134122",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "129933",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "130629",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "129287",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        },
+        {
+          "id": "130562",
+          "name": "1. Jugend 15",
+          "division_name": "1. Stadtliga Jugend 15"
+        }
+      ]
+    },
+    "1. Stadtliga Gruppe 2": {
+      "name": "1. Stadtliga Gruppe 2",
+      "teams": [
+        {
+          "id": "129655",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129783",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129860",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129185",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129572",
+          "name": "2. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129172",
+          "name": "4. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "129907",
+          "name": "6. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 2"
+        },
+        {
+          "id": "128860",
+          "name": "8. Erwachsene",
+          "division_name": "1. Stadtliga Gruppe 2"
+        }
+      ]
+    },
+    "2. Stadtliga Gruppe 1": {
+      "name": "2. Stadtliga Gruppe 1",
+      "teams": [
+        {
+          "id": "128862",
+          "name": "10. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129719",
+          "name": "12. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129656",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129908",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "128841",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129715",
+          "name": "2. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129582",
+          "name": "3. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 1"
+        },
+        {
+          "id": "129723",
+          "name": "7. Erwachsene",
+          "division_name": "2. Stadtliga Gruppe 1"
+        }
+      ]
+    },
+    "1. Stadtklasse Gruppe 2": {
+      "name": "1. Stadtklasse Gruppe 2",
+      "teams": [
+        {
+          "id": "130041",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130011",
+          "name": "2. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "129787",
+          "name": "2. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "129657",
+          "name": "3. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130238",
+          "name": "3. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "129758",
+          "name": "4. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 2"
+        }
+      ]
+    },
+    "2. Stadtklasse Gruppe 3": {
+      "name": "2. Stadtklasse Gruppe 3",
+      "teams": [
+        {
+          "id": "129964",
+          "name": "3. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "128842",
+          "name": "3. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "130052",
+          "name": "6. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "130249",
+          "name": "8. Erwachsene",
+          "division_name": "2. Stadtklasse Gruppe 3"
+        }
+      ]
+    },
+    "3. Stadtklasse Gruppe 3": {
+      "name": "3. Stadtklasse Gruppe 3",
+      "teams": [
+        {
+          "id": "130332",
+          "name": "3. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "134393",
+          "name": "4. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "129759",
+          "name": "5. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "132432",
+          "name": "5. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "133757",
+          "name": "5. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "129784",
+          "name": "5. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "134175",
+          "name": "7. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 3"
+        }
+      ]
+    },
+    "Bezirksliga - Damen": {
+      "name": "Bezirksliga - Damen",
+      "teams": [
+        {
+          "id": "130524",
+          "name": "1. Damen",
+          "division_name": "Bezirksliga - Damen"
+        },
+        {
+          "id": "130246",
+          "name": "5. Damen",
+          "division_name": "Bezirksliga - Damen"
+        }
+      ]
+    },
+    "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 1": {
+      "name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 1",
+      "teams": [
+        {
+          "id": "129928",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 1"
+        },
+        {
+          "id": "129786",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 1"
+        },
+        {
+          "id": "133815",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 1"
+        },
+        {
+          "id": "129863",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 1"
+        },
+        {
+          "id": "129583",
+          "name": "1. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 1"
+        },
+        {
+          "id": "134441",
+          "name": "3. Jugend 19",
+          "division_name": "1. Stadtliga Jugend 19 - Vorrunde - Gruppe 1"
+        }
+      ]
+    },
+    "Oberliga Erwachsene": {
+      "name": "Oberliga Erwachsene",
+      "teams": [
+        {
+          "id": "129659",
+          "name": "1. Erwachsene",
+          "division_name": "Oberliga Erwachsene"
+        },
+        {
+          "id": "129460",
+          "name": "1. Erwachsene",
+          "division_name": "Oberliga Erwachsene"
+        }
+      ]
+    },
+    "Landesliga Erwachsene, Gruppe 2": {
+      "name": "Landesliga Erwachsene, Gruppe 2",
+      "teams": [
+        {
+          "id": "128853",
+          "name": "1. Erwachsene",
+          "division_name": "Landesliga Erwachsene, Gruppe 2"
+        },
+        {
+          "id": "129535",
+          "name": "1. Erwachsene",
+          "division_name": "Landesliga Erwachsene, Gruppe 2"
+        },
+        {
+          "id": "129660",
+          "name": "2. Erwachsene",
+          "division_name": "Landesliga Erwachsene, Gruppe 2"
+        },
+        {
+          "id": "129283",
+          "name": "2. Erwachsene",
+          "division_name": "Landesliga Erwachsene, Gruppe 2"
+        },
+        {
+          "id": "129462",
+          "name": "3. Erwachsene",
+          "division_name": "Landesliga Erwachsene, Gruppe 2"
+        }
+      ]
+    },
+    "1. Stadtklasse Gruppe 3": {
+      "name": "1. Stadtklasse Gruppe 3",
+      "teams": [
+        {
+          "id": "129144",
+          "name": "1. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "129861",
+          "name": "2. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "129956",
+          "name": "2. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "129716",
+          "name": "3. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "129748",
+          "name": "4. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "129174",
+          "name": "6. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "134374",
+          "name": "8. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 3"
+        },
+        {
+          "id": "130160",
+          "name": "8. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 3"
+        }
+      ]
+    },
+    "Bezirksliga Jugend 19, Gruppe 1": {
+      "name": "Bezirksliga Jugend 19, Gruppe 1",
+      "teams": [
+        {
+          "id": "129662",
+          "name": "1. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 1"
+        },
+        {
+          "id": "129857",
+          "name": "1. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 1"
+        },
+        {
+          "id": "128865",
+          "name": "1. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 1"
+        },
+        {
+          "id": "129839",
+          "name": "1. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 1"
+        },
+        {
+          "id": "130002",
+          "name": "1. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 1"
+        },
+        {
+          "id": "130547",
+          "name": "2. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 1"
+        }
+      ]
+    },
+    "Pokal Jugend 15": {
+      "name": "Pokal Jugend 15",
+      "teams": [
+        {
+          "id": "130373",
+          "name": "1. Jugend 15",
+          "division_name": "Pokal Jugend 15"
+        },
+        {
+          "id": "130330",
+          "name": "1. Jugend 15",
+          "division_name": "Pokal Jugend 15"
+        },
+        {
+          "id": "134544",
+          "name": "1. Jugend 15",
+          "division_name": "Pokal Jugend 15"
+        },
+        {
+          "id": "130380",
+          "name": "1. Jugend 15",
+          "division_name": "Pokal Jugend 15"
+        },
+        {
+          "id": "130183",
+          "name": "1. Jugend 15",
+          "division_name": "Pokal Jugend 15"
+        },
+        {
+          "id": "130073",
+          "name": "1. Jugend 15",
+          "division_name": "Pokal Jugend 15"
+        }
+      ]
+    },
+    "3. Stadtklasse Gruppe 1": {
+      "name": "3. Stadtklasse Gruppe 1",
+      "teams": [
+        {
+          "id": "130250",
+          "name": "15. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "132428",
+          "name": "4. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "130333",
+          "name": "4. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "128843",
+          "name": "4. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "130334",
+          "name": "4. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 1"
+        }
+      ]
+    },
+    "1. Stadtklasse Gruppe 1": {
+      "name": "1. Stadtklasse Gruppe 1",
+      "teams": [
+        {
+          "id": "130137",
+          "name": "13. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "134391",
+          "name": "2. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "129757",
+          "name": "3. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "130012",
+          "name": "3. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 1"
+        },
+        {
+          "id": "130323",
+          "name": "7. Erwachsene",
+          "division_name": "1. Stadtklasse Gruppe 1"
+        }
+      ]
+    },
+    "3. Stadtklasse Gruppe 2": {
+      "name": "3. Stadtklasse Gruppe 2",
+      "teams": [
+        {
+          "id": "129862",
+          "name": "3. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "134121",
+          "name": "3. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130322",
+          "name": "3. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130409",
+          "name": "5. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "130513",
+          "name": "5. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "129760",
+          "name": "6. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 2"
+        },
+        {
+          "id": "133760",
+          "name": "9. Erwachsene",
+          "division_name": "3. Stadtklasse Gruppe 2"
+        }
+      ]
+    },
+    "Kreisunion": {
+      "name": "Kreisunion",
+      "teams": [
+        {
+          "id": "128771",
+          "name": "2. Erwachsene",
+          "division_name": "Kreisunion"
+        },
+        {
+          "id": "129119",
+          "name": "2. Erwachsene",
+          "division_name": "Kreisunion"
+        },
+        {
+          "id": "129537",
+          "name": "3. Erwachsene",
+          "division_name": "Kreisunion"
+        },
+        {
+          "id": "129454",
+          "name": "4. Erwachsene",
+          "division_name": "Kreisunion"
+        }
+      ]
+    },
+    "2. Kreisliga A": {
+      "name": "2. Kreisliga A",
+      "teams": [
+        {
+          "id": "128772",
+          "name": "3. Erwachsene",
+          "division_name": "2. Kreisliga A"
+        },
+        {
+          "id": "129122",
+          "name": "5. Erwachsene",
+          "division_name": "2. Kreisliga A"
+        },
+        {
+          "id": "130158",
+          "name": "5. Erwachsene",
+          "division_name": "2. Kreisliga A"
+        }
+      ]
+    },
+    "1. Kreisklasse A": {
+      "name": "1. Kreisklasse A",
+      "teams": [
+        {
+          "id": "128773",
+          "name": "4. Erwachsene",
+          "division_name": "1. Kreisklasse A"
+        },
+        {
+          "id": "130357",
+          "name": "5. Erwachsene",
+          "division_name": "1. Kreisklasse A"
+        },
+        {
+          "id": "130132",
+          "name": "6. Erwachsene",
+          "division_name": "1. Kreisklasse A"
+        },
+        {
+          "id": "130349",
+          "name": "7. Erwachsene",
+          "division_name": "1. Kreisklasse A"
+        }
+      ]
+    },
+    "Bezirksklasse Erwachsene, Gruppe 1": {
+      "name": "Bezirksklasse Erwachsene, Gruppe 1",
+      "teams": [
+        {
+          "id": "129571",
+          "name": "1. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 1"
+        },
+        {
+          "id": "128806",
+          "name": "2. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 1"
+        },
+        {
+          "id": "128911",
+          "name": "2. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 1"
+        },
+        {
+          "id": "129453",
+          "name": "3. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 1"
+        },
+        {
+          "id": "128857",
+          "name": "5. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 1"
+        },
+        {
+          "id": "129464",
+          "name": "5. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 1"
+        }
+      ]
+    },
+    "Kreisliga West": {
+      "name": "Kreisliga West",
+      "teams": [
+        {
+          "id": "128849",
+          "name": "2. Erwachsene",
+          "division_name": "Kreisliga West"
+        },
+        {
+          "id": "129798",
+          "name": "3. Erwachsene",
+          "division_name": "Kreisliga West"
+        },
+        {
+          "id": "128850",
+          "name": "3. Erwachsene",
+          "division_name": "Kreisliga West"
+        }
+      ]
+    },
+    "Kreisklasse West": {
+      "name": "Kreisklasse West",
+      "teams": [
+        {
+          "id": "130353",
+          "name": "4. Erwachsene",
+          "division_name": "Kreisklasse West"
+        }
+      ]
+    },
+    "3. Bundesliga Damen Süd": {
+      "name": "3. Bundesliga Damen Süd",
+      "teams": [
+        {
+          "id": "128863",
+          "name": "1. Damen",
+          "division_name": "3. Bundesliga Damen Süd"
+        }
+      ]
+    },
+    "Oberliga Damen": {
+      "name": "Oberliga Damen",
+      "teams": [
+        {
+          "id": "129455",
+          "name": "1. Damen",
+          "division_name": "Oberliga Damen"
+        },
+        {
+          "id": "128864",
+          "name": "2. Damen",
+          "division_name": "Oberliga Damen"
+        }
+      ]
+    },
+    "Sachsenliga Damen": {
+      "name": "Sachsenliga Damen",
+      "teams": [
+        {
+          "id": "129466",
+          "name": "1. Damen",
+          "division_name": "Sachsenliga Damen"
+        },
+        {
+          "id": "130103",
+          "name": "3. Damen",
+          "division_name": "Sachsenliga Damen"
+        }
+      ]
+    },
+    "Landesliga Damen, Gruppe 2": {
+      "name": "Landesliga Damen, Gruppe 2",
+      "teams": [
+        {
+          "id": "129456",
+          "name": "2. Damen",
+          "division_name": "Landesliga Damen, Gruppe 2"
+        },
+        {
+          "id": "130198",
+          "name": "4. Damen",
+          "division_name": "Landesliga Damen, Gruppe 2"
+        }
+      ]
+    },
+    "Pokal Jugend 19": {
+      "name": "Pokal Jugend 19",
+      "teams": [
+        {
+          "id": "130379",
+          "name": "1. Jugend 19",
+          "division_name": "Pokal Jugend 19"
+        },
+        {
+          "id": "130414",
+          "name": "1. Jugend 19",
+          "division_name": "Pokal Jugend 19"
+        },
+        {
+          "id": "130548",
+          "name": "1. Jugend 19",
+          "division_name": "Pokal Jugend 19"
+        },
+        {
+          "id": "130356",
+          "name": "1. Jugend 19",
+          "division_name": "Pokal Jugend 19"
+        }
+      ]
+    },
+    "Bezirksliga Jugend 19, Gruppe 2": {
+      "name": "Bezirksliga Jugend 19, Gruppe 2",
+      "teams": [
+        {
+          "id": "129286",
+          "name": "1. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 2"
+        },
+        {
+          "id": "130324",
+          "name": "1. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 2"
+        },
+        {
+          "id": "129926",
+          "name": "1. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 2"
+        },
+        {
+          "id": "130536",
+          "name": "2. Jugend 19",
+          "division_name": "Bezirksliga Jugend 19, Gruppe 2"
+        }
+      ]
+    },
+    "Kreisliga Ost": {
+      "name": "Kreisliga Ost",
+      "teams": [
+        {
+          "id": "128912",
+          "name": "3. Erwachsene",
+          "division_name": "Kreisliga Ost"
+        },
+        {
+          "id": "129972",
+          "name": "3. Erwachsene",
+          "division_name": "Kreisliga Ost"
+        },
+        {
+          "id": "128913",
+          "name": "4. Erwachsene",
+          "division_name": "Kreisliga Ost"
+        },
+        {
+          "id": "128914",
+          "name": "5. Erwachsene",
+          "division_name": "Kreisliga Ost"
+        }
+      ]
+    },
+    "Kreisklasse Ost": {
+      "name": "Kreisklasse Ost",
+      "teams": [
+        {
+          "id": "130351",
+          "name": "6. Erwachsene",
+          "division_name": "Kreisklasse Ost"
+        },
+        {
+          "id": "130543",
+          "name": "7. Erwachsene",
+          "division_name": "Kreisklasse Ost"
+        },
+        {
+          "id": "130601",
+          "name": "8. Erwachsene",
+          "division_name": "Kreisklasse Ost"
+        }
+      ]
+    },
+    "Kreisliga Jugend 19": {
+      "name": "Kreisliga Jugend 19",
+      "teams": [
+        {
+          "id": "130109",
+          "name": "2. Jugend 19",
+          "division_name": "Kreisliga Jugend 19"
+        }
+      ]
+    },
+    "Bezirksklasse Erwachsene, Gruppe 2": {
+      "name": "Bezirksklasse Erwachsene, Gruppe 2",
+      "teams": [
+        {
+          "id": "129580",
+          "name": "1. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 2"
+        },
+        {
+          "id": "129687",
+          "name": "2. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 2"
+        },
+        {
+          "id": "129201",
+          "name": "2. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 2"
+        },
+        {
+          "id": "129965",
+          "name": "5. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 2"
+        },
+        {
+          "id": "129465",
+          "name": "6. Erwachsene",
+          "division_name": "Bezirksklasse Erwachsene, Gruppe 2"
+        }
+      ]
+    },
+    "1. Kreisliga A": {
+      "name": "1. Kreisliga A",
+      "teams": [
+        {
+          "id": "129120",
+          "name": "3. Erwachsene",
+          "division_name": "1. Kreisliga A"
+        },
+        {
+          "id": "129121",
+          "name": "4. Erwachsene",
+          "division_name": "1. Kreisliga A"
+        },
+        {
+          "id": "129538",
+          "name": "4. Erwachsene",
+          "division_name": "1. Kreisliga A"
+        }
+      ]
+    },
+    "Jugend 19 - Liga": {
+      "name": "Jugend 19 - Liga",
+      "teams": [
+        {
+          "id": "129123",
+          "name": "1. Jugend 19",
+          "division_name": "Jugend 19 - Liga"
+        },
+        {
+          "id": "130201",
+          "name": "1. Jugend 19",
+          "division_name": "Jugend 19 - Liga"
+        }
+      ]
+    },
+    "Jugend 15 - Liga B": {
+      "name": "Jugend 15 - Liga B",
+      "teams": [
+        {
+          "id": "129124",
+          "name": "1. Jugend 15",
+          "division_name": "Jugend 15 - Liga B"
+        },
+        {
+          "id": "130005",
+          "name": "1. Jugend 15",
+          "division_name": "Jugend 15 - Liga B"
+        },
+        {
+          "id": "130555",
+          "name": "1. Jugend 15",
+          "division_name": "Jugend 15 - Liga B"
+        },
+        {
+          "id": "130713",
+          "name": "2. Jugend 15",
+          "division_name": "Jugend 15 - Liga B"
+        }
+      ]
+    },
+    "Jugend 15 - Liga A": {
+      "name": "Jugend 15 - Liga A",
+      "teams": [
+        {
+          "id": "129457",
+          "name": "1. Jugend 15",
+          "division_name": "Jugend 15 - Liga A"
+        },
+        {
+          "id": "130554",
+          "name": "2. Jugend 15",
+          "division_name": "Jugend 15 - Liga A"
+        },
+        {
+          "id": "130709",
+          "name": "2. Jugend 15",
+          "division_name": "Jugend 15 - Liga A"
+        }
+      ]
+    },
+    "1. Kreisliga B": {
+      "name": "1. Kreisliga B",
+      "teams": [
+        {
+          "id": "129202",
+          "name": "3. Erwachsene",
+          "division_name": "1. Kreisliga B"
+        },
+        {
+          "id": "130211",
+          "name": "5. Erwachsene",
+          "division_name": "1. Kreisliga B"
+        }
+      ]
+    },
+    "2. Kreisliga B": {
+      "name": "2. Kreisliga B",
+      "teams": [
+        {
+          "id": "129203",
+          "name": "4. Erwachsene",
+          "division_name": "2. Kreisliga B"
+        }
+      ]
+    },
+    "1. Kreisklasse B": {
+      "name": "1. Kreisklasse B",
+      "teams": [
+        {
+          "id": "130006",
+          "name": "5. Erwachsene",
+          "division_name": "1. Kreisklasse B"
+        }
+      ]
+    },
+    "Sachsenliga Erwachsene": {
+      "name": "Sachsenliga Erwachsene",
+      "teams": [
+        {
+          "id": "129282",
+          "name": "1. Erwachsene",
+          "division_name": "Sachsenliga Erwachsene"
+        },
+        {
+          "id": "129461",
+          "name": "2. Erwachsene",
+          "division_name": "Sachsenliga Erwachsene"
+        }
+      ]
+    }
+  },
   "upcoming_matches": [
     {
       "team_id": "128805",
