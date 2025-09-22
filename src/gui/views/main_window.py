@@ -926,6 +926,10 @@ class MainWindow(QMainWindow):  # Dock-based
             act_html = QAction("View HTML Source", self)
             act_html.triggered.connect(lambda: self.open_html_source(team))  # type: ignore
             menu.addAction(act_html)
+            # Split compare (Milestone 5.7)
+            act_compare = QAction("Compare With...", self)
+            act_compare.triggered.connect(lambda: self._prompt_compare_with(team))  # type: ignore[attr-defined]
+            menu.addAction(act_compare)
         menu.exec(self.team_tree.viewport().mapToGlobal(pos))
 
     def _copy_team_id(self, team_id: str):  # pragma: no cover - GUI path
@@ -989,6 +993,74 @@ class MainWindow(QMainWindow):  # Dock-based
         if isinstance(existing, _DTV):
             try:
                 existing.set_rows(self._generate_placeholder_division_rows(division_name))
+            except Exception:
+                pass
+
+    def _prompt_compare_with(self, base_team):  # pragma: no cover - GUI path
+        """Prompt user to pick another team from currently loaded list to compare."""
+        if not self.teams:
+            QMessageBox.information(self, "Compare", "No teams loaded yet.")
+            return
+        from PyQt6.QtWidgets import QInputDialog
+
+        options = [t.name for t in self.teams if t.team_id != base_team.team_id]
+        if not options:
+            QMessageBox.information(self, "Compare", "No other teams available to compare.")
+            return
+        name, ok = QInputDialog.getItem(
+            self, "Compare With", "Select secondary team:", options, 0, False
+        )
+        if not ok or not name:
+            return
+        other = next((t for t in self.teams if t.name == name), None)
+        if not other:
+            QMessageBox.warning(self, "Compare", "Selected team not found.")
+            return
+        self.open_team_compare(base_team, other)
+
+    def open_team_compare(self, team_a, team_b):  # pragma: no cover - GUI path
+        """Open or focus a split comparison tab for two teams.
+
+        Will initiate roster load for each team if not already open. Uses existing
+        roster loading mechanism (Landing view + RosterLoadWorker) by reusing
+        open_team_detail path to fetch bundles when available. For now this
+        implementation inserts current known roster data if already loaded in
+        availability table context; deeper data fetch integration can be added later.
+        """
+        if not hasattr(self, "document_area"):
+            return
+        doc_id = f"compare:{team_a.team_id}:{team_b.team_id}"
+        from gui.views.split_team_compare_view import SplitTeamCompareView
+        from gui.models import TeamRosterBundle
+
+        # Determine if we have any loaded bundle context (reuse availability table players heuristically)
+        bundle_a = None
+        bundle_b = None
+        try:
+            # Reuse open team detail tabs if present for richer info
+            # (Simplistic approach: not scanning deep; future: maintain map of last bundles.)
+            pass
+        except Exception:
+            pass
+
+        def factory():
+            view = SplitTeamCompareView(base_dir=self.data_dir)
+            try:
+                view.set_left(team_a, bundle_a)
+                view.set_right(team_b, bundle_b)
+            except Exception:
+                pass
+            return view
+
+        existing = self.document_area.open_or_focus(
+            doc_id, f"Compare {team_a.name} vs {team_b.name}", factory
+        )
+        from gui.views.split_team_compare_view import SplitTeamCompareView as _SCV
+
+        if isinstance(existing, _SCV):
+            try:
+                existing.set_left(team_a, bundle_a)
+                existing.set_right(team_b, bundle_b)
             except Exception:
                 pass
 

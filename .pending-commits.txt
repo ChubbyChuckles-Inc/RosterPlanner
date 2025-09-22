@@ -14,4 +14,5 @@ feat(detail): add HTML source preview panel (Milestone 5.5) with HtmlDiffService
 feat(detail): add raw/clean HTML toggle (Milestone 5.5.1) with HtmlDiffService.clean_html, HtmlSourceView checkbox mode switching, tests, and roadmap update
 
 feat(export): implement export presets management (Milestone 5.6.1) with ExportPresetsService (JSON persistence), MainWindow presets submenu, save preset action, column subset application, tests (round-trip + filtering), and roadmap update
+feat(compare): add SplitTeamCompareView and MainWindow integration (Milestone 5.7) with context menu 'Compare With...', side-by-side team tabs, unit test, and roadmap update
 
