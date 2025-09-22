@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QTabWidget,
     QPlainTextEdit,
+    QCheckBox,
 )
 from PyQt6.QtCore import Qt
 from gui.services.html_diff import HtmlSource, HtmlDiffService
@@ -39,6 +40,10 @@ class HtmlSourceView(QWidget):
         self.title_label = QLabel("HTML Source")
         self.title_label.setStyleSheet("font-weight:600;font-size:14px")
         root.addWidget(self.title_label)
+        # Toggle row
+        self.chk_clean = QCheckBox("Show cleaned HTML")
+        self.chk_clean.stateChanged.connect(self._on_toggle_mode)  # type: ignore
+        root.addWidget(self.chk_clean)
         self.tabs = QTabWidget()
         # Source tab
         self.txt_source = QPlainTextEdit()
@@ -63,9 +68,28 @@ class HtmlSourceView(QWidget):
     def set_html_source(self, source: HtmlSource):
         self._source = source
         self.title_label.setText(f"HTML: {source.label}")
-        self.txt_source.setPlainText(source.current_text or "")
-        diff_text = self._diff_service.unified_diff(source.previous_text, source.current_text)
-        self.txt_diff.setPlainText(diff_text or "(no previous version)")
+        self._apply_mode()
+
+    # Mode handling -------------------------------------------------
+    def _apply_mode(self):
+        if not self._source:
+            return
+        raw_cur = self._source.current_text or ""
+        raw_prev = self._source.previous_text
+        if self.chk_clean.isChecked():
+            cur = self._diff_service.clean_html(raw_cur)
+            prev = self._diff_service.clean_html(raw_prev) if raw_prev else None
+        else:
+            cur = raw_cur
+            prev = raw_prev
+        self.txt_source.setPlainText(cur)
+        diff_text = self._diff_service.unified_diff(prev, cur)
+        if not diff_text.strip():
+            diff_text = "(no previous version)" if not prev else "(no differences)"
+        self.txt_diff.setPlainText(diff_text)
+
+    def _on_toggle_mode(self):  # pragma: no cover - GUI path
+        self._apply_mode()
 
     # Accessors for tests -------------------------------------------
     def has_diff(self) -> bool:  # pragma: no cover - trivial

@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Iterable
 import difflib
+import re
 
 
 @dataclass
@@ -61,6 +62,35 @@ class HtmlDiffService:
             n=context,
         )
         return "".join(diff_iter)
+
+    # Cleaning ------------------------------------------------------
+    def clean_html(self, html: str) -> str:
+        """Produce a simplified 'cleaned' version of HTML for diffing.
+
+        Steps:
+        - Remove <script> and <style> blocks
+        - Strip HTML comments
+        - Collapse runs of whitespace to a single space
+        - Trim leading/trailing space per line and drop empty leading/trailing lines
+        """
+        if not html:
+            return ""
+        # Remove script/style blocks (non-greedy, case-insensitive)
+        cleaned = re.sub(r"<script[\s\S]*?</script>", "", html, flags=re.IGNORECASE)
+        cleaned = re.sub(r"<style[\s\S]*?</style>", "", cleaned, flags=re.IGNORECASE)
+        # Remove comments
+        cleaned = re.sub(r"<!--.*?-->", "", cleaned, flags=re.DOTALL)
+        # Collapse whitespace
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        # Normalize line breaks around tags for readability (optional minimal formatting)
+        cleaned = re.sub(r">\s<", ">\n<", cleaned)
+        lines = [l.strip() for l in cleaned.splitlines()]
+        # Remove empty lines at start/end
+        while lines and not lines[0]:
+            lines.pop(0)
+        while lines and not lines[-1]:
+            lines.pop()
+        return "\n".join(lines)
 
 
 def _safe_read(path: Path | None) -> str:

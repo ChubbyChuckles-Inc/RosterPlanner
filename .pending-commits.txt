@@ -9,4 +9,5 @@ feat(detail): add multi-column sorting (Milestone 5.3.1) via MultiColumnSorter s
 feat(data): integrate scraping into GUI with ScrapeRunner service, async worker, Data menu action (Run Full Scrape), team reload, unit tests, and README instructions
 feat(detail): implement Club Detail View (Milestone 5.4) with ClubDetailView widget (division aggregation, type split), MainWindow integration (Data menu action), unit test, roadmap update
 feat(detail): add HTML source preview panel (Milestone 5.5) with HtmlDiffService, HtmlSourceView (source + diff tabs), MainWindow context menu integration, unit tests, and roadmap update
+feat(detail): add raw/clean HTML toggle (Milestone 5.5.1) with HtmlDiffService.clean_html, HtmlSourceView checkbox mode switching, tests, and roadmap update
 
