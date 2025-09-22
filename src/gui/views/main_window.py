@@ -38,6 +38,7 @@ from gui.workers import LandingLoadWorker, RosterLoadWorker
 from gui.models import TeamEntry, TeamRosterBundle
 from gui.availability_table import AvailabilityTable
 from planning import availability_store
+from gui.services.layout_persistence import LayoutPersistenceService
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -51,11 +52,16 @@ class MainWindow(QMainWindow):  # Dock-based
         self.av_state = availability_store.load(self.availability_path)
         self.teams: List[TeamEntry] = []
 
+        # Layout persistence (Milestone 2.3)
+        self._layout_service = LayoutPersistenceService(base_dir=self.data_dir)
+
         self.dock_manager = DockManager()
         self._register_docks()
         self._build_document_area()
         self._create_initial_docks()
         self._load_landing()
+        # Attempt to restore previous layout (non-fatal on failure)
+        self._layout_service.load_layout("main", self)
 
     # Registration ---------------------------------------------------
     def _register_docks(self):
@@ -239,6 +245,14 @@ class MainWindow(QMainWindow):  # Dock-based
             return w
 
         self.document_area.open_or_focus(doc_id, team.name, factory)
+
+    # Qt event overrides -------------------------------------------
+    def closeEvent(self, event):  # type: ignore[override]
+        # Save layout before closing
+        try:
+            self._layout_service.save_layout("main", self)
+        finally:
+            super().closeEvent(event)
 
 
 __all__ = ["MainWindow"]
