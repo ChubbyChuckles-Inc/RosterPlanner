@@ -163,7 +163,40 @@ Milestone 5: Detail Views
 [x] 5.6 Export actions (CSV/JSON) per view
 [x] 5.6.1 Export presets management
 [x] 5.7 Split view mode (side-by-side comparison of two teams)
-[ ] 5.8 Tab pinning & color tagging
+[x] 5.8 Tab pinning & color tagging
+
+Milestone 5.9: Data Integration & Persistence Bridging (Scraped HTML -> SQLite -> GUI Views)
+[ ] 5.9.0 Audit current scraped assets & schema alignment (HTML fields vs DB tables)
+[ ] 5.9.1 Define repository interface layer (TeamRepo, PlayerRepo, MatchRepo, DivisionRepo, ClubRepo) with type-hinted contracts
+[ ] 5.9.2 Implement SQLite-backed repositories (read-only for now) using existing schema
+[ ] 5.9.3 Introduce IngestionCoordinator service (detect new/changed HTML, invoke parsers, upsert via repositories)
+[ ] 5.9.4 HTML hash tracking integration (reuse existing hashing; persist to provenance to skip unchanged)
+[ ] 5.9.5 GUI hook: post-scrape automatic ingestion (ScrapeRunner -> IngestionCoordinator -> refresh views)
+[ ] 5.9.6 TeamDetailView: replace placeholder bundle population with repository-driven roster + matches
+[ ] 5.9.7 DivisionTableView: load real ranking table from parsed/ingested data (remove placeholder generator)
+[ ] 5.9.8 ClubDetailView: aggregate stats via repositories (counts, average LivePZ, active/inactive splits)
+[ ] 5.9.9 PlayerDetailView: historical performance retrieval (match deltas) from ingested matches; fallback if insufficient data
+[ ] 5.9.10 Add MatchRepo upcoming/past match queries (date-range filtered)
+[ ] 5.9.11 DataFreshnessService: track last scrape + last ingest timestamps; expose to status bar
+[ ] 5.9.12 Transactional ingest with rollback on parser failure (atomic per division)
+[ ] 5.9.13 Error channel: structured ingest errors surfaced in Logs Dock with severity
+[ ] 5.9.14 Incremental ingest test (modify one roster HTML -> only that team re-parsed)
+[ ] 5.9.15 Repository unit tests (fixture-based: teams, players, matches) for each query path
+[ ] 5.9.16 Integration test: opening TeamDetailView after ingest shows real roster (no placeholder markers)
+[ ] 5.9.17 Integration test: division table displays correct ordering & points from ingested ranking HTML
+[ ] 5.9.18 Performance test: ingest end-to-end (current dataset) < 2s baseline on reference machine
+[ ] 5.9.19 Add simple caching layer (in-memory) for frequently requested team rosters (LRU, size bound)
+[ ] 5.9.20 Consistency validation step post-ingest (foreign key & counts) with warning summary
+[ ] 5.9.21 CLI command hook: ingest-only (without full scrape) for rapid iteration
+[ ] 5.9.22 Command Palette actions: Force Re-ingest, Show Data Freshness
+[ ] 5.9.23 Documentation: ADR - Ingestion Lifecycle & Repository Abstraction
+[ ] 5.9.24 Logging: structured JSON lines for ingest events (start, parsed, skipped, error)
+[ ] 5.9.25 Fallback behavior: if ingest not yet run, views display informative empty states
+[ ] 5.9.26 Graceful degradation: partial ingest (some divisions) still surfaces available data
+[ ] 5.9.27 Future hook placeholders for plugin-based parsers (register additional transforms)
+[ ] 5.9.28 Security / integrity note: sanitize HTML inputs before parsing (baseline helper)
+[ ] 5.9.29 Telemetry counters (optional) for ingest stats (parsed count, skipped count) behind debug flag
+[ ] 5.9.30 Roadmap review & clean-up of placeholder generation code removal
 
 Milestone 6: Advanced Statistics Engine
 [ ] 6.1 Stats service: compute aggregated KPIs (win %, avg LivePZ per lineup, player participation rate)

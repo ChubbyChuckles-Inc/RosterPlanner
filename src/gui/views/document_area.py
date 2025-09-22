@@ -13,16 +13,27 @@ Future enhancements (later milestones):
 
 from __future__ import annotations
 from typing import Callable, Dict, Optional, Any
-from PyQt6.QtWidgets import QTabWidget
+from PyQt6.QtWidgets import QTabWidget, QMenu, QColorDialog
+from PyQt6.QtGui import QColor
+
+from gui.services.tab_metadata_persistence import TabMetadataPersistenceService
 
 __all__ = ["DocumentArea"]
 
 
 class DocumentArea(QTabWidget):
     # (Could add a Qt signal later if needed; for now simple override)
-    def __init__(self):
+    def __init__(self, base_dir: str | None = None):
         super().__init__()
         self._doc_index: Dict[str, int] = {}
+        self._base_dir = base_dir or "."
+        self._tab_meta = TabMetadataPersistenceService(self._base_dir)
+        # Enable custom context menu
+        try:
+            self.setContextMenuPolicy(0x0003)  # Qt.ContextMenuPolicy.CustomContextMenu value
+            self.customContextMenuRequested.connect(self._on_tab_context_menu)  # type: ignore
+        except Exception:
+            pass
 
     # Public API -----------------------------------------------------
     def open_or_focus(self, doc_id: str, title: str, factory: Callable[[], Any]) -> Any:
@@ -33,6 +44,10 @@ class DocumentArea(QTabWidget):
         widget = factory()
         idx = self.addTab(widget, title)  # type: ignore[attr-defined]
         self._doc_index[doc_id] = idx
+        # Apply metadata (color)
+        self._apply_tab_metadata(doc_id, idx)
+        # Reorder if pinned
+        self._reorder_pinned()
         self.setCurrentIndex(idx)  # type: ignore[attr-defined]
         return widget
 
@@ -43,3 +58,110 @@ class DocumentArea(QTabWidget):
         if doc_id not in self._doc_index:
             return None
         return self.widget(self._doc_index[doc_id])  # type: ignore[attr-defined]
+
+    # --- Pin & Color Support --------------------------------------
+    def _on_tab_context_menu(self, pos):  # pragma: no cover - GUI path
+        try:
+            index = self.tabBar().tabAt(pos)  # type: ignore[attr-defined]
+        except Exception:
+            return
+        if index < 0:
+            return
+        # Reverse lookup doc_id
+        doc_id = None
+        for k, v in self._doc_index.items():
+            if v == index:
+                doc_id = k
+                break
+        if not doc_id:
+            return
+        menu = QMenu(self)
+        meta = self._tab_meta.get(doc_id)
+        act_pin = menu.addAction("Unpin" if meta.pinned else "Pin")
+        act_color = menu.addAction("Set Color...")
+        act_clear_color = None
+        if meta.color:
+            act_clear_color = menu.addAction("Clear Color")
+        act_close = menu.addAction("Close Tab")
+        chosen = menu.exec(self.mapToGlobal(pos))
+        if chosen == act_pin:
+            self._tab_meta.set_pinned(doc_id, not meta.pinned)
+            self._reorder_pinned()
+        elif chosen == act_color:
+            qcolor = QColorDialog.getColor(
+                QColor(meta.color) if meta.color else QColor("#ffffff"), self
+            )
+            if qcolor.isValid():
+                self._tab_meta.set_color(doc_id, qcolor.name())
+                self._apply_tab_metadata(doc_id, self._doc_index[doc_id])
+        elif chosen == act_clear_color and meta.color:
+            self._tab_meta.set_color(doc_id, None)
+            self._apply_tab_metadata(doc_id, self._doc_index[doc_id])
+        elif chosen == act_close:
+            self._close_tab(index)
+
+    def _apply_tab_metadata(self, doc_id: str, index: int):  # pragma: no cover - GUI path
+        try:
+            meta = self._tab_meta.get(doc_id)
+            if meta.color:
+                self.tabBar().setTabTextColor(index, QColor(meta.color))  # type: ignore[attr-defined]
+            else:
+                # Reset to default palette color if available (ignore errors)
+                pass
+            if meta.pinned:
+                self.tabBar().setTabText(index, f"📌 {self.tabText(index)}")  # type: ignore[attr-defined]
+            else:
+                txt = self.tabText(index)
+                if txt.startswith("📌 "):
+                    self.tabBar().setTabText(index, txt[3:])  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    def _reorder_pinned(self):  # pragma: no cover - GUI path
+        # Move pinned tabs to the left while preserving their relative order
+        try:
+            pinned = []
+            others = []
+            for doc_id, idx in list(self._doc_index.items()):
+                if self._tab_meta.get(doc_id).pinned:
+                    pinned.append((doc_id, idx))
+                else:
+                    others.append((doc_id, idx))
+            desired_order = [d for d, _ in sorted(pinned, key=lambda t: t[1])] + [
+                d for d, _ in sorted(others, key=lambda t: t[1])
+            ]
+            # Rebuild if order differs
+            current_widgets = {i: self.widget(i) for i in range(self.count())}  # type: ignore[attr-defined]
+            current_titles = {i: self.tabText(i) for i in range(self.count())}  # type: ignore[attr-defined]
+            new_widgets = []
+            for doc_id in desired_order:
+                idx = self._doc_index[doc_id]
+                new_widgets.append((doc_id, current_widgets[idx], current_titles[idx]))
+            if [d for d, _, _ in new_widgets] != list(self._doc_index.keys()):
+                # Clear all tabs and rebuild
+                while self.count():  # type: ignore[attr-defined]
+                    self.removeTab(0)  # type: ignore[attr-defined]
+                self._doc_index.clear()
+                for doc_id, w, title in new_widgets:
+                    new_idx = self.addTab(w, title)  # type: ignore[attr-defined]
+                    self._doc_index[doc_id] = new_idx
+                    self._apply_tab_metadata(doc_id, new_idx)
+        except Exception:
+            pass
+
+    def _close_tab(self, index: int):  # pragma: no cover - GUI path
+        try:
+            # Reverse map doc_id
+            doc_id = None
+            for k, v in list(self._doc_index.items()):
+                if v == index:
+                    doc_id = k
+            self.removeTab(index)  # type: ignore[attr-defined]
+            if doc_id:
+                self._doc_index.pop(doc_id, None)
+                # Adjust indices > removed
+                for k, v in list(self._doc_index.items()):
+                    if v > index:
+                        self._doc_index[k] = v - 1
+        except Exception:
+            pass

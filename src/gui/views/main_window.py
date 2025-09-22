@@ -161,7 +161,7 @@ class MainWindow(QMainWindow):  # Dock-based
 
     # Central area placeholder ---------------------------------------
     def _build_document_area(self):
-        self.document_area = DocumentArea()
+        self.document_area = DocumentArea(base_dir=self.data_dir)
         # For now, empty. Future: open a welcome/dashboard tab.
         self.setCentralWidget(self.document_area)
 
