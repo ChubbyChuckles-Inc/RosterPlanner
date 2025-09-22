@@ -46,6 +46,7 @@ from gui.services.command_registry import global_command_registry
 from gui.services.shortcut_registry import global_shortcut_registry
 from gui.views.shortcut_cheatsheet import ShortcutCheatSheetDialog
 from gui.services.dock_style import DockStyleHelper
+from gui.services.focus_style import install_focus_ring
 from gui.views.command_palette import CommandPaletteDialog
 
 
@@ -78,6 +79,11 @@ class MainWindow(QMainWindow):  # Dock-based
             pass  # non-fatal styling failure
         self._dock_style_helper = DockStyleHelper()
         self._install_dock_event_hooks()
+        # Install focus ring styling (Milestone 2.7)
+        try:
+            install_focus_ring(self)
+        except Exception:
+            pass
 
     # Registration ---------------------------------------------------
     def _register_docks(self):

@@ -8,3 +8,4 @@ feat: implement 2.4.2 recently executed command weighting (recency & frequency b
 feat: implement 2.5 keyboard shortcuts map & cheat sheet dialog (shortcut registry, categorized listing dialog, integration into MainWindow, tests, roadmap)
 feat: implement 2.5.1 shortcut conflicts detector (registry conflict scan, cheat sheet annotation, tests, roadmap)
 feat: implement 2.6 dock handle affordances & docking preview enhancements (custom dock title bars with grip, event hooks, placeholder overlay API, tests, roadmap)
+feat: implement 2.7 focus ring styling for accessibility (FocusRingManager, stylesheet injection, property-based focus highlighting, runtime & style tests, roadmap)

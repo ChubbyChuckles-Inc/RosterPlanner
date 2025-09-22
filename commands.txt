@@ -26,6 +26,8 @@ A professional commit message (e.g., "feat: implement design tokens for color ro
 
 Instead of suggesting changes and asking for approval to apply them, always just apply the changes.
 
+After implementing a new feature add tests for it and run them to assure there is no regression.
+
 Now, read "roadmaps/implementation_GUI.txt", identify the next unfinished task, and proceed with implementation suggestions.
 
 

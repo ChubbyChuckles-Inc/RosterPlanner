@@ -111,7 +111,7 @@ Milestone 2: Dockable Main Window Architecture
 [x] 2.5 Keyboard shortcuts map + in-app cheat sheet dialog
 [x] 2.5.1 Shortcut conflicts detector
 [x] 2.6 Drag handle affordances & visual docking preview enhancements
-[ ] 2.7 Focus ring styling for accessibility
+[x] 2.7 Focus ring styling for accessibility
 
 Milestone 3: Data Layer & SQLite Integration
 [ ] 3.1 Design SQLite schema (divisions, teams, matches, players, clubs, availability, planning_scenarios)
