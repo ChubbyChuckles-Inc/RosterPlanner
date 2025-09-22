@@ -22,6 +22,11 @@ from .query_perf import (  # noqa: F401
     QueryPerformanceLogger,
     QueryRecord,
 )
+from .index_advisor import (  # noqa: F401
+    analyze_query_for_indexes,
+    advise_indexes,
+    IndexSuggestion,
+)
 from .repositories import (  # noqa: F401
     DivisionRepository,
     TeamRepository,
@@ -51,6 +56,9 @@ __all__ = [
     "install_query_performance_logger",
     "QueryPerformanceLogger",
     "QueryRecord",
+    "analyze_query_for_indexes",
+    "advise_indexes",
+    "IndexSuggestion",
     # Repositories
     "DivisionRepository",
     "TeamRepository",

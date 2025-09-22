@@ -35,3 +35,5 @@ feat(gui): RebuildProgressDialog with threaded execution & command integration (
 test(db): rebuild progress success + rollback failure scenarios (Milestone 3.8.1)
 feat(db): query performance logger (threshold-based instrumentation, ring buffer) (Milestone 3.9)
 test(db): query performance logging tests (threshold filtering, ring buffer eviction, subclass instrumentation) (Milestone 3.9)
+feat(db): index advisor heuristic script (EXPLAIN plan scan detection, equality predicate parsing) (Milestone 3.10)
+test(db): index advisor tests (single, composite, existing index skip, dedupe) (Milestone 3.10)
