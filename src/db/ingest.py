@@ -87,6 +87,20 @@ def _record_provenance(
     )
 
 
+def _touch_provenance(conn: sqlite3.Connection, source_file: str) -> None:
+    """Update last_accessed_at & access_count for a provenance row if columns exist.
+
+    Silently no-ops if migration adding those columns not yet applied.
+    """
+    try:
+        conn.execute(
+            "UPDATE ingest_provenance SET last_accessed_at=CURRENT_TIMESTAMP, access_count=COALESCE(access_count,0)+1 WHERE source_file=?",
+            (source_file,),
+        )
+    except sqlite3.OperationalError:
+        pass
+
+
 def _upsert_division(conn: sqlite3.Connection, name: str) -> int:
     cur = conn.cursor()
     # season placeholder: 0 until season extraction implemented
@@ -203,6 +217,8 @@ __all__ = [
     "FileIngestResult",
     "incremental_refresh",
     "IncrementalRefreshResult",
+    "evict_stale_provenance",
+    "EvictionResult",
 ]
 
 
@@ -313,6 +329,7 @@ def incremental_refresh(
     # Parse only ranking files that are new/changed
     for path_str, (ranking_path, status, file_hash) in ranking_meta.items():
         if status not in {"new", "changed"}:
+            _touch_provenance(conn, path_str)
             continue
         try:
             content = ranking_path.read_text(encoding="utf-8", errors="ignore")
@@ -336,6 +353,7 @@ def incremental_refresh(
                     for meta in roster_meta.values():
                         roster_path, r_status, roster_hash = meta
                         if r_status not in {"new", "changed"}:
+                            _touch_provenance(conn, str(roster_path))
                             continue
                         if normalized not in roster_path.name:
                             continue
@@ -357,8 +375,10 @@ def incremental_refresh(
                             result.updated_players += updated
                         # Record roster provenance only after success
                         _record_provenance(conn, str(roster_path), parser_version, roster_hash)
+                        _touch_provenance(conn, str(roster_path))
                 # Record provenance for ranking file after success
                 _record_provenance(conn, path_str, parser_version, file_hash)
+                _touch_provenance(conn, path_str)
                 result.parsed_files += 1
             except Exception as e:  # capture any DB/upsert errors per file
                 result.errors[path_str] = f"ingest_error: {e}"
@@ -366,3 +386,79 @@ def incremental_refresh(
                 continue
 
     return result
+
+
+# --- Eviction Policy (Milestone 3.7.1) ----------------------------------------------------------
+
+
+@dataclass
+class EvictionResult:
+    inspected: int = 0
+    removed: int = 0
+    reason_counts: Dict[str, int] = field(default_factory=dict)
+
+
+def evict_stale_provenance(
+    conn: sqlite3.Connection,
+    max_entries: int | None = None,
+    max_age_days: int | None = None,
+) -> EvictionResult:
+    """Evict stale provenance rows via LRU (size) and/or age policy.
+
+    Order of operations:
+      1. Age-based deletions (rows older than NOW - max_age_days).
+      2. Size-based deletions if total still exceeds max_entries.
+
+    LRU ordering uses (last_accessed_at ASC, access_count ASC) when available; falls back to ingested_at.
+    """
+    res = EvictionResult()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM ingest_provenance")
+    total = cur.fetchone()[0]
+    res.inspected = int(total)
+
+    # Age policy
+    if max_age_days is not None:
+        try:
+            cur.execute(
+                "DELETE FROM ingest_provenance WHERE last_accessed_at < datetime('now', ?)",
+                (f"-{int(max_age_days)} days",),
+            )
+        except sqlite3.OperationalError:
+            cur.execute(
+                "DELETE FROM ingest_provenance WHERE ingested_at < datetime('now', ?)",
+                (f"-{int(max_age_days)} days",),
+            )
+        deleted = cur.rowcount or 0
+        if deleted:
+            res.removed += deleted
+            res.reason_counts["age"] = res.reason_counts.get("age", 0) + deleted
+
+    # Size policy
+    if max_entries is not None:
+        cur.execute("SELECT COUNT(*) FROM ingest_provenance")
+        count_after_age = cur.fetchone()[0]
+        if count_after_age > max_entries:
+            excess = count_after_age - max_entries
+            try:
+                cur.execute(
+                    "SELECT provenance_id FROM ingest_provenance ORDER BY last_accessed_at ASC, access_count ASC LIMIT ?",
+                    (excess,),
+                )
+            except sqlite3.OperationalError:
+                cur.execute(
+                    "SELECT provenance_id FROM ingest_provenance ORDER BY ingested_at ASC LIMIT ?",
+                    (excess,),
+                )
+            victims = [r[0] for r in cur.fetchall()]
+            if victims:
+                cur.execute(
+                    f"DELETE FROM ingest_provenance WHERE provenance_id IN ({','.join(['?']*len(victims))})",
+                    victims,
+                )
+                deleted = cur.rowcount or len(victims)
+                res.removed += deleted
+                res.reason_counts["lru"] = res.reason_counts.get("lru", 0) + deleted
+
+    conn.commit()
+    return res
