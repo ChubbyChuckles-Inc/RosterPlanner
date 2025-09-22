@@ -281,6 +281,14 @@ class MainWindow(QMainWindow):  # Dock-based
         if data_menu is None:
             data_menu = QMenu("&Data", self)
             mb.addMenu(data_menu)
+        # Theme toggle submenu (Milestone 5.10.6)
+        theme_menu = view_menu.addMenu("Theme Variant")
+        act_theme_default = theme_menu.addAction("Default")
+        act_theme_brand = theme_menu.addAction("Brand Neutral")
+        act_theme_high = theme_menu.addAction("High Contrast")
+        act_theme_default.triggered.connect(lambda: self._set_theme_variant("default"))  # type: ignore[attr-defined]
+        act_theme_brand.triggered.connect(lambda: self._set_theme_variant("brand-neutral"))  # type: ignore[attr-defined]
+        act_theme_high.triggered.connect(lambda: self._set_theme_variant("high-contrast"))  # type: ignore[attr-defined]
         # Add actions via convenience overload (returns QAction object)
         reset_action = view_menu.addAction("Reset Layout")
         reset_action.triggered.connect(self._on_reset_layout)  # type: ignore[attr-defined]
@@ -372,6 +380,25 @@ class MainWindow(QMainWindow):  # Dock-based
             lambda: self._on_reset_layout(),
             "Restore default dock arrangement",
         )
+        # Theme variant commands (Milestone 5.10.6)
+        global_command_registry.register(
+            "theme.setDefault",
+            "Set Theme: Default",
+            lambda: self._set_theme_variant("default"),
+            "Switch active theme to Default variant",
+        )
+        global_command_registry.register(
+            "theme.setBrandNeutral",
+            "Set Theme: Brand Neutral",
+            lambda: self._set_theme_variant("brand-neutral"),
+            "Switch active theme to Brand Neutral variant",
+        )
+        global_command_registry.register(
+            "theme.setHighContrast",
+            "Set Theme: High Contrast",
+            lambda: self._set_theme_variant("high-contrast"),
+            "Switch active theme to High Contrast variant",
+        )
 
         # Manual DB rebuild command (Milestone 3.8)
         def _rebuild_db():
@@ -399,6 +426,21 @@ class MainWindow(QMainWindow):  # Dock-based
             lambda: self._export_current_view(ExportFormat.JSON),
             "Serialize current active document tab to JSON",
         )
+
+    def _set_theme_variant(self, variant: str):  # pragma: no cover - GUI path
+        try:
+            from gui.services.service_locator import services as _services
+            from gui.services.theme_service import ThemeService
+        except Exception:
+            return
+        svc = _services.try_get("theme_service")
+        if not svc:
+            return
+        try:
+            svc.set_variant(variant)  # type: ignore[attr-defined]
+            self._set_status(f"Theme set to {variant}")
+        except Exception:
+            pass
 
     # Export helpers -------------------------------------------------
     def _current_document_widget(self):  # pragma: no cover - simple helper

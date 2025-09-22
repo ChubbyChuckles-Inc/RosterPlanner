@@ -164,6 +164,14 @@ def create_app(
                 services.register(name, value)
             except Exception:  # noqa: BLE001 - ignore duplicate
                 pass
+        # Theme service registration (idempotent); may be used by early UI elements
+        try:
+            from gui.services.theme_service import ThemeService  # local import
+
+            if not services.try_get("theme_service"):
+                services.register("theme_service", ThemeService.create_default())
+        except Exception:  # pragma: no cover - non-fatal
+            pass
         # Always override previous startup timing (each bootstrap has its own session metrics)
         services.register("startup_timing", timing, allow_override=True)
         # Register EventBus if not already present
