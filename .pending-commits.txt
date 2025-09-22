@@ -12,3 +12,4 @@ feat: implement 2.7 focus ring styling for accessibility (FocusRingManager, styl
 feat: implement 3.1 SQLite schema (core tables, indexes, schema_meta version storage, helpers, tests, roadmap)
 feat(db): generate ER diagram script and tests (Milestone 3.1.1)
 feat(db): enforce naming conventions validator and tests (Milestone 3.1.2)
+feat(db): implement migration manager with first migration (Milestone 3.2)
