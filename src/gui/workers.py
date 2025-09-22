@@ -87,8 +87,11 @@ class LandingLoadWorker(QThread):
                     teams: list[TeamEntry] = []
                     for d in state.divisions.values():
                         for t in getattr(d, "teams", []):
-                            teams.append(TeamEntry(team_id=t.id, name=t.name, division=d.name))
-                    teams.sort(key=lambda t: (t.division, t.name))
+                            # We do not yet persist club names in tracking JSON; keep None.
+                            teams.append(
+                                TeamEntry(team_id=t.id, name=t.name, division=d.name, club_name=None)
+                            )
+                    teams.sort(key=lambda t: (t.division, t.display_name.lower()))
                     self.finished.emit(teams, "")
                     return
             except Exception:
@@ -101,11 +104,16 @@ class LandingLoadWorker(QThread):
         from gui.repositories.sqlite_impl import create_sqlite_repositories
 
         repos = create_sqlite_repositories(conn)
+        # Pre-load clubs into dict for quick lookup
+        club_map = {c.id: c.name for c in repos.clubs.list_clubs()}
         teams: list[TeamEntry] = []
         for d in repos.divisions.list_divisions():
             for t in repos.teams.list_teams_in_division(d.id):
-                teams.append(TeamEntry(team_id=t.id, name=t.name, division=d.name))
-        teams.sort(key=lambda t: (t.division, t.name))
+                club_name = club_map.get(t.club_id) if getattr(t, "club_id", None) else None
+                teams.append(
+                    TeamEntry(team_id=t.id, name=t.name, division=d.name, club_name=club_name)
+                )
+        teams.sort(key=lambda t: (t.division, t.display_name.lower()))
         return teams
 
 
@@ -133,9 +141,10 @@ class RosterLoadWorker(QThread):
             data_dir = settings.DATA_DIR
             # Attempt find any roster file containing team name to reuse
             roster_html = None
+            search_token = self.team.name.replace(" ", "_")
             for root, _, files in os.walk(data_dir):
                 for f in files:
-                    if f.startswith("team_roster_") and self.team.name.replace(" ", "_") in f:
+                    if f.startswith("team_roster_") and search_token in f:
                         roster_html = filesystem.read_text(os.path.join(root, f))
                         break
                 if roster_html:

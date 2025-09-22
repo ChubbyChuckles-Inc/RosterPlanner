@@ -8,8 +8,15 @@ from typing import List, Dict, Optional
 @dataclass
 class TeamEntry:
     team_id: str
-    name: str
+    name: str  # raw team name (without club prefix)
     division: str
+    club_name: str | None = None
+
+    @property
+    def display_name(self) -> str:
+        if self.club_name and self.club_name.strip() and self.club_name not in self.name:
+            return f"{self.club_name} – {self.name}"  # en dash for visual clarity
+        return self.name
 
 
 @dataclass

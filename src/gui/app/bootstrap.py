@@ -185,6 +185,29 @@ def create_app(
                     conn.execute("PRAGMA foreign_keys=ON")
                 except Exception:  # pragma: no cover
                     pass
+                # --- NEW: Auto-initialize schema & migrations if this is a brand new DB ---
+                try:
+                    cur = conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name='division'"
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        # No core tables yet -> apply schema and migrations
+                        from db.schema import apply_schema  # local import to keep bootstrap light
+                        from db.migration_manager import apply_pending_migrations
+
+                        with conn:
+                            apply_schema(conn)
+                            apply_pending_migrations(conn)
+                        try:
+                            print(  # noqa: T201 - intentional one-time visibility
+                                f"[RosterPlanner] Initialized new SQLite database at: {db_path}"
+                            )
+                        except Exception:  # pragma: no cover - printing should rarely fail
+                            pass
+                except Exception:  # pragma: no cover - non-fatal initialization failure
+                    # Intentionally swallow; downstream code may attempt a rebuild explicitly.
+                    pass
                 services.register("sqlite_conn", conn, allow_override=True)
             except Exception:  # noqa: BLE001 - non-fatal
                 pass

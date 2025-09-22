@@ -80,16 +80,31 @@ class IngestionCoordinator:
                     else:
                         processed_files += 1
                         self._record_provenance(d.ranking_table.path, d.ranking_table.sha1)
+
+                # --- Deduplication phase (group by numeric id extracted from filename path) ---
+                # Build map: numeric_team_id -> list[(team_name, info)]
+                grouped: dict[str, list[tuple[str, object]]] = {}
                 for team_name, info in d.team_rosters.items():
-                    if self._is_unchanged(info.path, info.sha1):
-                        skipped_files += 1
-                        continue
-                    processed_files += 1
-                    self._record_provenance(info.path, info.sha1)
-                    team_id = self._derive_team_id(team_name)
-                    club_id = self._derive_club_id(team_name)
+                    numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(team_name)
+                    grouped.setdefault(numeric_id, []).append((team_name, info))
+
+                for numeric_id, entries in grouped.items():
+                    # Record provenance for all variants first
+                    canonical_name = self._choose_canonical_name([n for n, _ in entries])
+                    chosen_info = None
+                    for name, info in entries:
+                        if self._is_unchanged(info.path, info.sha1):
+                            skipped_files += 1
+                        else:
+                            processed_files += 1
+                            self._record_provenance(info.path, info.sha1)
+                        if name == canonical_name:
+                            chosen_info = info
+                    # Upsert only once per numeric id using canonical name
+                    team_id = self._derive_team_id(canonical_name)
+                    club_id = self._derive_club_id(canonical_name)
                     self._ensure_club(club_id)
-                    self._upsert_team(team_id, team_name, d.division, club_id)
+                    self._upsert_team(team_id, canonical_name, d.division, club_id)
                     teams_ingested += 1
                     # Placeholder players (none parsed yet)
 
@@ -157,3 +172,44 @@ class IngestionCoordinator:
     def _derive_club_id(team_name: str) -> str:
         # Heuristic: use first token as club grouping; refine later when real parsing is implemented
         return team_name.split()[0].lower()
+
+    # New helpers -------------------------------------------------
+    @staticmethod
+    def _extract_numeric_id_from_path(path: str) -> str | None:
+        """Attempt to extract the trailing numeric team id from a roster filename.
+
+        Accepts patterns like:
+        .../team_roster_<division>_<team_name_tokens>_<id>.html
+        .../club_team_<clubname>_<team_name_tokens>_<id>.html
+        Returns the numeric id string if found, else None.
+        """
+        import re, os
+
+        fname = os.path.basename(path)
+        m = re.search(r"_(\d+)\.html$", fname)
+        return m.group(1) if m else None
+
+    @staticmethod
+    def _choose_canonical_name(variants: list[str]) -> str:
+        """Select a canonical team name among variants.
+
+        Preference order:
+        1. Variant containing a separator char (dash) replaced earlier that likely indicates club prefix (longer form)
+        2. Longest variant (most tokens)
+        3. First in list (stable)
+        """
+        if not variants:
+            return "unknown-team"
+        # Normalize whitespace
+        norm = [v.strip() for v in variants if v.strip()]
+        if not norm:
+            return variants[0]
+        # Prefer one that has at least 2 tokens and a digit at end token (common pattern) and contains a club-like token (capitalized word with Umlaut or mixed case)
+        def score(name: str) -> tuple[int, int]:
+            tokens = name.split()
+            has_number_suffix = 1 if (tokens and any(ch.isdigit() for ch in tokens[-1])) else 0
+            length = len(tokens)
+            return (has_number_suffix, length)
+
+        norm.sort(key=score, reverse=True)
+        return norm[0]
