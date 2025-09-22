@@ -60,6 +60,11 @@ class MainWindow(QMainWindow):  # Dock-based
     def _register_docks(self):
         self.dock_manager.register("navigation", "Navigation", self._build_navigation_dock)
         self.dock_manager.register("availability", "Availability", self._build_availability_dock)
+        # Milestone 2.2 core docks (placeholders)
+        self.dock_manager.register("detail", "Detail", self._build_detail_dock)
+        self.dock_manager.register("stats", "Stats", self._build_stats_dock)
+        self.dock_manager.register("planner", "Planner", self._build_planner_dock)
+        self.dock_manager.register("logs", "Logs", self._build_logs_dock)
 
     # Central area placeholder ---------------------------------------
     def _build_document_area(self):
@@ -111,6 +116,31 @@ class MainWindow(QMainWindow):  # Dock-based
         self.table = AvailabilityTable()
         layout.addWidget(self.table)
         return container
+
+    # --- Core placeholder docks (Milestone 2.2) --------------------
+    def _build_detail_dock(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(QLabel("Detail Dock Placeholder (future: contextual detail view)"))
+        return w
+
+    def _build_stats_dock(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(QLabel("Stats Dock Placeholder (future: KPIs, charts)"))
+        return w
+
+    def _build_planner_dock(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(QLabel("Planner Dock Placeholder (future: lineup optimization)"))
+        return w
+
+    def _build_logs_dock(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(QLabel("Logs Dock Placeholder (future: live logging panel)"))
+        return w
 
     # Status helper --------------------------------------------------
     def _set_status(self, text: str):

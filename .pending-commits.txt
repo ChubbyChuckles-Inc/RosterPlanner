@@ -59,3 +59,4 @@ feat: implement 1.9.2 crash reproduction snippet generator (diagnostics module, 
 feat: implement 1.10 health metrics service (FPS/memory/db qps sampling, tests, roadmap)
 feat: implement 2.1 dockable main window (DockManager abstraction, navigation & availability docks, central placeholder, legacy shim, tests, roadmap)
 feat: implement 2.1.1 central tabbed document area (DocumentArea widget, integration into MainWindow, team detail placeholder, tests, roadmap)
+feat: implement 2.2 core docks (detail/stats/planner/logs) with placeholder widgets, tests, roadmap)
