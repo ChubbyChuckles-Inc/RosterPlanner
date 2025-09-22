@@ -21,4 +21,5 @@ feat(data): add DataAuditService (Milestone 5.9.0) to scan scraped HTML assets, 
 feat(repos): define repository interface layer (Milestone 5.9.1) with domain dataclasses (Division, Team, Player, Match, Club), Protocol interfaces, in-memory protocol compliance test, and roadmap update
 feat(repos): add SQLite-backed repositories (Milestone 5.9.2) with read-only implementations, factory helper, in-memory schema tests, and roadmap update
 feat(ingest): add IngestionCoordinator (Milestone 5.9.3) with filename-based discovery via DataAuditService, idempotent division/team upserts, placeholder club inference, unit test, and roadmap update
+feat(ingest): add HTML hash provenance skipping (Milestone 5.9.4) with provenance table, hash comparison, processed/skipped metrics, and tests
 

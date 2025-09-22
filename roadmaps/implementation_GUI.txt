@@ -170,7 +170,7 @@ Milestone 5.9: Data Integration & Persistence Bridging (Scraped HTML -> SQLite -
 [x] 5.9.1 Define repository interface layer (TeamRepo, PlayerRepo, MatchRepo, DivisionRepo, ClubRepo) with type-hinted contracts
 [x] 5.9.2 Implement SQLite-backed repositories (read-only for now) using existing schema
 [x] 5.9.3 Introduce IngestionCoordinator service (detect new/changed HTML, invoke parsers, upsert via repositories)  -- minimal filename-derived ingest (divisions, teams) placeholder
-[ ] 5.9.4 HTML hash tracking integration (reuse existing hashing; persist to provenance to skip unchanged)
+[x] 5.9.4 HTML hash tracking integration (reuse existing hashing; persist to provenance to skip unchanged) -- provenance table + processed/skipped counts
 [ ] 5.9.5 GUI hook: post-scrape automatic ingestion (ScrapeRunner -> IngestionCoordinator -> refresh views)
 [ ] 5.9.6 TeamDetailView: replace placeholder bundle population with repository-driven roster + matches
 [ ] 5.9.7 DivisionTableView: load real ranking table from parsed/ingested data (remove placeholder generator)

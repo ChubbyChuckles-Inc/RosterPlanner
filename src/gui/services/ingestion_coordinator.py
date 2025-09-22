@@ -34,7 +34,8 @@ class IngestionSummary:
     divisions_ingested: int
     teams_ingested: int
     players_ingested: int
-    skipped: int = 0
+    skipped_files: int = 0
+    processed_files: int = 0
 
 
 class IngestionCoordinator:
@@ -59,31 +60,45 @@ class IngestionCoordinator:
 
     # Public ------------------------------------------------------
     def run(self) -> IngestionSummary:
+        self._ensure_provenance_table()
         audit = DataAuditService(str(self.base_dir)).run()
         divisions_ingested = 0
         teams_ingested = 0
         players_ingested = 0
+        skipped_files = 0
+        processed_files = 0
 
         with self.conn:  # single transaction for now (not per-division yet)
-            # Upsert divisions
+            # Upsert divisions & roster-derived teams
             for d in audit.divisions:
                 self._upsert_division(d.division)
                 divisions_ingested += 1
-                # Teams derived from roster filenames
-                for team_name, info in d.team_rosters.items():  # noqa: B007
+                # Ranking table provenance (not yet parsing content)
+                if d.ranking_table:
+                    if self._is_unchanged(d.ranking_table.path, d.ranking_table.sha1):
+                        skipped_files += 1
+                    else:
+                        processed_files += 1
+                        self._record_provenance(d.ranking_table.path, d.ranking_table.sha1)
+                for team_name, info in d.team_rosters.items():
+                    if self._is_unchanged(info.path, info.sha1):
+                        skipped_files += 1
+                        continue
+                    processed_files += 1
+                    self._record_provenance(info.path, info.sha1)
                     team_id = self._derive_team_id(team_name)
-                    # Placeholder: assign a synthetic club id for grouping
                     club_id = self._derive_club_id(team_name)
                     self._ensure_club(club_id)
                     self._upsert_team(team_id, team_name, d.division, club_id)
                     teams_ingested += 1
-                    # Placeholder players (none parsed yet) -> skip
+                    # Placeholder players (none parsed yet)
 
         summary = IngestionSummary(
             divisions_ingested=divisions_ingested,
             teams_ingested=teams_ingested,
             players_ingested=players_ingested,
-            skipped=0,
+            skipped_files=skipped_files,
+            processed_files=processed_files,
         )
         if self.event_bus is not None:
             try:
@@ -109,6 +124,29 @@ class IngestionCoordinator:
         self.conn.execute(
             "INSERT OR REPLACE INTO teams(id, name, division_id, club_id) VALUES(?,?,?,?)",
             (team_id, name, division_id, club_id),
+        )
+
+    # Provenance --------------------------------------------------
+    def _ensure_provenance_table(self):
+        self.conn.execute(
+            """CREATE TABLE IF NOT EXISTS provenance(
+            path TEXT PRIMARY KEY,
+            sha1 TEXT NOT NULL,
+            last_ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            parser_version INTEGER DEFAULT 1
+            )"""
+        )
+
+    def _is_unchanged(self, path: str, sha1: str) -> bool:
+        cur = self.conn.execute("SELECT sha1 FROM provenance WHERE path=?", (path,))
+        row = cur.fetchone()
+        return bool(row and row[0] == sha1)
+
+    def _record_provenance(self, path: str, sha1: str):
+        self.conn.execute(
+            "INSERT INTO provenance(path, sha1, last_ingested_at) VALUES(?,?,CURRENT_TIMESTAMP)\n"
+            "ON CONFLICT(path) DO UPDATE SET sha1=excluded.sha1, last_ingested_at=CURRENT_TIMESTAMP",
+            (path, sha1),
         )
 
     @staticmethod
