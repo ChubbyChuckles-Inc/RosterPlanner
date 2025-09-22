@@ -91,7 +91,6 @@ class IngestionCoordinator:
                     grouped.setdefault(numeric_id, []).append((team_name, info))
 
                 for numeric_id, entries in grouped.items():
-                    # Record provenance for all variants first
                     canonical_name = self._choose_canonical_name([n for n, _ in entries])
                     chosen_info = None
                     for name, info in entries:
@@ -102,13 +101,10 @@ class IngestionCoordinator:
                             self._record_provenance(info.path, info.sha1)
                         if name == canonical_name:
                             chosen_info = info
-                    # Upsert only once per numeric id using canonical name
                     team_id = self._derive_team_id(canonical_name)
-                    club_id = self._derive_club_id(canonical_name)
-                    self._ensure_club(club_id)
-                    self._upsert_team(team_id, canonical_name, d.division, club_id)
+                    player_rows = self._upsert_team(team_id, canonical_name, d.division)
                     teams_ingested += 1
-                    # Placeholder players (none parsed yet)
+                    players_ingested += player_rows
 
         summary = IngestionSummary(
             divisions_ingested=divisions_ingested,
@@ -117,6 +113,31 @@ class IngestionCoordinator:
             skipped_files=skipped_files,
             processed_files=processed_files,
         )
+        # Record high-level ingest summary into a standardized table (provenance_summary)
+        try:
+            self.conn.execute(
+                "CREATE TABLE IF NOT EXISTS provenance_summary(\n"
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+                "ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n"
+                "divisions INTEGER,\n"
+                "teams INTEGER,\n"
+                "players INTEGER,\n"
+                "files_processed INTEGER,\n"
+                "files_skipped INTEGER\n"
+                ")"
+            )
+            self.conn.execute(
+                "INSERT INTO provenance_summary(divisions, teams, players, files_processed, files_skipped) VALUES(?,?,?,?,?)",
+                (
+                    divisions_ingested,
+                    teams_ingested,
+                    players_ingested,
+                    processed_files,
+                    skipped_files,
+                ),
+            )
+        except Exception:
+            pass
         if self.event_bus is not None:
             try:
                 self.event_bus.publish(Event("DATA_REFRESHED", payload={"summary": summary}))
@@ -125,23 +146,124 @@ class IngestionCoordinator:
         return summary
 
     # Internal helpers --------------------------------------------
-    def _upsert_division(self, division_id: str):
+    def _upsert_division(self, division_name: str):
+        # For now treat provided division_id string as name; assign synthetic numeric id via hash
+        # Future parsing will extract proper season + level.
         self.conn.execute(
-            "INSERT OR IGNORE INTO divisions(id, name) VALUES(?, ?)",
-            (division_id, division_id.replace("_", " ")),  # naive name until real parsing
+            "INSERT OR IGNORE INTO division(division_id, name, season) VALUES(?,?,?)",
+            (abs(hash(division_name)) % 10_000_000, division_name.replace("_", " "), 2025),
         )
 
-    def _ensure_club(self, club_id: str):
+    def _ensure_club(self, club_code: str):  # legacy helper retained (unused in new flow)
         self.conn.execute(
-            "INSERT OR IGNORE INTO clubs(id, name) VALUES(?, ?)",
-            (club_id, club_id.replace("_", " ")),  # placeholder name
+            "INSERT OR IGNORE INTO club(club_id, name) VALUES(?, ?)",
+            (abs(hash(club_code)) % 10_000_000, club_code.replace("_", " ")),
         )
 
-    def _upsert_team(self, team_id: str, name: str, division_id: str, club_id: str | None):
+    def _upsert_team(self, team_code: str, full_team_name: str, division_name: str) -> int:
+        """Upsert team with club/suffix splitting and ensure placeholder player.
+
+        Splitting heuristic: if the last token is purely digits treat it as the
+        team suffix (e.g. 'LTTV Leutzscher Füchse 1990 3' -> club='LTTV Leutzscher Füchse 1990', name='3').
+        Otherwise whole name considered club and synthetic suffix '1' used (avoids empty names).
+        """
+        club_full_name, team_suffix = self._split_club_and_suffix(full_team_name)
+        club_numeric_id = abs(hash(club_full_name.lower())) % 10_000_000
         self.conn.execute(
-            "INSERT OR REPLACE INTO teams(id, name, division_id, club_id) VALUES(?,?,?,?)",
-            (team_id, name, division_id, club_id),
+            "INSERT OR IGNORE INTO club(club_id, name) VALUES(?,?)",
+            (club_numeric_id, club_full_name),
         )
+        div_row = self.conn.execute(
+            "SELECT division_id FROM division WHERE name=?",
+            (division_name.replace("_", " "),),
+        ).fetchone()
+        if not div_row:
+            return 0
+        division_id = div_row[0]
+        team_numeric_id = abs(hash(team_code)) % 10_000_000
+        self.conn.execute(
+            "INSERT OR REPLACE INTO team(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
+            (team_numeric_id, club_numeric_id, division_id, team_suffix),
+        )
+        # Parse real roster HTML if available (look for a roster file referencing this team id pattern)
+        added_players = self._parse_and_upsert_players(team_numeric_id, full_team_name)
+        return added_players
+
+    # Roster Parsing ----------------------------------------------
+    def _parse_and_upsert_players(self, team_numeric_id: int, full_team_name: str) -> int:
+        """Attempt to locate and parse a roster HTML file for the given team.
+
+        Strategy: search base_dir for any file under divisions whose filename contains
+        the normalized team name tokens and a trailing numeric id matching the team id hash modulo pattern
+        is brittle; instead we scan for roster files containing the full team name (case-insensitive).
+        Parsing heuristic: extract unique text nodes within table rows or list items that look like player names
+        (contain a space or an uppercase start). We ignore extremely short tokens.
+        """
+        try:
+            import re
+            from bs4 import BeautifulSoup  # type: ignore
+        except Exception:
+            return 0  # BeautifulSoup not installed yet
+
+        # Build candidate files list
+        roster_files: list[Path] = []
+        lower_name = full_team_name.lower().replace("_", " ")
+        for p in self.base_dir.rglob("team_roster_*.html"):
+            try:
+                txt = p.read_text(errors="ignore")
+            except Exception:
+                continue
+            if lower_name in txt.lower():
+                roster_files.append(p)
+        if not roster_files:
+            return 0
+        inserted = 0
+        seen = set(
+            r[0]
+            for r in self.conn.execute(
+                "SELECT full_name FROM player WHERE team_id=?", (team_numeric_id,)
+            ).fetchall()
+        )
+        for rf in roster_files:
+            try:
+                soup = BeautifulSoup(rf.read_text(errors="ignore"), "html.parser")
+            except Exception:
+                continue
+            # Candidate selectors: table rows cells, list items
+            candidates: list[str] = []
+            for sel in ["td", "li", "span"]:
+                for node in soup.select(sel):  # type: ignore
+                    text = (node.get_text(" ").strip()).replace("\xa0", " ")
+                    if not text:
+                        continue
+                    if len(text) < 4:
+                        continue
+                    if text.lower().startswith("geb."):
+                        continue
+                    # Basic name heuristic: at least one space and start with letter
+                    if " " in text and re.match(r"[A-Za-zÄÖÜäöü]", text):
+                        candidates.append(text)
+            # Deduplicate preserving order
+            unique: list[str] = []
+            seen_local = set()
+            for c in candidates:
+                if c not in seen_local and c.lower() not in {u.lower() for u in unique}:
+                    unique.append(c)
+                    seen_local.add(c)
+            for name in unique:
+                if name in seen:
+                    continue
+                player_id = abs(hash((team_numeric_id, name))) % 10_000_000
+                try:
+                    self.conn.execute(
+                        "INSERT OR IGNORE INTO player(player_id, team_id, full_name, live_pz) VALUES(?,?,?,?)",
+                        (player_id, team_numeric_id, name, None),
+                    )
+                    seen.add(name)
+                    inserted += 1
+                except Exception:
+                    continue
+        return inserted
 
     # Provenance --------------------------------------------------
     def _ensure_provenance_table(self):
@@ -171,9 +293,15 @@ class IngestionCoordinator:
         return team_name.lower().replace(" ", "-")
 
     @staticmethod
-    def _derive_club_id(team_name: str) -> str:
-        # Heuristic: use first token as club grouping; refine later when real parsing is implemented
+    def _derive_club_id(team_name: str) -> str:  # legacy compatibility
         return team_name.split()[0].lower()
+
+    @staticmethod
+    def _split_club_and_suffix(full_team_name: str) -> tuple[str, str]:
+        tokens = full_team_name.strip().split()
+        if len(tokens) >= 2 and tokens[-1].isdigit():
+            return " ".join(tokens[:-1]), tokens[-1]
+        return full_team_name, "1"
 
     # New helpers -------------------------------------------------
     @staticmethod

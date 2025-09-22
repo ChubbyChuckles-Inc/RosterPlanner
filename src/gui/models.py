@@ -14,8 +14,8 @@ class TeamEntry:
 
     @property
     def display_name(self) -> str:
-        if self.club_name and self.club_name.strip() and self.club_name not in self.name:
-            return f"{self.club_name} – {self.name}"  # en dash for visual clarity
+        if self.club_name and self.club_name.strip():
+            return f"{self.club_name} – {self.name}"  # always prefix when available
         return self.name
 
 

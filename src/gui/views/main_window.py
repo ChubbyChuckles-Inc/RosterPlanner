@@ -78,7 +78,7 @@ from gui.services.export_presets import ExportPresetsService
 
 
 class MainWindow(QMainWindow):  # Dock-based
-    def __init__(self, club_id: int, season: int, data_dir: str):
+    def __init__(self, club_id: int = 0, season: int = 2025, data_dir: str = "."):
         super().__init__()
         self.setWindowTitle("Roster Planner (Docked)")
         self.club_id = club_id
@@ -762,7 +762,7 @@ class MainWindow(QMainWindow):  # Dock-based
             team = src.get_team_entry(sel)  # type: ignore
         if not team:
             return
-        self._set_status(f"Loading roster for {team.name}...")
+        self._set_status(f"Loading roster for {team.display_name}...")
         self.roster_worker = RosterLoadWorker(team, self.season)
         self.roster_worker.finished.connect(self._on_roster_loaded)
         self.roster_worker.start()
@@ -772,7 +772,9 @@ class MainWindow(QMainWindow):  # Dock-based
             QMessageBox.warning(self, "Roster Load", error)
             self._set_status("Roster load issue")
         else:
-            self._set_status(f"Roster loaded: {bundle.team.name} ({len(bundle.players)} players)")
+            self._set_status(
+                f"Roster loaded: {bundle.team.display_name} ({len(bundle.players)} players)"
+            )
             # Open or update team detail tab with full bundle
             self.open_team_detail(bundle.team, bundle)
         self.table.load(bundle.players, bundle.match_dates)
@@ -830,7 +832,7 @@ class MainWindow(QMainWindow):  # Dock-based
                     pass
             return view
 
-        existing = self.document_area.open_or_focus(doc_id, team.name, factory)
+        existing = self.document_area.open_or_focus(doc_id, team.display_name, factory)
         # If already open and we now have a bundle, update it.
         if bundle is not None and isinstance(existing, TeamDetailView):
             try:
@@ -1002,19 +1004,20 @@ class MainWindow(QMainWindow):  # Dock-based
         from gui.services.service_locator import services as _services
 
         conn = _services.try_get("sqlite_conn")
+        placeholder_mode = False
         if conn is None or not DataStateService(conn).current_state().has_data:
-            QMessageBox.information(
-                self, "Division Table", "No ingested data yet. Run a full scrape first."
-            )
-            return
+            placeholder_mode = True
 
         def factory():
             view = DivisionTableView()
             # Attempt repository-backed standings; fallback to placeholder generator if empty
             try:
-                svc = DivisionDataService()
-                rows = svc.load_division_standings(division_name)
-                if not rows:
+                if not placeholder_mode:
+                    svc = DivisionDataService()
+                    rows = svc.load_division_standings(division_name)
+                    if not rows:
+                        rows = self._generate_placeholder_division_rows(division_name)
+                else:
                     rows = self._generate_placeholder_division_rows(division_name)
             except Exception:
                 rows = self._generate_placeholder_division_rows(division_name)
@@ -1028,7 +1031,7 @@ class MainWindow(QMainWindow):  # Dock-based
         existing = self.document_area.open_or_focus(doc_id, division_name, factory)
         from gui.views.division_table_view import DivisionTableView as _DTV
 
-        if isinstance(existing, _DTV):
+        if isinstance(existing, _DTV) and not placeholder_mode:
             try:
                 svc = DivisionDataService()
                 rows = svc.load_division_standings(division_name)

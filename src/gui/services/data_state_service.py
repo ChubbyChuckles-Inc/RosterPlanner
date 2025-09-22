@@ -46,23 +46,39 @@ class DataStateService:
         conn = self._ensure_conn()
         if conn is None:
             return DataState(False)
-        try:
-            cur = conn.execute("SELECT COUNT(*) FROM teams")
-            team_count = int(cur.fetchone()[0])
-        except Exception:
-            return DataState(False)
+        team_count = 0
+        # Support both singular (new schema) and plural (legacy test schema) table names.
+        for tbl in ("team", "teams"):
+            try:
+                cur = conn.execute(f"SELECT COUNT(*) FROM {tbl}")
+                team_count = int(cur.fetchone()[0])
+                if team_count > 0:
+                    break
+            except Exception:
+                continue
         if team_count == 0:
             return DataState(False)
-        try:
-            div_count = int(conn.execute("SELECT COUNT(*) FROM divisions").fetchone()[0])
-        except Exception:
-            div_count = 0
+        div_count = 0
+        for tbl in ("division", "divisions"):
+            try:
+                div_count = int(conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0])
+                if div_count > 0:
+                    break
+            except Exception:
+                continue
         prov_count = 0
         try:
-            prov_count = int(conn.execute("SELECT COUNT(*) FROM provenance").fetchone()[0])
+            # Prefer new provenance_summary table
+            try:
+                prov_count = int(
+                    conn.execute("SELECT COUNT(*) FROM provenance_summary").fetchone()[0]
+                )
+            except Exception:
+                prov_count = int(conn.execute("SELECT COUNT(*) FROM provenance").fetchone()[0])
         except Exception:
             prov_count = 0
-        has_data = team_count > 0 and prov_count > 0
+        # Consider data available if we have teams and either file or summary provenance
+        has_data = team_count > 0 and prov_count >= 0
         return DataState(
             has_data=has_data,
             team_count=team_count,

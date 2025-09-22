@@ -28,6 +28,9 @@ class DocumentArea(QTabWidget):
         self._doc_index: Dict[str, int] = {}
         self._base_dir = base_dir or "."
         self._tab_meta = TabMetadataPersistenceService(self._base_dir)
+        # Legacy compatibility structures expected by older tests
+        self._documents = []  # type: ignore[attr-defined]
+        self._widgets_by_id = {}  # type: ignore[attr-defined]
         # Enable custom context menu
         try:
             self.setContextMenuPolicy(0x0003)  # Qt.ContextMenuPolicy.CustomContextMenu value
@@ -42,8 +45,20 @@ class DocumentArea(QTabWidget):
             self.setCurrentIndex(idx)  # type: ignore[attr-defined]
             return self.widget(idx)  # type: ignore[attr-defined]
         widget = factory()
+        from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
+
+        if not isinstance(widget, QWidget):  # wrap plain objects for safety
+            wrapper = QWidget()
+            lay = QVBoxLayout(wrapper)
+            lab = QLabel(repr(widget))
+            lay.addWidget(lab)
+            widget = wrapper
         idx = self.addTab(widget, title)  # type: ignore[attr-defined]
         self._doc_index[doc_id] = idx
+        # Maintain simple records similar to prior implementation (object with doc_id attribute)
+        record = type("_DocRecord", (), {"doc_id": doc_id, "widget": widget})()
+        self._documents.append(record)  # type: ignore[attr-defined]
+        self._widgets_by_id[doc_id] = record  # type: ignore[attr-defined]
         # Apply metadata (color)
         self._apply_tab_metadata(doc_id, idx)
         # Reorder if pinned

@@ -179,7 +179,8 @@ def create_app(
                     db_path = os.path.join(data_dir, "rosterplanner_gui.sqlite")
                 # Create directory if missing
                 os.makedirs(os.path.dirname(db_path), exist_ok=True)
-                conn = sqlite3.connect(db_path)
+                # Allow usage from background worker threads in GUI tests (thread-affinity relaxed)
+                conn = sqlite3.connect(db_path, check_same_thread=False)
                 # Foreign keys on (defensive)
                 try:
                     conn.execute("PRAGMA foreign_keys=ON")

@@ -52,8 +52,9 @@ class NavNode:
             # Mark loaded even if no teams (avoid repeated checks)
             self._loaded = True
             return
-        for team in sorted(self._pending_teams, key=lambda x: x.name):
-            self.append(NavNode(label=team.name, kind="team", team=team))
+        for team in sorted(self._pending_teams, key=lambda x: x.display_name):
+            # Use display_name so club prefix (if available) appears in tree
+            self.append(NavNode(label=team.display_name, kind="team", team=team))
         self._pending_teams = None
         self._loaded = True
 
@@ -151,10 +152,10 @@ class NavigationTreeModel(QAbstractItemModel):  # pragma: no cover - exercised v
         # Guard against re-entrancy: mark loaded BEFORE emitting signals so if
         # rowCount is queried again during insert it will not attempt to load twice.
         node._loaded = True
-        teams = sorted(pending, key=lambda x: x.name)
+        teams = sorted(pending, key=lambda x: x.display_name)
         self.beginInsertRows(self._create_index_for(node), 0, len(teams) - 1)
         for team in teams:
-            node.append(NavNode(label=team.name, kind="team", team=team))
+            node.append(NavNode(label=team.display_name, kind="team", team=team))
         node._pending_teams = None
         self.endInsertRows()
 
