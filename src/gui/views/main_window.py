@@ -576,12 +576,14 @@ class MainWindow(QMainWindow):  # Dock-based
         if not hasattr(self, "document_area"):
             return
         from gui.views.team_detail_view import TeamDetailView
+        from gui.services.column_visibility_persistence import ColumnVisibilityPersistenceService
 
         # Attempt to find existing roster bundle if we just loaded it (roster worker stores last bundle via table load)
         # For now we don't maintain a cache map; future optimization could store bundles in a dict.
 
         def factory():
-            view = TeamDetailView()
+            vis_service = ColumnVisibilityPersistenceService(self.data_dir)
+            view = TeamDetailView(visibility_service=vis_service)
             # If we have players already in availability table referencing this team, synthesize a minimal bundle.
             # (Full bundle population occurs after roster worker finishes and calls open_team_detail again.)
             # This avoids empty interim view.

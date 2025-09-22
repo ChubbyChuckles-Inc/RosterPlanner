@@ -151,7 +151,7 @@ Milestone 4: Data Navigation UI
 
 Milestone 5: Detail Views
 [x] 5.1 Team Detail View: roster table, match list, LivePZ summary
-[ ] 5.1.1 Column visibility toggles persisted
+[x] 5.1.1 Column visibility toggles persisted
 [ ] 5.1.2 Inline player hover card (quick stats)
 [ ] 5.2 Player Detail View: career summary (historical LivePZ delta, per-match performance placeholder)
 [ ] 5.2.1 Sparkline micro charts next to player rows

@@ -37,4 +37,4 @@ def test_team_detail_population(app, tmp_path):
     # Roster table rows
     assert widget.roster_table.rowCount() == 3
     # Summary label should mention avg
-    assert "players" in w
+    assert "players" in widget.summary_label.text()
