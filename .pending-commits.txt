@@ -11,3 +11,4 @@ feat: implement 2.6 dock handle affordances & docking preview enhancements (cust
 feat: implement 2.7 focus ring styling for accessibility (FocusRingManager, stylesheet injection, property-based focus highlighting, runtime & style tests, roadmap)
 feat: implement 3.1 SQLite schema (core tables, indexes, schema_meta version storage, helpers, tests, roadmap)
 feat(db): generate ER diagram script and tests (Milestone 3.1.1)
+feat(db): enforce naming conventions validator and tests (Milestone 3.1.2)
