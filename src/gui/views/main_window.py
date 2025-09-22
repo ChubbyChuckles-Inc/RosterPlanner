@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from gui.views.dock_manager import DockManager
+from gui.views.document_area import DocumentArea
 from gui.workers import LandingLoadWorker, RosterLoadWorker
 from gui.models import TeamEntry, TeamRosterBundle
 from gui.availability_table import AvailabilityTable
@@ -51,7 +52,7 @@ class MainWindow(QMainWindow):  # Dock-based
 
         self.dock_manager = DockManager()
         self._register_docks()
-        self._build_central_placeholder()
+        self._build_document_area()
         self._create_initial_docks()
         self._load_landing()
 
@@ -61,10 +62,10 @@ class MainWindow(QMainWindow):  # Dock-based
         self.dock_manager.register("availability", "Availability", self._build_availability_dock)
 
     # Central area placeholder ---------------------------------------
-    def _build_central_placeholder(self):
-        placeholder = QLabel("Central Workspace (tabs forthcoming)")
-        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setCentralWidget(placeholder)
+    def _build_document_area(self):
+        self.document_area = DocumentArea()
+        # For now, empty. Future: open a welcome/dashboard tab.
+        self.setCentralWidget(self.document_area)
 
     def _create_initial_docks(self):
         # Create and add docks with default positions
@@ -159,6 +160,8 @@ class MainWindow(QMainWindow):  # Dock-based
             self._set_status("Roster load issue")
         else:
             self._set_status(f"Roster loaded: {bundle.team.name} ({len(bundle.players)} players)")
+            # Automatically open / focus a team detail tab placeholder
+            self.open_team_detail(bundle.team)
         self.table.load(bundle.players, bundle.match_dates)
         team_id = bundle.team.team_id
         if team_id in self.av_state.teams:
@@ -180,6 +183,22 @@ class MainWindow(QMainWindow):  # Dock-based
         availability_store.save(self.av_state, self.availability_path)
         self._set_status("Availability saved")
         QMessageBox.information(self, "Saved", "Availability data saved.")
+
+    # Team Detail Tabs ----------------------------------------------
+    def open_team_detail(self, team: TeamEntry):
+        doc_id = f"team:{team.team_id}"
+        if not hasattr(self, "document_area"):
+            return
+
+        def factory():
+            w = QWidget()
+            lay = QVBoxLayout(w)
+            lay.addWidget(QLabel(f"Team Detail: {team.name}"))
+            lay.addWidget(QLabel(f"Division: {team.division}"))
+            lay.addWidget(QLabel("(Detailed view forthcoming)"))
+            return w
+
+        self.document_area.open_or_focus(doc_id, team.name, factory)
 
 
 __all__ = ["MainWindow"]
