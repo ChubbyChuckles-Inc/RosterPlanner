@@ -69,7 +69,14 @@ class MainWindow(QMainWindow):  # Dock-based
         self._build_document_area()
         self._create_initial_docks()
         self._load_landing()
-        # Attempt to restore previous layout (non-fatal on failure)
+        # Capture *default* pristine snapshot BEFORE applying any previously saved layout
+        try:
+            self._pristine_geometry = bytes(self.saveGeometry())  # type: ignore[attr-defined]
+            self._pristine_state = bytes(self.saveState())  # type: ignore[attr-defined]
+        except Exception:
+            self._pristine_geometry = None
+            self._pristine_state = None
+        # Attempt to restore previous layout (non-fatal). If it succeeds, snapshot still reflects defaults.
         self._layout_service.load_layout("main", self)
         self._build_menus()
         # Apply dock styling enhancements (Milestone 2.6)
@@ -188,18 +195,35 @@ class MainWindow(QMainWindow):  # Dock-based
         self._register_core_commands()
 
     def _on_reset_layout(self):
-        # Remove saved file
+        # Delete persisted layout file
         self._layout_service.reset_layout("main")
-        # Optionally re-create docks to default arrangement
-        # (Simplest approach: save current state after clearing + reapply defaults)
-        # Clear existing docks (close them)
-        for dock in self.dock_manager.instances():
-            self.removeDockWidget(dock)
-        # Recreate base docks (navigation + availability) in default spots
-        self._create_initial_docks()
-        QMessageBox.information(
-            self, "Layout Reset", "Layout reset to defaults (will persist on next close)."
-        )
+        # If we have an in-memory pristine snapshot, restore it directly
+        from PyQt6.QtCore import QByteArray  # local import
+        restored_via_snapshot = False
+        if getattr(self, "_pristine_geometry", None) and getattr(self, "_pristine_state", None):
+            try:
+                self.restoreGeometry(QByteArray(self._pristine_geometry))  # type: ignore[attr-defined]
+                self.restoreState(QByteArray(self._pristine_state))  # type: ignore[attr-defined]
+                restored_via_snapshot = True
+            except Exception:
+                restored_via_snapshot = False
+        if not restored_via_snapshot:
+            # Fallback: rebuild dock manager and recreate docks
+            for dock in list(self.dock_manager.instances()):
+                try:
+                    self.removeDockWidget(dock)
+                except Exception:
+                    pass
+            # Reinitialize dock manager completely to forget prior instances
+            self.dock_manager = DockManager()
+            self._register_docks()
+            self._create_initial_docks()
+        # Persist snapshot as new baseline
+        try:
+            self._layout_service.save_layout("main", self)
+        except Exception:
+            pass
+        QMessageBox.information(self, "Layout Reset", "Layout restored to defaults.")
 
     # Command Palette ----------------------------------------------
     def _open_command_palette(self):

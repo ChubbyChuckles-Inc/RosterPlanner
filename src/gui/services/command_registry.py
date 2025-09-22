@@ -87,43 +87,24 @@ class CommandRegistry:
            These boosts are capped so they can't dominate fuzzy relevance entirely.
         Returns up to *limit* best matches. Empty query returns first *limit* commands (stable order by id).
         """
-        if not query:
-            return sorted(self._commands.values(), key=lambda e: e.command_id)[:limit]
-        q = query.lower()
-        scored: List[Tuple[float, CommandEntry]] = []
-        # Constants tuned conservatively to avoid overpowering fuzzy score
-        RECENCY_WINDOW = 50  # how many executions back can still give benefit
-        RECENCY_UNIT = 0.6  # each step of recency worth this many points subtracted
-        FREQ_UNIT = 0.9  # multiplier for logarithmic usage count
         import math
-
+        q = query.lower()
+        ranked: List[Tuple[float, CommandEntry]] = []
         for entry in self._commands.values():
-            hay_original = f"{entry.command_id} {entry.title}"
-            hay = hay_original.lower()
-            score = _fuzzy_subsequence_score(q, hay)
-            if score is not None:
-                # Apply recency + frequency boosts if present.
-                # Lower score is better; subtract boosts.
-                last_order = self._last_exec_order.get(entry.command_id)
-                if last_order is not None:
-                    age = self._exec_sequence - last_order
-                    if age < RECENCY_WINDOW:
-                        rec_boost = (RECENCY_WINDOW - age) * RECENCY_UNIT
-                    else:
-                        rec_boost = 0.0
-                else:
-                    rec_boost = 0.0
-                usage = self._usage_count.get(entry.command_id, 0)
-                if usage > 0:
-                    freq_boost = math.log2(usage + 1) * FREQ_UNIT
-                else:
-                    freq_boost = 0.0
-                # Cap boosts to at most 40% of original score to preserve fuzzy ordering.
-                max_total_boost = score * 0.4 if score > 0 else 5.0
-                total_boost = min(rec_boost + freq_boost, max_total_boost)
-                scored.append((score - total_boost, entry))
-        scored.sort(key=lambda t: (t[0], t[1].command_id))
-        return [s[1] for s in scored[:limit]]
+            hay = f"{entry.command_id} {entry.title}".lower()
+            base = _fuzzy_subsequence_score(q, hay)
+            if base is None:
+                continue
+            last_order = self._last_exec_order.get(entry.command_id, 0)
+            usage = self._usage_count.get(entry.command_id, 0)
+            # Composite scoring strategy (Milestone 2.4.2 refinement):
+            # Make recency dominant so the most recently executed command rises to top even
+            # if another command has slightly better raw fuzzy score. Frequency gives a smaller boost.
+            # We subtract boosts because lower score is better.
+            composite = base - (last_order * 100.0) - (math.log2(usage + 1) * 5.0)
+            ranked.append((composite, entry))
+        ranked.sort(key=lambda t: (t[0], t[1].command_id))
+        return [r[1] for r in ranked[:limit]]
 
     # Execution ----------------------------------------------------
     def execute(self, command_id: str) -> Tuple[bool, Optional[str]]:
