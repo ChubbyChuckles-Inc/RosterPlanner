@@ -50,6 +50,7 @@ from gui.services.focus_style import install_focus_ring
 from gui.views.command_palette import CommandPaletteDialog
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
+from gui.views.rebuild_progress_dialog import RebuildProgressDialog
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -256,23 +257,16 @@ class MainWindow(QMainWindow):  # Dock-based
 
         # Manual DB rebuild command (Milestone 3.8)
         def _rebuild_db():
-            # For now create an in-memory DB and run rebuild using data_dir as HTML root.
-            # Future: integrate shared app-level connection & progress dialog.
-            conn = sqlite3.connect(":memory:")
-            conn.execute("PRAGMA foreign_keys=ON")
-            try:
-                rebuild_database(conn, self.data_dir)
-                QMessageBox.information(
-                    self, "DB Rebuild", "Database rebuild completed (in-memory test)."
-                )
-            except Exception as e:  # pragma: no cover - GUI message path
-                QMessageBox.critical(self, "DB Rebuild Failed", str(e))
+            # Launch progress dialog using a temporary on-disk database file inside data_dir.
+            db_file = os.path.join(self.data_dir, "rebuild_preview.sqlite")
+            dlg = RebuildProgressDialog(db_file, self.data_dir, self)
+            dlg.exec()
 
         global_command_registry.register(
             "db.rebuild",
-            "Rebuild Database (In-Memory)",
+            "Rebuild Database (Preview)",
             _rebuild_db,
-            "Drop & recreate schema then ingest all HTML (temporary in-memory run)",
+            "Run database rebuild with progress dialog (preview on isolated file)",
         )
 
     # Shortcuts / Help --------------------------------------------
