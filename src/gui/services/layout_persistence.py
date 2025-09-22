@@ -64,6 +64,11 @@ class LayoutPersistenceService:
         return os.path.join(self.base_dir, f"layout_{name}.json")
 
     def _read_payload(self, path: str) -> Optional[LayoutPayload]:
+        """Attempt to read a layout payload.
+
+        Returns None if file missing OR if version mismatch / invalid.
+        (Migration logic handled in load_layout.)
+        """
         if not os.path.exists(path):
             return None
         try:
@@ -78,6 +83,27 @@ class LayoutPersistenceService:
             )
         except Exception:
             return None
+
+    def _backup_and_invalidate(self, path: str, suffix: str) -> None:
+        """Rename an invalid / legacy layout file for migration purposes.
+
+        Best-effort; failures are swallowed.
+        """
+        if not os.path.exists(path):  # nothing to do
+            return
+        try:
+            base = os.path.basename(path)
+            new_name = base + suffix
+            new_path = os.path.join(os.path.dirname(path), new_name)
+            # Avoid overwriting an existing backup; append numeric if needed
+            if os.path.exists(new_path):
+                i = 1
+                while os.path.exists(new_path + f".{i}") and i < 10:
+                    i += 1
+                new_path = new_path + f".{i}"
+            os.replace(path, new_path)
+        except Exception:
+            pass
 
     # Public API ----------------------------------------------------
     def save_layout(self, name: str, window: QMainWindow) -> bool:  # type: ignore[name-defined]
@@ -94,9 +120,38 @@ class LayoutPersistenceService:
         path = self._path_for(name)
         payload = self._read_payload(path)
         if not payload:
+            # Determine if we need to migrate: if file exists but invalid version/corrupt
+            if os.path.exists(path):
+                # Attempt to read raw JSON to learn version for suffix; ignore errors
+                suffix = ".bak"
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        obj = json.load(f)
+                    old_ver = obj.get("version")
+                    if isinstance(old_ver, int) and old_ver != LAYOUT_VERSION:
+                        suffix = f".v{old_ver}.bak"
+                except Exception:
+                    suffix = ".corrupt.bak"
+                self._backup_and_invalidate(path, suffix)
             return False
         try:
             payload.apply_to(window)
+            return True
+        except Exception:
+            # Corrupt state content; backup and signal failure
+            self._backup_and_invalidate(path, ".applyerr.bak")
+            return False
+
+    def reset_layout(self, name: str) -> bool:
+        """Delete a stored layout file if it exists.
+
+        Returns True if deleted, False if absent or on failure.
+        """
+        path = self._path_for(name)
+        if not os.path.exists(path):
+            return False
+        try:
+            os.remove(path)
             return True
         except Exception:
             return False

@@ -103,8 +103,8 @@ Milestone 2: Dockable Main Window Architecture
 [x] 2.2 Create core docks: Navigation Dock, Detail Dock, Stats Dock, Planner Dock, Logs Dock
 [x] 2.2.1 Provide dock factory registry (extensible by plugins)
 [x] 2.3 Implement layout save/restore (QSettings, named layout profiles)
-[ ] 2.3.1 Add layout reset to defaults action
-[ ] 2.3.2 Detect invalid/legacy layout and auto-migrate
+[x] 2.3.1 Add layout reset to defaults action
+[x] 2.3.2 Detect invalid/legacy layout and auto-migrate
 [ ] 2.4 Add Command Palette (Ctrl+P) for quick actions (open team, search player, run scrape)
 [ ] 2.4.1 Fuzzy matcher scoring utility
 [ ] 2.4.2 Recently executed command weighting

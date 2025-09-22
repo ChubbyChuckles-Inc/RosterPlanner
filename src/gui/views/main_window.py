@@ -28,6 +28,9 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QCalendarWidget,
     QDockWidget,
+    QMenuBar,
+    QMenu,
+    QAction,
 )
 from PyQt6.QtCore import Qt
 
@@ -62,6 +65,7 @@ class MainWindow(QMainWindow):  # Dock-based
         self._load_landing()
         # Attempt to restore previous layout (non-fatal on failure)
         self._layout_service.load_layout("main", self)
+        self._build_menus()
 
     # Registration ---------------------------------------------------
     def _register_docks(self):
@@ -94,6 +98,34 @@ class MainWindow(QMainWindow):  # Dock-based
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, nav_dock)
         avail_dock = self.dock_manager.create("availability")
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, avail_dock)
+
+    def _build_menus(self):
+        mb = self.menuBar() if self.menuBar() else QMenuBar(self)
+        view_menu = None
+        for a in mb.actions():  # reuse if exists
+            if a.text() == "&View":
+                view_menu = a.menu()
+                break
+        if view_menu is None:
+            view_menu = QMenu("&View", self)
+            mb.addMenu(view_menu)
+        reset_action = QAction("Reset Layout", self)
+        reset_action.triggered.connect(self._on_reset_layout)
+        view_menu.addAction(reset_action)
+
+    def _on_reset_layout(self):
+        # Remove saved file
+        self._layout_service.reset_layout("main")
+        # Optionally re-create docks to default arrangement
+        # (Simplest approach: save current state after clearing + reapply defaults)
+        # Clear existing docks (close them)
+        for dock in self.dock_manager.instances():
+            self.removeDockWidget(dock)
+        # Recreate base docks (navigation + availability) in default spots
+        self._create_initial_docks()
+        QMessageBox.information(
+            self, "Layout Reset", "Layout reset to defaults (will persist on next close)."
+        )
 
     # Dock factories -------------------------------------------------
     def _build_navigation_dock(self) -> QWidget:
