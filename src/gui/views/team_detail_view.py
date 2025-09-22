@@ -29,6 +29,7 @@ from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtWidgets import QToolTip
 
 from gui.models import TeamRosterBundle, PlayerEntry, MatchDate
+from gui.services.sparkline import SparklineBuilder
 from gui.services.column_visibility_persistence import (
     ColumnVisibilityPersistenceService,
     ColumnVisibilityState,
@@ -59,7 +60,8 @@ class TeamDetailView(QWidget):
         self._col_state: ColumnVisibilityState | None = (
             visibility_service.load() if visibility_service else None
         )
-        self._column_keys = ["player", "live_pz"]
+        self._column_keys = ["player", "live_pz", "trend"]
+        self._spark_builder = SparklineBuilder()
         self._build_ui()
 
     # UI -----------------------------------------------------------------
@@ -80,7 +82,7 @@ class TeamDetailView(QWidget):
         self.col_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         menu = QMenu(self.col_button)
         self._column_actions: dict[str, QAction] = {}
-        labels = {"player": "Player", "live_pz": "LivePZ"}
+        labels = {"player": "Player", "live_pz": "LivePZ", "trend": "Trend"}
         for key in self._column_keys:
             act = QAction(labels[key], menu)
             act.setCheckable(True)
@@ -95,8 +97,10 @@ class TeamDetailView(QWidget):
         toolbar.addWidget(self.col_button)
         toolbar.addStretch(1)
         roster_layout.addLayout(toolbar)
-        self.roster_table = QTableWidget(0, 2)
-        self.roster_table.setHorizontalHeaderLabels(["Player", "LivePZ"])  # minimal for now
+        self.roster_table = QTableWidget(0, 3)
+        self.roster_table.setHorizontalHeaderLabels(
+            ["Player", "LivePZ", "Trend"]
+        )  # trend sparkline
         self.roster_table.horizontalHeader().setStretchLastSection(True)
         roster_layout.addWidget(self.roster_table)
         # Double-click to open player detail
@@ -150,8 +154,19 @@ class TeamDetailView(QWidget):
             self.roster_table.setItem(row, 0, QTableWidgetItem(p.name))
             livepz_text = "" if p.live_pz is None else str(p.live_pz)
             self.roster_table.setItem(row, 1, QTableWidgetItem(livepz_text))
+            # Placeholder trend sparkline (deterministic based on name hash for test stability)
+            trend_values = self._generate_placeholder_trend(p)
+            spark = self._spark_builder.build(trend_values)
+            self.roster_table.setItem(row, 2, QTableWidgetItem(spark))
         # Ensure visibility applied after population (header unaffected by row ops)
         self._apply_column_visibility()
+
+    def _generate_placeholder_trend(self, player: PlayerEntry) -> List[int]:
+        # Deterministic pseudo-random small range values derived from player name for stable tests
+        base = sum(ord(c) for c in player.name) % 20 + 5  # 5..24
+        # Create 6 points with slight variation
+        vals = [base + ((i * 3) % 7) - 3 for i in range(6)]
+        return vals
 
     def _populate_matches(self, matches: List[MatchDate]):
         self.match_list.clear()

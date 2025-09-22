@@ -3,4 +3,5 @@ feat(detail): complete Team Detail View (Milestone 5.1) adding bundle population
 feat(detail): add column visibility persistence (Milestone 5.1.1) with service, toggle UI, unit & integration tests, and roadmap update
 feat(detail): add inline player hover card (Milestone 5.1.2) with tooltip generation, hover handling, and tests
 feat(detail): implement Player Detail View (Milestone 5.2) with PlayerDetailView + ViewModel, double-click integration from TeamDetailView, placeholder history generation, unit & integration tests, and roadmap update
+feat(detail): add sparkline micro charts (Milestone 5.2.1) with SparklineBuilder service, trend column in TeamDetailView, column visibility integration, unit & integration tests, and roadmap update
 
