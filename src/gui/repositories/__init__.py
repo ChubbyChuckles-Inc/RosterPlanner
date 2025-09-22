@@ -1,7 +1,7 @@
-"""Repository layer public exports (Milestone 5.9.1).
+"""Repository layer public exports (Milestones 5.9.1 - 5.9.2).
 
-Exposes Protocol interfaces and domain dataclasses used across GUI
-services and future ingestion coordinator logic.
+Exposes Protocol interfaces, domain dataclasses, and SQLite-backed
+implementations used across GUI services and upcoming ingestion coordinator.
 """
 
 from .protocols import (
@@ -16,6 +16,15 @@ from .protocols import (
     MatchRepository,
     ClubRepository,
 )
+from .sqlite_impl import (
+    SqliteDivisionRepository,
+    SqliteTeamRepository,
+    SqlitePlayerRepository,
+    SqliteMatchRepository,
+    SqliteClubRepository,
+    create_sqlite_repositories,
+    SqliteRepositories,
+)
 
 __all__ = [
     "Division",
@@ -28,4 +37,11 @@ __all__ = [
     "PlayerRepository",
     "MatchRepository",
     "ClubRepository",
+    "SqliteDivisionRepository",
+    "SqliteTeamRepository",
+    "SqlitePlayerRepository",
+    "SqliteMatchRepository",
+    "SqliteClubRepository",
+    "SqliteRepositories",
+    "create_sqlite_repositories",
 ]
