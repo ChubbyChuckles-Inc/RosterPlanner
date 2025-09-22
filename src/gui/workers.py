@@ -11,6 +11,7 @@ from core import filesystem
 from utils import naming
 from domain.models import Match, Player
 from gui.models import TeamEntry, PlayerEntry, MatchDate, TeamRosterBundle
+from gui.services.team_data_service import TeamDataService  # Milestone 5.9.6 integration
 import os
 import re
 
@@ -51,6 +52,15 @@ class RosterLoadWorker(QThread):
 
     def run(self) -> None:  # type: ignore[override]
         try:
+            # Attempt repository-backed load first (ingested data path)
+            try:
+                svc = TeamDataService()
+                repo_bundle = svc.load_team_bundle(self.team)
+            except Exception:
+                repo_bundle = None
+            if repo_bundle is not None:
+                self.finished.emit(repo_bundle, "")
+                return
             # Build roster link heuristically; rely on ranking link derivation pattern
             # In future integrate stored links; for now attempt search in data dir if exists.
             data_dir = settings.DATA_DIR
