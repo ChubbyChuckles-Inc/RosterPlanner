@@ -283,6 +283,8 @@ The following internal milestones have been implemented to evolve the GUI/servic
 - 1.5.1: Event tracing (recent event ring buffer)
 - 1.5.2: Auto-ingest fallback for pre-existing scrape assets (startup HTML → DB bridging)
 - 5.9.16: Integration test verifying TeamDetailView shows real roster data (see `tests/test_integration_team_detail_after_ingest.py`)
+- 5.10.1: Initial design token application to DivisionTableView (color + typography via tokens, hex drift guard test)
+- 5.10.2: Elevation utility introduced (shadow layering), applied to initial docks, parameter integrity tests added (in progress for broader rollout)
 
 ### Milestone 1.5.1 – EventBus Tracing
 

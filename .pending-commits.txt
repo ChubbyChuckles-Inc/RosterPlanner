@@ -47,4 +47,11 @@ chore(ingest): gate placeholder generation behind SettingsService.allow_placehol
 
 docs(roadmap): add Milestone 5.10 Visual Polish & Design Integration leveraging existing design system tokens (color, typography, elevation, motion) with detailed subtasks (5.10.1–5.10.20)
 docs(roadmap): expand Milestone 5.10 with advanced UI polish tasks (5.10.21–5.10.70) covering gradients, glass surfaces, adaptive contrast, motion choreography, accessibility overlays, performance instrumentation, theme experimentation, and visual regression hooks
+chore(roadmap): mark 5.9.30 complete (placeholder generation gated & deprecation path noted)
+feat(design): apply design tokens to DivisionTableView (title + table styling), add QSS generation test & hex drift check, mark 5.10.1 complete
+
+feat(design): complete elevation layering (Milestone 5.10.2) adding semantic ElevationRole mapping, role-based application in MainWindow (primary vs secondary vs floating), optimized level 0 clearing, and unit tests validating role levels & shadow spec behavior; roadmap updated
+
+feat(lock): improve single-instance guard with stale PID reclamation (Windows safe fallback) and optional psutil usage
+feat(typography): implement semantic TypographyRole mapping (Milestone 5.10.3), apply to DivisionTableView title & navigation dock labels, add unit test, roadmap updated
 

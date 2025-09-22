@@ -35,9 +35,44 @@ class DivisionTableView(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         self.title_label = QLabel("Division Table")
-        self.title_label.setStyleSheet("font-weight:600;font-size:14px;")
+        # Apply semantic typography role
+        try:
+            from gui.design.typography_roles import TypographyRole, font_for_role
+            from gui.design.loader import load_tokens
+
+            self.title_label.setFont(font_for_role(TypographyRole.TITLE))
+            color = load_tokens().color("text", "primary")
+            self.title_label.setStyleSheet(f"color:{color};")
+        except Exception:
+            self.title_label.setStyleSheet("font-weight:600;font-size:14px;")
         root.addWidget(self.title_label)
         self.table = QTableWidget(0, 9)
+        try:
+            from gui.design.loader import load_tokens
+
+            tokens = load_tokens()
+            bg = tokens.color("surface", "primary")
+            txt = tokens.color("text", "primary")
+            alt = tokens.color("surface", "secondary")
+            border = tokens.color("border", "medium")
+            radius = tokens.raw.get("radius", {}).get("sm", 4)
+            self.table.setStyleSheet(
+                "QTableWidget {"
+                f"background:{bg};"
+                f"color:{txt};"
+                f"gridline-color:{border};"
+                f"border:1px solid {border};"
+                f"border-radius:{radius}px;"
+                "}"
+                "QHeaderView::section {"
+                f"background:{alt};"
+                f"color:{txt};"
+                f"border:0px solid {border};"
+                "padding:4px 6px;"
+                "}"
+            )
+        except Exception:
+            pass
         self.table.setHorizontalHeaderLabels(
             [
                 "Pos",

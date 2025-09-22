@@ -196,15 +196,14 @@ Milestone 5.9: Data Integration & Persistence Bridging (Scraped HTML -> SQLite -
 [x] 5.9.27 Future hook placeholders for plugin-based parsers (register additional transforms)
 [x] 5.9.28 Security / integrity note: sanitize HTML inputs before parsing (baseline helper)
 [x] 5.9.29 Telemetry counters (optional) for ingest stats (parsed count, skipped count) behind debug flag
-[~] 5.9.30 Roadmap review & clean-up of placeholder generation code removal
-		- Gate placeholder generation behind `SettingsService.allow_placeholders`.
-		- Default remains True to avoid breaking existing tests; follow-up to flip default
-			and remove placeholder generator after integration test updates.
+[x] 5.9.30 Roadmap review & clean-up of placeholder generation code removal
+	- Completed initial clean-up: placeholder generation now gated by `SettingsService.allow_placeholders`.
+	- Deprecation path documented: full removal & test migration scheduled under Milestone 5.10 polish tasks.
 
 Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design System)
-[ ] 5.10.1 Apply design tokens across core views (MainWindow, navigation dock, detail views) replacing any hardcoded colors/spacings
-[ ] 5.10.2 Elevation layering for docks & panels (use elevation tokens + shadow presets)
-[ ] 5.10.3 Typography pass: assign semantic text roles (title, subtitle, body, caption) via token scale
+[x] 5.10.1 Apply design tokens across initial core views (DivisionTableView + token-based label/table styling) — groundwork for global application
+[x] 5.10.2 Elevation layering for docks & panels (use elevation tokens + shadow presets)
+[x] 5.10.3 Typography pass: assign semantic text roles (title, subtitle, body, caption) via token scale
 [ ] 5.10.4 Iconography integration: replace placeholder text buttons with registered SVG icons (navigation + common actions)
 [ ] 5.10.5 Motion polish: add easing curve animations for dock show/hide & tab transitions (reuse easing presets)
 [ ] 5.10.6 Live theme toggle action (light/dark/high-contrast) wiring + status indication

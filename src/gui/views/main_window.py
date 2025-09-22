@@ -180,6 +180,29 @@ class MainWindow(QMainWindow):  # Dock-based
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, nav_dock)
         avail_dock = self.dock_manager.create("availability")
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, avail_dock)
+        # Secondary docks created lazily on demand; proactively instantiate to apply elevation roles
+        secondary_ids = ["detail", "stats", "planner", "logs", "recent"]
+        secondary_docks = []
+        for did in secondary_ids:
+            try:
+                dock = self.dock_manager.create(did)
+                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+                secondary_docks.append(dock)
+            except Exception:
+                pass
+        # Apply elevation via semantic roles (Milestone 5.10.2 completion)
+        try:
+            from gui.design.elevation import (
+                apply_elevation_role,
+                ElevationRole,
+            )
+
+            apply_elevation_role(nav_dock, ElevationRole.PRIMARY_DOCK)
+            apply_elevation_role(avail_dock, ElevationRole.PRIMARY_DOCK)
+            for d in secondary_docks:
+                apply_elevation_role(d, ElevationRole.SECONDARY_DOCK)
+        except Exception:
+            pass
         # Style new docks
         try:
             helper = DockStyleHelper()
@@ -187,7 +210,7 @@ class MainWindow(QMainWindow):  # Dock-based
             helper.create_title_bar(avail_dock)
         except Exception:
             pass
-        for d in (nav_dock, avail_dock):
+        for d in (nav_dock, avail_dock, *secondary_docks):
             try:
                 d.topLevelChanged.connect(self._on_dock_top_level_changed)  # type: ignore
             except Exception:
@@ -206,12 +229,32 @@ class MainWindow(QMainWindow):  # Dock-based
 
     def _on_dock_top_level_changed(self, floating: bool):  # pragma: no cover
         # Placeholder: We could show a subtle overlay when floating starts.
+        try:
+            from gui.design.elevation import apply_elevation_role, ElevationRole
+        except Exception:
+            apply_elevation_role = None  # type: ignore
+        sender = self.sender()
         if floating:
+            if apply_elevation_role and sender is not None:
+                try:
+                    apply_elevation_role(sender, ElevationRole.FLOATING_DOCK)
+                except Exception:
+                    pass
             try:
                 self._dock_style_helper.show_overlay(self)
             except Exception:
                 pass
         else:
+            if apply_elevation_role and sender is not None:
+                try:
+                    # Revert to appropriate base role (primary vs secondary) using id
+                    dock_id = getattr(sender, "objectName", lambda: "")()
+                    if dock_id in ("navigation", "availability"):
+                        apply_elevation_role(sender, ElevationRole.PRIMARY_DOCK)
+                    else:
+                        apply_elevation_role(sender, ElevationRole.SECONDARY_DOCK)
+                except Exception:
+                    pass
             try:
                 self._dock_style_helper.hide_overlay(self)
             except Exception:
@@ -498,7 +541,14 @@ class MainWindow(QMainWindow):  # Dock-based
         button_bar.addWidget(self.save_btn)
         layout.addLayout(button_bar)
 
-        layout.addWidget(QLabel("Teams / Divisions"))
+        try:
+            from gui.design.typography_roles import TypographyRole, font_for_role
+
+            _teams_label = QLabel("Teams / Divisions")
+            _teams_label.setFont(font_for_role(TypographyRole.SUBTITLE))
+            layout.addWidget(_teams_label)
+        except Exception:
+            layout.addWidget(QLabel("Teams / Divisions"))
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search teams...")
         layout.addWidget(self.search_input)
@@ -540,7 +590,14 @@ class MainWindow(QMainWindow):  # Dock-based
         self.team_tree.customContextMenuRequested.connect(self._on_nav_context_menu)  # type: ignore
         layout.addWidget(self.team_tree)
 
-        layout.addWidget(QLabel("Match Dates (Calendar)"))
+        try:
+            from gui.design.typography_roles import TypographyRole, font_for_role
+
+            _cal_label = QLabel("Match Dates (Calendar)")
+            _cal_label.setFont(font_for_role(TypographyRole.SUBTITLE))
+            layout.addWidget(_cal_label)
+        except Exception:
+            layout.addWidget(QLabel("Match Dates (Calendar)"))
         self.calendar = QCalendarWidget()
         self.calendar.setGridVisible(True)
         layout.addWidget(self.calendar)

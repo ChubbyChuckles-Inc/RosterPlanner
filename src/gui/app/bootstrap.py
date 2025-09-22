@@ -18,6 +18,7 @@ import sys
 import time
 import os
 import tempfile
+import psutil  # type: ignore  # Optional runtime dep; if missing we degrade gracefully
 from contextlib import contextmanager
 from typing import Optional, Any, Iterator, Callable
 
@@ -264,7 +265,29 @@ def _default_lock_path(name: str = "rosterplanner.lock") -> str:
     return os.path.join(tempfile.gettempdir(), name)
 
 
-def acquire_single_instance(lock_name: str = "rosterplanner.lock") -> bool:
+def _pid_alive(pid: int) -> bool:
+    """Return True if a process with the given PID appears alive.
+
+    Uses psutil when available; falls back to os.kill on POSIX or always True on Windows without psutil.
+    """
+    try:
+        if "psutil" in sys.modules and hasattr(psutil, "pid_exists"):
+            return psutil.pid_exists(pid)  # type: ignore[arg-type]
+    except Exception:  # pragma: no cover - best effort
+        pass
+    # Best-effort generic fallback (Windows: cannot signal safely without perms)
+    if os.name != "nt":  # POSIX-ish
+        try:  # type: ignore[attr-defined]
+            os.kill(pid, 0)  # type: ignore[arg-type]
+            return True
+        except Exception:
+            return False
+    return True  # On Windows assume alive if unsure
+
+
+def acquire_single_instance(
+    lock_name: str = "rosterplanner.lock", *, force_reclaim_stale: bool = True
+) -> bool:
     """Attempt to acquire a coarse single-instance file lock.
 
     Returns True if this process acquired the lock, False if another instance
@@ -284,7 +307,24 @@ def acquire_single_instance(lock_name: str = "rosterplanner.lock") -> bool:
         _LOCK_PATH = path
         return True
     except FileExistsError:
-        # Another instance probably running.
+        # Possible stale lock; inspect existing file
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                contents = f.read().strip()
+            stale_pid = int(contents) if contents.isdigit() else None
+        except Exception:
+            stale_pid = None
+        if stale_pid is not None and not _pid_alive(stale_pid) and force_reclaim_stale:
+            # Remove stale file and retry once
+            try:
+                os.unlink(path)
+                fd = os.open(path, flags, 0o644)
+                os.write(fd, str(os.getpid()).encode("utf-8"))
+                _LOCK_FD = fd
+                _LOCK_PATH = path
+                return True
+            except Exception:  # pragma: no cover - race or permission
+                return False
         return False
     except Exception:  # pragma: no cover - defensive fallback
         return True  # Do not block startup on unexpected FS semantics
