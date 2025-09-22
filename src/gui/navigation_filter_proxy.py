@@ -67,6 +67,31 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
         self._label_index: List[Tuple[str, str]] | None = None  # (original, lower)
         self._index_ready = False
 
+        # Chip-based filters (Milestone 4.3)
+        # Accept empty sets meaning: no restriction
+        self._division_types: set[str] = set()  # e.g., {"Erwachsene", "Jugend"}
+        self._levels: set[str] = set()  # e.g., {"Bezirksliga", "Stadtliga", "Stadtklasse"}
+        self._active_only: bool = False
+
+    # Chip Filter Setters -----------------------------------------
+    def setDivisionTypes(self, types: set[str]):
+        if types == self._division_types:
+            return
+        self._division_types = set(types)
+        self.invalidateFilter()
+
+    def setLevels(self, levels: set[str]):
+        if levels == self._levels:
+            return
+        self._levels = set(levels)
+        self.invalidateFilter()
+
+    def setActiveOnly(self, active: bool):
+        if active == self._active_only:
+            return
+        self._active_only = active
+        self.invalidateFilter()
+
     # Public API ---------------------------------------------------
     def scheduleFilterPattern(self, pattern: str):
         """Debounced filter setter (Milestone 4.2.1)."""
@@ -129,19 +154,67 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
 
     # Filtering ----------------------------------------------------
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:  # type: ignore[override]
-        if not self._pattern:
+        # Basic early accept if no text pattern & no chip filters
+        if (
+            not self._pattern
+            and not self._division_types
+            and not self._levels
+            and not self._active_only
+        ):
             return True
-        # Kick off index build asynchronously the first time filtering occurs
-        self._ensure_index()
+        # Kick off index build if a text pattern is involved
+        if self._pattern:
+            self._ensure_index()
         idx = self.sourceModel().index(source_row, 0, source_parent)  # type: ignore
         node = self.sourceModel().data(idx, Qt.ItemDataRole.UserRole)  # type: ignore
         if node is None:
             return True
-        # If division or season: accept if any child matches recursively
         if node.kind in ("season", "division"):
+            # Division / season nodes must pass chip filters on division label if applicable OR any descendant match.
+            if node.kind == "division" and not self._division_meta_pass(node.label):
+                # Even if division label itself fails chip filters, it can still be accepted if a descendant matches.
+                return self._any_descendant_matches(idx)
             return self._any_descendant_matches(idx)
         if node.kind == "team":
-            return self._match_team_label(node.label)
+            # Team must satisfy chip filters (evaluated on its division parent) + pattern
+            parent_div = node.parent.label if node.parent else ""
+            if not self._division_meta_pass(parent_div):
+                return False
+            if self._pattern and not self._match_team_label(node.label):
+                return False
+            if self._active_only:
+                # Placeholder active flag logic: treat teams containing inactive marker as inactive.
+                # Real implementation would consult a repository / state.
+                if "(inactive)" in node.label.lower():
+                    return False
+            return True
+        return True
+
+    # Chip filter helpers -----------------------------------------
+    def _division_meta_pass(self, division_label: str) -> bool:
+        """Check division label against chip filters.
+
+        Conventions (simplistic heuristics for now):
+        - Division label contains "Jugend" -> Jugend, else Erwachsene.
+        - Level classification based on substring in label.
+        """
+        # Division type
+        if self._division_types:
+            div_type = "Jugend" if "Jugend" in division_label else "Erwachsene"
+            if div_type not in self._division_types:
+                return False
+        if self._levels:
+            level = None
+            if "Bezirksliga" in division_label:
+                level = "Bezirksliga"
+            elif "Stadtliga" in division_label:
+                level = "Stadtliga"
+            elif "Stadtklasse" in division_label:
+                level = "Stadtklasse"
+            if level and level not in self._levels:
+                return False
+            if level is None and self._levels:
+                return False
         return True
 
     def _match_team_label(self, label: str) -> bool:

@@ -32,6 +32,9 @@ from PyQt6.QtWidgets import (
     QMenu,
     QTreeView,
     QLineEdit,
+    QCheckBox,
+    QGroupBox,
+    QSizePolicy,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -299,6 +302,33 @@ class MainWindow(QMainWindow):  # Dock-based
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search teams...")
         layout.addWidget(self.search_input)
+
+        # Filter Chips (Milestone 4.3)
+        chips_box = QGroupBox("Filters")
+        chips_layout = QVBoxLayout(chips_box)
+        # Division Types
+        type_row = QHBoxLayout()
+        self.chk_type_erw = QCheckBox("Erwachsene")
+        self.chk_type_jugend = QCheckBox("Jugend")
+        for chk in (self.chk_type_erw, self.chk_type_jugend):
+            chk.stateChanged.connect(self._on_filter_chips_changed)  # type: ignore
+            type_row.addWidget(chk)
+        chips_layout.addLayout(type_row)
+        # Levels
+        lvl_row = QHBoxLayout()
+        self.chk_lvl_bez = QCheckBox("Bezirksliga")
+        self.chk_lvl_stadtliga = QCheckBox("Stadtliga")
+        self.chk_lvl_stadtklasse = QCheckBox("Stadtklasse")
+        for chk in (self.chk_lvl_bez, self.chk_lvl_stadtliga, self.chk_lvl_stadtklasse):
+            chk.stateChanged.connect(self._on_filter_chips_changed)  # type: ignore
+            lvl_row.addWidget(chk)
+        chips_layout.addLayout(lvl_row)
+        # Active
+        self.chk_active_only = QCheckBox("Active Only")
+        self.chk_active_only.stateChanged.connect(self._on_filter_chips_changed)  # type: ignore
+        chips_layout.addWidget(self.chk_active_only)
+        chips_box.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        layout.addWidget(chips_box)
         self.team_tree = QTreeView()
         self.team_tree.setHeaderHidden(True)
         layout.addWidget(self.team_tree)
@@ -381,6 +411,26 @@ class MainWindow(QMainWindow):  # Dock-based
             self.team_tree.expand(root_idx)
         self.team_tree.clicked.connect(self._on_tree_item_clicked)  # type: ignore
         self._set_status(f"Loaded {len(teams)} teams")
+
+    def _on_filter_chips_changed(self):  # pragma: no cover - GUI path
+        proxy = getattr(self, "team_filter_proxy", None)
+        if not proxy:
+            return
+        types = set()
+        if self.chk_type_erw.isChecked():
+            types.add("Erwachsene")
+        if self.chk_type_jugend.isChecked():
+            types.add("Jugend")
+        levels = set()
+        if self.chk_lvl_bez.isChecked():
+            levels.add("Bezirksliga")
+        if self.chk_lvl_stadtliga.isChecked():
+            levels.add("Stadtliga")
+        if self.chk_lvl_stadtklasse.isChecked():
+            levels.add("Stadtklasse")
+        proxy.setDivisionTypes(types)
+        proxy.setLevels(levels)
+        proxy.setActiveOnly(self.chk_active_only.isChecked())
 
     # Roster + Players -----------------------------------------------
     def _load_selected_roster(self):
