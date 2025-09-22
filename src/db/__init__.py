@@ -4,9 +4,6 @@ This package provides utilities for initializing and inspecting the
 SQLite database used by RosterPlanner.
 
 Public API:
-- apply_schema: Apply the base schema to a sqlite3 connection.
-- get_existing_tables: Return a list of existing tables in the database.
-- generate_er_mermaid: Produce a Mermaid ER diagram text for documentation.
 """
 
 from .schema import apply_schema, get_existing_tables  # noqa: F401
@@ -18,3 +15,4 @@ from .migration_manager import (
     preview_pending_migration_sql,
 )  # noqa: F401
 from .ingest import ingest_path, hash_html  # noqa: F401
+from .integrity import run_integrity_checks  # noqa: F401

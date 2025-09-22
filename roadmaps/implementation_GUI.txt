@@ -123,8 +123,8 @@ Milestone 3: Data Layer & SQLite Integration
 [x] 3.3 Build ingestion pipeline: HTML -> parsed objects -> DB upsert (idempotent)
 [x] 3.3.1 Hash each raw HTML; skip unchanged ingestion
 [x] 3.3.2 Record ingestion provenance table (timestamp, source file, parser version)
-[ ] 3.4 Add integrity checks (foreign keys, uniqueness of team_id per season)
-[ ] 3.4.1 Automated integrity test runnable from CLI
+[x] 3.4 Add integrity checks (foreign keys, uniqueness of team_id per season)
+[x] 3.4.1 Automated integrity test runnable from CLI
 [ ] 3.5 Abstract Repository layer (TeamRepo, MatchRepo, PlayerRepo, ClubRepo, AvailabilityRepo)
 [ ] 3.5.1 Introduce read-only vs write repo segregation interfaces
 [ ] 3.6 Implement unit tests for repositories (in-memory SQLite)
