@@ -105,7 +105,7 @@ Milestone 2: Dockable Main Window Architecture
 [x] 2.3 Implement layout save/restore (QSettings, named layout profiles)
 [x] 2.3.1 Add layout reset to defaults action
 [x] 2.3.2 Detect invalid/legacy layout and auto-migrate
-[ ] 2.4 Add Command Palette (Ctrl+P) for quick actions (open team, search player, run scrape)
+[x] 2.4 Add Command Palette (Ctrl+P) for quick actions (open team, search player, run scrape)
 [ ] 2.4.1 Fuzzy matcher scoring utility
 [ ] 2.4.2 Recently executed command weighting
 [ ] 2.5 Keyboard shortcuts map + in-app cheat sheet dialog

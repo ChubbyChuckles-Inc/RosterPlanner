@@ -32,7 +32,8 @@ from PyQt6.QtWidgets import (
     QMenu,
     QAction,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QShortcut
+from PyQt6.QtGui import QKeySequence
 
 from gui.views.dock_manager import DockManager
 from gui.views.document_area import DocumentArea
@@ -42,6 +43,8 @@ from gui.models import TeamEntry, TeamRosterBundle
 from gui.availability_table import AvailabilityTable
 from planning import availability_store
 from gui.services.layout_persistence import LayoutPersistenceService
+from gui.services.command_registry import global_command_registry
+from gui.views.command_palette import CommandPaletteDialog
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -112,6 +115,14 @@ class MainWindow(QMainWindow):  # Dock-based
         reset_action = QAction("Reset Layout", self)
         reset_action.triggered.connect(self._on_reset_layout)
         view_menu.addAction(reset_action)
+        # Command Palette action
+        palette_action = QAction("Command Palette...", self)
+        palette_action.setShortcut("Ctrl+P")
+        palette_action.triggered.connect(self._open_command_palette)
+        view_menu.addAction(palette_action)
+        # Global shortcut (in addition to menu for clarity)
+        QShortcut(QKeySequence("Ctrl+P"), self, activated=self._open_command_palette)
+        self._register_core_commands()
 
     def _on_reset_layout(self):
         # Remove saved file
@@ -125,6 +136,32 @@ class MainWindow(QMainWindow):  # Dock-based
         self._create_initial_docks()
         QMessageBox.information(
             self, "Layout Reset", "Layout reset to defaults (will persist on next close)."
+        )
+
+    # Command Palette ----------------------------------------------
+    def _open_command_palette(self):
+        dlg = CommandPaletteDialog(self)
+        dlg.exec()
+
+    def _register_core_commands(self):
+        # Basic commands; ignore failures if already registered
+        global_command_registry.register(
+            "app.refreshTeams",
+            "Refresh Teams",
+            lambda: self._load_landing(),
+            "Reload team list from source",
+        )
+        global_command_registry.register(
+            "app.saveAvailability",
+            "Save Availability",
+            lambda: self._save_availability(),
+            "Persist current availability state",
+        )
+        global_command_registry.register(
+            "view.resetLayout",
+            "Reset Layout",
+            lambda: self._on_reset_layout(),
+            "Restore default dock arrangement",
         )
 
     # Dock factories -------------------------------------------------
