@@ -543,9 +543,27 @@ class MainWindow(QMainWindow):  # Dock-based
         except Exception:
             pass
         self.refresh_btn.clicked.connect(self._load_landing)
-        self.load_roster_btn = QPushButton("Load Roster")
+        self.load_roster_btn = QPushButton("Load")
+        try:
+            from gui.design.icon_registry import get_icon
+
+            ico_load = get_icon("folder-open", size=16)
+            if ico_load:
+                self.load_roster_btn.setIcon(ico_load)
+                self.load_roster_btn.setToolTip("Load selected team roster")
+        except Exception:
+            pass
         self.load_roster_btn.clicked.connect(self._load_selected_roster)
-        self.save_btn = QPushButton("Save Availability")
+        self.save_btn = QPushButton("Save")
+        try:
+            from gui.design.icon_registry import get_icon
+
+            ico_save = get_icon("save", size=16)
+            if ico_save:
+                self.save_btn.setIcon(ico_save)
+                self.save_btn.setToolTip("Save availability changes")
+        except Exception:
+            pass
         self.save_btn.clicked.connect(self._save_availability)
         button_bar.addWidget(self.refresh_btn)
         button_bar.addWidget(self.load_roster_btn)

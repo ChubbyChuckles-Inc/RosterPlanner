@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
-from PyQt6.QtGui import QIcon, QPixmap, QPainter
+from typing import Dict, Optional, Tuple
+from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PyQt6.QtCore import Qt
 from PyQt6.QtSvg import QSvgRenderer  # type: ignore
 from PyQt6.QtCore import QByteArray, QSize
@@ -63,8 +63,8 @@ class IconRegistry:
         else:
             self._defs[name] = IconDefinition(name=name, path=path)
 
-    def get_icon(self, name: str, *, size: int = 16) -> Optional[QIcon]:
-        key = (name, size)
+    def get_icon(self, name: str, *, size: int = 16, color: str | None = None) -> Optional[QIcon]:
+        key: Tuple[str, int, str | None] = (name, size, color)
         if key in self._loaded:
             return self._loaded[key]
         definition = self._defs.get(name)
@@ -83,13 +83,24 @@ class IconRegistry:
             renderer.render(painter)
         finally:
             painter.end()
+        if color:
+            # Simple monochrome tint: draw colored rectangle using destination-in composition
+            try:
+                tint = QColor(color)
+                mask = pm.createMaskFromColor(Qt.GlobalColor.transparent, mode=Qt.MaskMode.MaskOutColor)  # type: ignore
+                tinted = QPixmap(pm.size())
+                tinted.fill(tint)
+                tinted.setMask(mask)
+                pm = tinted
+            except Exception:  # pragma: no cover - best effort
+                pass
         icon = QIcon(pm)
         self._loaded[key] = icon
         return icon
 
 
-def get_icon(name: str, *, size: int = 16) -> Optional[QIcon]:
-    return IconRegistry.instance().get_icon(name, size=size)
+def get_icon(name: str, *, size: int = 16, color: str | None = None) -> Optional[QIcon]:
+    return IconRegistry.instance().get_icon(name, size=size, color=color)
 
 
 __all__ = ["IconRegistry", "get_icon", "IconDefinition"]
