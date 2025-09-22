@@ -201,4 +201,168 @@ __all__ = [
     "hash_html",
     "IngestReport",
     "FileIngestResult",
+    "incremental_refresh",
+    "IncrementalRefreshResult",
 ]
+
+
+# --- Incremental Refresh (Milestone 3.7) -------------------------------------------------------
+
+
+@dataclass
+class IncrementalRefreshResult:
+    """Result summary for `incremental_refresh`.
+
+    Attributes:
+        processed_files: Count of files whose hashes were evaluated (ranking + roster).
+        parsed_files: Files actually parsed this run (new or changed).
+        skipped_unchanged: Files skipped because hash matched existing provenance.
+        new_files: Newly discovered files with no prior provenance row.
+        changed_files: Previously seen source files whose content hash changed, triggering re-parse.
+        inserted_players: Aggregate inserted player rows (from underlying ingest logic).
+        updated_players: Aggregate updated player rows.
+        errors: Mapping of source_file -> error string for any failures while parsing/upserting. Errors do not stop the overall refresh unless critical (future enhancement: severity classification).
+    """
+
+    processed_files: int = 0
+    parsed_files: int = 0
+    skipped_unchanged: int = 0
+    new_files: int = 0
+    changed_files: int = 0
+    inserted_players: int = 0
+    updated_players: int = 0
+    errors: Dict[str, str] = field(default_factory=dict)
+
+
+def incremental_refresh(
+    conn: sqlite3.Connection,
+    root_path: str | Path,
+    parser_version: str = PARSER_VERSION_DEFAULT,
+) -> IncrementalRefreshResult:
+    """Perform an incremental refresh of HTML assets under `root_path`.
+
+    This function scans ranking and roster HTML files (same patterns as `ingest_path`) and
+    selects only those whose content hash is new or changed relative to the `ingest_provenance` table.
+
+    Strategy:
+        1. Enumerate candidate files (ranking_table_*.html + team_roster_*.html).
+        2. Compute hash for each and classify into buckets: new / unchanged / changed.
+           (Changed currently means: same source_file exists with different hash value recorded.)
+        3. For ranking files deemed new or changed, perform a focused ingest similar to `ingest_path` but
+           limiting roster parsing to roster files in the new/changed set (or roster files referenced that are themselves new/changed).
+        4. Record provenance only after successful parsing/upsert.
+
+    Returns a summary object with counts. Errors for individual files are captured; a failure does not abort
+    other file processing (best-effort incremental semantics).
+
+    NOTE: Implementation TBD in subsequent step (Milestone 3.7). Currently returns an empty result placeholder.
+    """
+    root = Path(root_path)
+    result = IncrementalRefreshResult()
+
+    ranking_files = list(root.rglob("ranking_table_*.html"))
+    roster_files = list(root.rglob("team_roster_*.html"))
+
+    # Build provenance map: source_file -> hash (latest). We assume (source_file, hash) uniqueness, so we fetch latest by insertion order.
+    prov_cur = conn.cursor()
+    prov_cur.execute("SELECT source_file, hash FROM ingest_provenance")
+    provenance: Dict[str, str] = {row[0]: row[1] for row in prov_cur.fetchall()}
+
+    # Helper classification
+    def classify_file(path: Path) -> tuple[str, str]:
+        try:
+            content = path.read_text(encoding="utf-8", errors="ignore")
+        except Exception as e:  # capture IO errors
+            result.errors[str(path)] = f"read_error: {e}"  # will count as processed but not parsed
+            return "error", ""
+        file_hash = hash_html(content)
+        prior = provenance.get(str(path))
+        if prior is None:
+            return "new", file_hash
+        if prior == file_hash:
+            return "unchanged", file_hash
+        return "changed", file_hash
+
+    # Classify ranking + roster files
+    ranking_meta: Dict[str, tuple[Path, str, str]] = {}  # path -> (path, status, hash)
+    for rf in ranking_files:
+        status, h = classify_file(rf)
+        if status != "error":
+            ranking_meta[str(rf)] = (rf, status, h)
+            result.processed_files += 1
+            if status == "unchanged":
+                result.skipped_unchanged += 1
+            elif status == "new":
+                result.new_files += 1
+            elif status == "changed":
+                result.changed_files += 1
+
+    roster_meta: Dict[str, tuple[Path, str, str]] = {}
+    for tf in roster_files:
+        status, h = classify_file(tf)
+        if status != "error":
+            roster_meta[str(tf)] = (tf, status, h)
+            result.processed_files += 1
+            if status == "unchanged":
+                result.skipped_unchanged += 1
+            elif status == "new":
+                result.new_files += 1
+            elif status == "changed":
+                result.changed_files += 1
+
+    # Parse only ranking files that are new/changed
+    for path_str, (ranking_path, status, file_hash) in ranking_meta.items():
+        if status not in {"new", "changed"}:
+            continue
+        try:
+            content = ranking_path.read_text(encoding="utf-8", errors="ignore")
+            division_name, team_entries = parse_ranking_table(
+                content, source_hint=ranking_path.name
+            )
+        except Exception as e:  # parsing error
+            result.errors[path_str] = f"parse_error: {e}"
+            continue
+        # Ingest division + teams + related roster files limited to those new/changed
+        with conn:
+            try:
+                div_id = _upsert_division(conn, division_name)
+                for t in team_entries:
+                    team_name = t.get("team_name")
+                    if not team_name:
+                        continue
+                    team_id = _upsert_team(conn, div_id, team_name)
+                    # Find candidate roster files containing normalized team name
+                    normalized = team_name.replace(" ", "_")
+                    for meta in roster_meta.values():
+                        roster_path, r_status, roster_hash = meta
+                        if r_status not in {"new", "changed"}:
+                            continue
+                        if normalized not in roster_path.name:
+                            continue
+                        try:
+                            roster_html = roster_path.read_text(encoding="utf-8", errors="ignore")
+                            players = extract_players(roster_html, team_id=str(team_id))
+                        except Exception as e:
+                            result.errors[str(roster_path)] = f"roster_parse_error: {e}"
+                            continue
+                        inserted = updated = 0
+                        for p in players:
+                            ins, upd = _upsert_player(conn, team_id, p.name, p.live_pz)
+                            if ins:
+                                inserted += 1
+                            if upd:
+                                updated += 1
+                        if players:
+                            result.inserted_players += inserted
+                            result.updated_players += updated
+                        # Record roster provenance only after success
+                        _record_provenance(conn, str(roster_path), parser_version, roster_hash)
+                # Record provenance for ranking file after success
+                _record_provenance(conn, path_str, parser_version, file_hash)
+                result.parsed_files += 1
+            except Exception as e:  # capture any DB/upsert errors per file
+                result.errors[path_str] = f"ingest_error: {e}"
+                # Let transaction rollback automatically; continue with next file
+                continue
+
+    return result
