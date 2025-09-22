@@ -107,6 +107,16 @@ class MainWindow(QMainWindow):  # Dock-based
         self._scrape_runner.scrape_started.connect(self._on_scrape_started)  # type: ignore
         self._scrape_runner.scrape_finished.connect(self._on_scrape_finished)  # type: ignore
         self._scrape_runner.scrape_failed.connect(self._on_scrape_failed)  # type: ignore
+        # Milestone 5.9.5: attach post-scrape ingestion hook (if bootstrap registered installer)
+        try:  # pragma: no cover - defensive; integration exercised via separate test
+            from gui.services.service_locator import services as _services
+
+            installer = _services.try_get("install_post_scrape_ingest_hook")
+            if installer:
+                # Provide a lambda returning current data_dir to allow future dynamic changes
+                installer(self._scrape_runner, lambda: self.data_dir)
+        except Exception:
+            pass
         # Export + Presets services (Milestones 5.6 / 5.6.1)
         self._export_service = ExportService()
         self._export_presets = ExportPresetsService(self.data_dir)

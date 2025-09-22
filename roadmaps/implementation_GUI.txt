@@ -171,7 +171,7 @@ Milestone 5.9: Data Integration & Persistence Bridging (Scraped HTML -> SQLite -
 [x] 5.9.2 Implement SQLite-backed repositories (read-only for now) using existing schema
 [x] 5.9.3 Introduce IngestionCoordinator service (detect new/changed HTML, invoke parsers, upsert via repositories)  -- minimal filename-derived ingest (divisions, teams) placeholder
 [x] 5.9.4 HTML hash tracking integration (reuse existing hashing; persist to provenance to skip unchanged) -- provenance table + processed/skipped counts
-[ ] 5.9.5 GUI hook: post-scrape automatic ingestion (ScrapeRunner -> IngestionCoordinator -> refresh views)
+[x] 5.9.5 GUI hook: post-scrape automatic ingestion (ScrapeRunner -> IngestionCoordinator -> refresh views) -- PostScrapeIngestionHook integrated via bootstrap/MainWindow, sqlite_conn auto-registration, integration test added
 [ ] 5.9.6 TeamDetailView: replace placeholder bundle population with repository-driven roster + matches
 [ ] 5.9.7 DivisionTableView: load real ranking table from parsed/ingested data (remove placeholder generator)
 [ ] 5.9.8 ClubDetailView: aggregate stats via repositories (counts, average LivePZ, active/inactive splits)

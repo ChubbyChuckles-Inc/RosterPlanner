@@ -23,3 +23,5 @@ feat(repos): add SQLite-backed repositories (Milestone 5.9.2) with read-only imp
 feat(ingest): add IngestionCoordinator (Milestone 5.9.3) with filename-based discovery via DataAuditService, idempotent division/team upserts, placeholder club inference, unit test, and roadmap update
 feat(ingest): add HTML hash provenance skipping (Milestone 5.9.4) with provenance table, hash comparison, processed/skipped metrics, and tests
 
+feat(ingest): automate post-scrape ingestion (Milestone 5.9.5) adding PostScrapeIngestionHook, bootstrap + MainWindow integration, sqlite_conn auto-registration, integration test (post-scrape ingestion events), and roadmap update
+

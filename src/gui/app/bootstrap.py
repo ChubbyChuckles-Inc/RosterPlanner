@@ -19,7 +19,7 @@ import time
 import os
 import tempfile
 from contextlib import contextmanager
-from typing import Optional, Any, Iterator
+from typing import Optional, Any, Iterator, Callable
 
 from gui.design import load_tokens, DesignTokens
 from gui.i18n.direction import (
@@ -32,6 +32,13 @@ from gui.app.config_store import load_config, save_config, AppConfig
 import atexit
 from gui.services.service_locator import services, ServiceLocator
 from gui.services.event_bus import EventBus
+import sqlite3
+
+# Lazy import for optional post-scrape ingestion hook (Milestone 5.9.5)
+try:  # pragma: no cover - optional during early bootstrap
+    from gui.services.post_scrape_ingest import PostScrapeIngestionHook  # type: ignore
+except Exception:  # noqa: BLE001
+    PostScrapeIngestionHook = None  # type: ignore
 from .timing import TimingLogger
 import json
 
@@ -100,7 +107,13 @@ def parse_rtl(argv: list[str] | None = None) -> bool:
 
 
 def create_app(
-    *, safe_mode: bool | None = None, headless: bool | None = None, rtl: bool | None = None
+    *,
+    safe_mode: bool | None = None,
+    headless: bool | None = None,
+    rtl: bool | None = None,
+    data_dir: str | None = None,
+    ensure_sqlite: bool = True,
+    sqlite_path_provider: Callable[[str], str] | None = None,
 ) -> AppContext:
     """Create and initialize the GUI application context.
 
@@ -155,6 +168,26 @@ def create_app(
         # Register EventBus if not already present
         # Always provide a fresh EventBus each bootstrap (test isolation)
         services.register("event_bus", EventBus(), allow_override=True)
+
+        # -- Milestone 5.9.5 integration: ensure sqlite connection service exists for ingestion
+        if ensure_sqlite and data_dir:
+            try:
+                # Allow caller to influence on-disk db path (future migrations may change naming)
+                if sqlite_path_provider:
+                    db_path = sqlite_path_provider(data_dir)
+                else:
+                    db_path = os.path.join(data_dir, "rosterplanner_gui.sqlite")
+                # Create directory if missing
+                os.makedirs(os.path.dirname(db_path), exist_ok=True)
+                conn = sqlite3.connect(db_path)
+                # Foreign keys on (defensive)
+                try:
+                    conn.execute("PRAGMA foreign_keys=ON")
+                except Exception:  # pragma: no cover
+                    pass
+                services.register("sqlite_conn", conn, allow_override=True)
+            except Exception:  # noqa: BLE001 - non-fatal
+                pass
 
     timing.stop()
 
@@ -262,14 +295,20 @@ def single_instance(lock_name: str = "rosterplanner.lock") -> Iterator[bool]:
             release_single_instance()
 
 
-def create_application(*, safe_mode: bool | None = None, rtl: bool | None = None) -> AppContext:
+def create_application(
+    *,
+    safe_mode: bool | None = None,
+    rtl: bool | None = None,
+    data_dir: str | None = None,
+    enable_post_scrape_ingest: bool = True,
+) -> AppContext:
     """High-level convenience wrapper for typical GUI launches.
 
     - Enforces single-instance (best-effort). If already running, exits process
       with code 1 after printing a short message.
     - Creates the app context (non-headless) and returns it.
     """
-    ctx = create_app(safe_mode=safe_mode, headless=False, rtl=rtl)
+    ctx = create_app(safe_mode=safe_mode, headless=False, rtl=rtl, data_dir=data_dir)
     # Attempt lock after minimal construction so we have tokens/logging if desired.
     if not acquire_single_instance():  # Another instance is running
         print("Another RosterPlanner instance is already running.")  # noqa: T201
@@ -280,6 +319,20 @@ def create_application(*, safe_mode: bool | None = None, rtl: bool | None = None
             except Exception:
                 pass
         # We purposefully do not raise; caller can inspect return if needed.
+    # Attach post-scrape ingestion hook if requested and available
+    if enable_post_scrape_ingest and PostScrapeIngestionHook is not None:
+        try:
+            # ScrapeRunner is created inside MainWindow later; hook will be attached there.
+            # Provide a helper function for later consumption.
+            services.register(
+                "install_post_scrape_ingest_hook",
+                lambda runner, data_dir_provider: PostScrapeIngestionHook(
+                    runner, data_dir_provider
+                ),
+                allow_override=True,
+            )
+        except Exception:  # pragma: no cover
+            pass
     return ctx
 
 
