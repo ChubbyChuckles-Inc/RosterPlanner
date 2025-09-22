@@ -1,3 +1,4 @@
+feat(detail): scaffold Team Detail View (Milestone 5.1) with TeamDetailView widget, ViewModel, summary metrics, and opening integration; add unit & integration tests and mark roadmap 5.1 partial
 feat: implement 2.3 layout save/restore (versioned JSON payload, auto restore on startup, save on close, tests, roadmap)
 feat: implement 2.3.1 layout reset action (service reset, menu action, tests, roadmap)
 feat: implement 2.3.2 layout migration (version & corrupt detection, auto-backup with suffixes, tests, roadmap)

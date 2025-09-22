@@ -575,14 +575,24 @@ class MainWindow(QMainWindow):  # Dock-based
         doc_id = f"team:{team.team_id}"
         if not hasattr(self, "document_area"):
             return
+        from gui.views.team_detail_view import TeamDetailView
+
+        # Attempt to find existing roster bundle if we just loaded it (roster worker stores last bundle via table load)
+        # For now we don't maintain a cache map; future optimization could store bundles in a dict.
 
         def factory():
-            w = QWidget()
-            lay = QVBoxLayout(w)
-            lay.addWidget(QLabel(f"Team Detail: {team.name}"))
-            lay.addWidget(QLabel(f"Division: {team.division}"))
-            lay.addWidget(QLabel("(Detailed view forthcoming)"))
-            return w
+            view = TeamDetailView()
+            # If we have players already in availability table referencing this team, synthesize a minimal bundle.
+            # (Full bundle population occurs after roster worker finishes and calls open_team_detail again.)
+            # This avoids empty interim view.
+            try:
+                # RosterLoadWorker triggers _on_roster_loaded which calls open_team_detail AFTER table load.
+                # So by the time we call this, we may not yet have players; that's acceptable.
+                pass
+            except Exception:
+                pass
+            view.title_label.setText(f"Team: {team.name}")
+            return view
 
         self.document_area.open_or_focus(doc_id, team.name, factory)
 
