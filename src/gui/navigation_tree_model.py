@@ -144,12 +144,18 @@ class NavigationTreeModel(QAbstractItemModel):  # pragma: no cover - exercised v
             return
         pending = node._pending_teams or []
         if not pending:
+            # No teams -> just mark loaded and clear placeholder
             node._loaded = True
             node._pending_teams = None
             return
-        # Insert all children in one batch
-        self.beginInsertRows(self._create_index_for(node), 0, len(pending) - 1)
-        node.ensure_loaded()
+        # Guard against re-entrancy: mark loaded BEFORE emitting signals so if
+        # rowCount is queried again during insert it will not attempt to load twice.
+        node._loaded = True
+        teams = sorted(pending, key=lambda x: x.name)
+        self.beginInsertRows(self._create_index_for(node), 0, len(teams) - 1)
+        for team in teams:
+            node.append(NavNode(label=team.name, kind="team", team=team))
+        node._pending_teams = None
         self.endInsertRows()
 
     def _create_index_for(self, node: NavNode) -> QModelIndex:

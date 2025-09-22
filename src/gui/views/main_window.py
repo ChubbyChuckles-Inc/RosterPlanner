@@ -235,6 +235,9 @@ class MainWindow(QMainWindow):  # Dock-based
         # Scrape action in Data menu
         self._act_scrape = data_menu.addAction("Run Full Scrape")
         self._act_scrape.triggered.connect(self._trigger_full_scrape)  # type: ignore[attr-defined]
+        # Club overview (Milestone 5.4)
+        self._act_club_overview = data_menu.addAction("Open Club Overview")
+        self._act_club_overview.triggered.connect(self._open_club_overview)  # type: ignore[attr-defined]
         # Global shortcut (in addition to menu for clarity)
         QShortcut(QKeySequence("Ctrl+P"), self, activated=self._open_command_palette)
         # Register shortcut in registry (id stable for future conflict detection)
@@ -776,16 +779,16 @@ class MainWindow(QMainWindow):  # Dock-based
         menu.exec(self.team_tree.viewport().mapToGlobal(pos))
 
     def _copy_team_id(self, team_id: str):  # pragma: no cover - GUI path
-        cb: QClipboard = self.application().clipboard() if hasattr(self, "application") else self.parent().clipboard()  # type: ignore
+        from PyQt6.QtWidgets import QApplication
+
+        app = QApplication.instance()
+        if app is None:
+            return
         try:
-            QApplication = type(
-                self
-            ).parent  # placeholder to satisfy linter if QApplication not imported
-        except Exception:  # pragma: no cover
+            cb: QClipboard = app.clipboard()  # type: ignore
+            cb.setText(team_id)
+        except Exception:
             pass
-        clipboard = self.window().clipboard() if hasattr(self.window(), "clipboard") else None  # type: ignore
-        if clipboard:
-            clipboard.setText(team_id)
 
     def _export_team_json(self, team):  # pragma: no cover - GUI path
         if not team:
@@ -839,6 +842,36 @@ class MainWindow(QMainWindow):  # Dock-based
             except Exception:
                 pass
 
+    # Club Detail (Milestone 5.4) --------------------------------------
+    def _open_club_overview(self):  # pragma: no cover - GUI path
+        if not hasattr(self, "teams") or not self.teams:
+            QMessageBox.information(self, "Club Overview", "No teams loaded yet. Load teams first.")
+            return
+        self.open_club_detail()
+
+    def open_club_detail(self):  # pragma: no cover - GUI path
+        doc_id = "club:overview"
+        if not hasattr(self, "document_area"):
+            return
+        from gui.views.club_detail_view import ClubDetailView
+
+        def factory():
+            view = ClubDetailView()
+            try:
+                view.set_teams(self.teams)
+            except Exception:
+                pass
+            return view
+
+        existing = self.document_area.open_or_focus(doc_id, "Club", factory)
+        from gui.views.club_detail_view import ClubDetailView as _CDV
+
+        if isinstance(existing, _CDV):
+            try:
+                existing.set_teams(self.teams)
+            except Exception:
+                pass
+
     def _generate_placeholder_division_rows(self, division_name: str):  # pragma: no cover - helper
         rows: list[DivisionStandingEntry] = []
         base_points = 30
@@ -867,6 +900,16 @@ class MainWindow(QMainWindow):  # Dock-based
             # Save navigation state snapshot on close
             self._snapshot_navigation_state()
             self._nav_state_service.save(self._nav_state)
+            # Gracefully stop background workers if still running
+            for attr in ("worker", "roster_worker"):
+                w = getattr(self, attr, None)
+                try:
+                    if w and hasattr(w, "isRunning") and w.isRunning():  # type: ignore
+                        w.requestInterruption()  # type: ignore
+                        w.quit()  # type: ignore
+                        w.wait(100)  # type: ignore
+                except Exception:
+                    pass
         finally:
             super().closeEvent(event)
 

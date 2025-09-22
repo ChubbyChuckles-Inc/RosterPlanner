@@ -23,10 +23,10 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QToolButton,
     QMenu,
-    QAction,
 )
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtWidgets import QToolTip
+from PyQt6.QtGui import QAction
 
 from gui.models import TeamRosterBundle, PlayerEntry, MatchDate
 from gui.services.sparkline import SparklineBuilder

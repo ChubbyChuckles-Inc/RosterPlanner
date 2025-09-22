@@ -157,7 +157,7 @@ Milestone 5: Detail Views
 [x] 5.2.1 Sparkline micro charts next to player rows
 [x] 5.3 Division Table View: ranking table parsed normalization (points, differential, form)
 [x] 5.3.1 Sort multi-column by holding modifier keys
-[ ] 5.4 Club Detail View: all teams grouped by category + aggregated stats
+[x] 5.4 Club Detail View: all teams grouped by category + aggregated stats
 [ ] 5.5 HTML source preview panel (syntax-highlighted, diff vs previous scrape)
 [ ] 5.5.1 Toggle raw vs cleaned DOM
 [ ] 5.6 Export actions (CSV/JSON) per view

@@ -73,6 +73,14 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
         self._levels: set[str] = set()  # e.g., {"Bezirksliga", "Stadtliga", "Stadtklasse"}
         self._active_only: bool = False
 
+    def __del__(self):  # pragma: no cover - defensive cleanup
+        try:
+            if self._index_thread and self._index_thread.isRunning():
+                self._index_thread.quit()
+                self._index_thread.wait(100)
+        except Exception:
+            pass
+
     # Chip Filter Setters -----------------------------------------
     def setDivisionTypes(self, types: set[str]):
         if types == self._division_types:
@@ -169,12 +177,21 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
         node = self.sourceModel().data(idx, Qt.ItemDataRole.UserRole)  # type: ignore
         if node is None:
             return True
-        if node.kind in ("season", "division"):
-            # Division / season nodes must pass chip filters on division label if applicable OR any descendant match.
-            if node.kind == "division" and not self._division_meta_pass(node.label):
-                # Even if division label itself fails chip filters, it can still be accepted if a descendant matches.
+        if node.kind == "season":
+            # Season node acts as container. If we have any restrictive filters (pattern or active_only)
+            # we only keep it if some descendant team passes; otherwise always keep.
+            if self._pattern or self._active_only or self._division_types or self._levels:
                 return self._any_descendant_matches(idx)
-            return self._any_descendant_matches(idx)
+            return True
+        if node.kind == "division":
+            # If division fails chip meta filters -> entire subtree excluded.
+            if not self._division_meta_pass(node.label):
+                return False
+            # If we have a text pattern or active-only requirement, only keep divisions
+            # that have at least one matching descendant team.
+            if self._pattern or self._active_only:
+                return self._any_descendant_matches(idx)
+            return True
         if node.kind == "team":
             # Team must satisfy chip filters (evaluated on its division parent) + pattern
             parent_div = node.parent.label if node.parent else ""
@@ -224,16 +241,39 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
         return score > 0
 
     def _any_descendant_matches(self, parent_index: QModelIndex) -> bool:
-        rows = self.sourceModel().rowCount(parent_index)  # type: ignore
-        for r in range(rows):
-            child = self.sourceModel().index(r, 0, parent_index)  # type: ignore
-            node = self.sourceModel().data(child, Qt.ItemDataRole.UserRole)  # type: ignore
-            if node and node.kind == "team" and self._match_team_label(node.label):
-                return True
-            # Recurse if division
-            if node and node.kind == "division":
-                if self._any_descendant_matches(child):
+        """Iteratively scan descendant teams for a match without deep recursion.
+
+        Criteria:
+        - Team label must match pattern (if any)
+        - Parent division must satisfy chip meta filters
+        - Team must satisfy active-only constraint (if enabled)
+        """
+        stack: List[QModelIndex] = [parent_index]
+        sm = self.sourceModel()
+        while stack:
+            current = stack.pop()
+            rows = sm.rowCount(current)  # type: ignore
+            for r in range(rows):
+                child = sm.index(r, 0, current)  # type: ignore
+                node = sm.data(child, Qt.ItemDataRole.UserRole)  # type: ignore
+                if not node:
+                    continue
+                if getattr(node, "kind", None) == "team":
+                    # Division meta check on its parent division (one level up)
+                    parent_div_label = node.parent.label if node.parent else ""
+                    if not self._division_meta_pass(parent_div_label):
+                        continue
+                    if self._active_only and "(inactive)" in node.label.lower():
+                        continue
+                    if self._pattern and not self._match_team_label(node.label):
+                        continue
+                    # Passed all filters
                     return True
+                elif getattr(node, "kind", None) == "division":
+                    # Skip entire subtree if division meta fails.
+                    if not self._division_meta_pass(node.label):
+                        continue
+                    stack.append(child)
         return False
 
 
