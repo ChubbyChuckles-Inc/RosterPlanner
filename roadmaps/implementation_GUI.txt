@@ -110,7 +110,7 @@ Milestone 2: Dockable Main Window Architecture
 [x] 2.4.2 Recently executed command weighting
 [x] 2.5 Keyboard shortcuts map + in-app cheat sheet dialog
 [x] 2.5.1 Shortcut conflicts detector
-[ ] 2.6 Drag handle affordances & visual docking preview enhancements
+[x] 2.6 Drag handle affordances & visual docking preview enhancements
 [ ] 2.7 Focus ring styling for accessibility
 
 Milestone 3: Data Layer & SQLite Integration

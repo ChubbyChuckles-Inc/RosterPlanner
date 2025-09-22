@@ -45,6 +45,7 @@ from gui.services.layout_persistence import LayoutPersistenceService
 from gui.services.command_registry import global_command_registry
 from gui.services.shortcut_registry import global_shortcut_registry
 from gui.views.shortcut_cheatsheet import ShortcutCheatSheetDialog
+from gui.services.dock_style import DockStyleHelper
 from gui.views.command_palette import CommandPaletteDialog
 
 
@@ -70,6 +71,13 @@ class MainWindow(QMainWindow):  # Dock-based
         # Attempt to restore previous layout (non-fatal on failure)
         self._layout_service.load_layout("main", self)
         self._build_menus()
+        # Apply dock styling enhancements (Milestone 2.6)
+        try:
+            DockStyleHelper().apply_to_existing_docks(self)
+        except Exception:
+            pass  # non-fatal styling failure
+        self._dock_style_helper = DockStyleHelper()
+        self._install_dock_event_hooks()
 
     # Registration ---------------------------------------------------
     def _register_docks(self):
@@ -102,6 +110,42 @@ class MainWindow(QMainWindow):  # Dock-based
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, nav_dock)
         avail_dock = self.dock_manager.create("availability")
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, avail_dock)
+        # Style new docks
+        try:
+            helper = DockStyleHelper()
+            helper.create_title_bar(nav_dock)
+            helper.create_title_bar(avail_dock)
+        except Exception:
+            pass
+        for d in (nav_dock, avail_dock):
+            try:
+                d.topLevelChanged.connect(self._on_dock_top_level_changed)  # type: ignore
+            except Exception:
+                pass
+
+    # Dock overlay preview (lightweight placeholder) -------------
+    def _install_dock_event_hooks(self):
+        if not hasattr(self, "findChildren"):
+            return
+        try:
+            docks = self.findChildren(QDockWidget)  # type: ignore
+            for d in docks:
+                d.topLevelChanged.connect(self._on_dock_top_level_changed)  # type: ignore
+        except Exception:
+            pass
+
+    def _on_dock_top_level_changed(self, floating: bool):  # pragma: no cover
+        # Placeholder: We could show a subtle overlay when floating starts.
+        if floating:
+            try:
+                self._dock_style_helper.show_overlay(self)
+            except Exception:
+                pass
+        else:
+            try:
+                self._dock_style_helper.hide_overlay(self)
+            except Exception:
+                pass
 
     def _build_menus(self):
         mb = self.menuBar() if self.menuBar() else QMenuBar(self)
