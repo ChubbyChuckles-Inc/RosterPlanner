@@ -66,6 +66,7 @@ from gui.services.navigation_state_persistence import (
     NavigationState,
 )
 from gui.services.permissions import PermissionService
+from gui.components.breadcrumb import BreadcrumbBuilder
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
@@ -92,6 +93,8 @@ class MainWindow(QMainWindow):  # Dock-based
         self._nav_state = self._nav_state_service.load()
         # Permissions (Milestone 4.5.1 placeholder)
         self._perm_service = PermissionService()
+        # Breadcrumb builder (Milestone 4.6)
+        self._breadcrumb_builder = BreadcrumbBuilder()
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -321,6 +324,11 @@ class MainWindow(QMainWindow):  # Dock-based
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search teams...")
         layout.addWidget(self.search_input)
+        # Breadcrumb label
+        self.breadcrumb_label = QLabel("")
+        self.breadcrumb_label.setObjectName("breadcrumbLabel")
+        self.breadcrumb_label.setStyleSheet("color: #666; font-size: 11px;")
+        layout.addWidget(self.breadcrumb_label)
 
         # Filter Chips (Milestone 4.3)
         chips_box = QGroupBox("Filters")
@@ -578,6 +586,8 @@ class MainWindow(QMainWindow):  # Dock-based
             # Persist last selected team id
             self._nav_state.last_selected_team_id = team.team_id
             self._nav_state_service.save(self._nav_state)
+        # Update breadcrumb regardless of whether team found (divisions clear path)
+        self._update_breadcrumb(index)
 
     # Context Menu (Milestone 4.5) ---------------------------------
     def _team_entry_from_index(self, index):  # pragma: no cover - GUI path
@@ -709,7 +719,28 @@ class MainWindow(QMainWindow):  # Dock-based
                     entry = mobj.get_team_entry(team_idx)  # type: ignore
                 if entry and entry.team_id == self._nav_state.last_selected_team_id:
                     self.team_tree.setCurrentIndex(team_idx)
+                    self._update_breadcrumb(team_idx)
                     return
+
+    # Breadcrumb (Milestone 4.6) -----------------------------------
+    def _update_breadcrumb(self, index):  # pragma: no cover - GUI path
+        if not hasattr(self, "breadcrumb_label"):
+            return
+        if not index or not index.isValid():
+            self.breadcrumb_label.setText("")
+            return
+        model_obj = self.team_tree.model()
+        src_node = None
+        if isinstance(model_obj, NavigationFilterProxyModel):
+            src: NavigationTreeModel = model_obj.sourceModel()  # type: ignore
+            src_index = model_obj.mapToSource(index)
+            node = src_index.internalPointer()  # type: ignore
+            src_node = node
+        else:
+            node = index.internalPointer()  # type: ignore
+            src_node = node
+        breadcrumb = self._breadcrumb_builder.build_for_node(src_node)
+        self.breadcrumb_label.setText(breadcrumb)
 
 
 __all__ = ["MainWindow"]

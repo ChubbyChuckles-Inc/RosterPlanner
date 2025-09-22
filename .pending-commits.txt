@@ -55,3 +55,5 @@ feat(gui): navigation tree context menu (open tab, copy id, export JSON) (Milest
 test(gui): context menu helper tests (team entry lookup, export json) (Milestone 4.5)
 feat(gui): permission service placeholder and integration into context menu (Milestone 4.5.1)
 test(gui): permission service default allow + custom policy tests (Milestone 4.5.1)
+feat(gui): breadcrumb builder and integration (navigation selection trail) (Milestone 4.6)
+test(gui): breadcrumb builder & integration tests (Milestone 4.6)
