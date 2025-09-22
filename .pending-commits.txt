@@ -55,3 +55,6 @@ feat(design): complete elevation layering (Milestone 5.10.2) adding semantic Ele
 feat(lock): improve single-instance guard with stale PID reclamation (Windows safe fallback) and optional psutil usage
 feat(typography): implement semantic TypographyRole mapping (Milestone 5.10.3), apply to DivisionTableView title & navigation dock labels, add unit test, roadmap updated
 
+feat(lock): make psutil optional and refine stale PID detection logic
+feat(iconography): add IconRegistry with SVG discovery, refresh icon integration, tests, mark 5.10.4 partial
+

@@ -530,7 +530,18 @@ class MainWindow(QMainWindow):  # Dock-based
         layout = QVBoxLayout(container)
 
         button_bar = QHBoxLayout()
-        self.refresh_btn = QPushButton("Refresh Teams")
+        from PyQt6.QtGui import QIcon
+
+        self.refresh_btn = QPushButton("Refresh")
+        try:
+            from gui.design.icon_registry import get_icon
+
+            ico = get_icon("refresh", size=16)
+            if ico:
+                self.refresh_btn.setIcon(ico)
+                self.refresh_btn.setToolTip("Refresh team list")
+        except Exception:
+            pass
         self.refresh_btn.clicked.connect(self._load_landing)
         self.load_roster_btn = QPushButton("Load Roster")
         self.load_roster_btn.clicked.connect(self._load_selected_roster)

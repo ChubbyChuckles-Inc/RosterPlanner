@@ -270,11 +270,11 @@ def _pid_alive(pid: int) -> bool:
 
     Uses psutil when available; falls back to os.kill on POSIX or always True on Windows without psutil.
     """
-    try:
-        if "psutil" in sys.modules and hasattr(psutil, "pid_exists"):
-            return psutil.pid_exists(pid)  # type: ignore[arg-type]
-    except Exception:  # pragma: no cover - best effort
-        pass
+    if psutil is not None:  # type: ignore[name-defined]
+        try:
+            return psutil.pid_exists(pid)  # type: ignore[attr-defined]
+        except Exception:  # pragma: no cover - best effort
+            pass
     # Best-effort generic fallback (Windows: cannot signal safely without perms)
     if os.name != "nt":  # POSIX-ish
         try:  # type: ignore[attr-defined]
