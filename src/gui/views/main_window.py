@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
     QMenuBar,
     QMenu,
     QTreeView,
+    QLineEdit,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -41,6 +42,7 @@ from gui.views import dock_registry
 from gui.workers import LandingLoadWorker, RosterLoadWorker
 from gui.models import TeamEntry, TeamRosterBundle
 from gui.navigation_tree_model import NavigationTreeModel
+from gui.navigation_filter_proxy import NavigationFilterProxyModel
 from gui.availability_table import AvailabilityTable
 from planning import availability_store
 from gui.services.layout_persistence import LayoutPersistenceService
@@ -294,6 +296,9 @@ class MainWindow(QMainWindow):  # Dock-based
         layout.addLayout(button_bar)
 
         layout.addWidget(QLabel("Teams / Divisions"))
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search teams...")
+        layout.addWidget(self.search_input)
         self.team_tree = QTreeView()
         self.team_tree.setHeaderHidden(True)
         layout.addWidget(self.team_tree)
@@ -362,10 +367,18 @@ class MainWindow(QMainWindow):  # Dock-based
             self._set_status("Failed to load teams")
             return
         self.teams = teams
-        model = NavigationTreeModel(self.season, teams)
-        self.team_tree.setModel(model)
-        # Expand root divisions by default
-        self.team_tree.expand(model.index(0, 0, Qt.QModelIndex()))  # pragma: no cover
+        base_model = NavigationTreeModel(self.season, teams)
+        # Wrap in filter proxy for search (Milestone 4.2)
+        self.team_filter_proxy = NavigationFilterProxyModel()
+        self.team_filter_proxy.setSourceModel(base_model)
+        self.team_tree.setModel(self.team_filter_proxy)
+        # Wire search input
+        if hasattr(self, "search_input"):
+            self.search_input.textChanged.connect(self.team_filter_proxy.setFilterPattern)  # type: ignore
+        # Expand root divisions by default (use proxy's first row)
+        root_idx = self.team_filter_proxy.index(0, 0)
+        if root_idx.isValid():  # pragma: no cover
+            self.team_tree.expand(root_idx)
         self.team_tree.clicked.connect(self._on_tree_item_clicked)  # type: ignore
         self._set_status(f"Loaded {len(teams)} teams")
 
@@ -374,8 +387,14 @@ class MainWindow(QMainWindow):  # Dock-based
         sel = self.team_tree.currentIndex() if hasattr(self, "team_tree") else None
         if not sel or not sel.isValid():
             return
-        model: NavigationTreeModel = self.team_tree.model()  # type: ignore
-        team = model.get_team_entry(sel)
+        # Unwrap proxy if present
+        model_obj = self.team_tree.model()
+        if isinstance(model_obj, NavigationFilterProxyModel):
+            src: NavigationTreeModel = model_obj.sourceModel()  # type: ignore
+            team = src.get_team_entry(model_obj.mapToSource(sel))
+        else:
+            src = model_obj  # type: ignore
+            team = src.get_team_entry(sel)  # type: ignore
         if not team:
             return
         self._set_status(f"Loading roster for {team.name}...")
@@ -435,8 +454,12 @@ class MainWindow(QMainWindow):  # Dock-based
     def _on_tree_item_clicked(self, index):  # pragma: no cover - GUI path
         if not index.isValid():
             return
-        model: NavigationTreeModel = self.team_tree.model()  # type: ignore
-        team = model.get_team_entry(index)
+        model_obj = self.team_tree.model()
+        if isinstance(model_obj, NavigationFilterProxyModel):
+            src: NavigationTreeModel = model_obj.sourceModel()  # type: ignore
+            team = src.get_team_entry(model_obj.mapToSource(index))
+        else:
+            team = model_obj.get_team_entry(index)  # type: ignore
         if team:
             self._load_selected_roster()
 
