@@ -48,7 +48,7 @@ def _setup_conn():
 
 def test_division_data_service_basic():
     conn = _setup_conn()
-    services.register("sqlite_conn", conn)
+    services.register("sqlite_conn", conn, allow_override=True)
     svc = DivisionDataService()
     rows = svc.load_division_standings("div1")
     # Expect 3 teams

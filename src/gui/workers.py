@@ -25,19 +25,35 @@ class LandingLoadWorker(QThread):
         self.season = season
 
     def run(self) -> None:  # type: ignore[override]
+        """Load teams for landing view.
+
+        Behavior change: Do NOT perform a live HTTP scrape automatically when
+        no ingested data is present. Instead, emit empty list so the UI can
+        prompt the user to run a full scrape. If ingested data exists (teams
+        already in DB), load via repositories instead of remote fetch.
+        """
+        from gui.services.data_state_service import DataStateService
+        from gui.repositories.sqlite_impl import create_sqlite_repositories
+        from gui.services.service_locator import services as _services
+
         try:
-            url = (
-                "https://leipzig.tischtennislive.de/?L1=Public&L2=Verein&L2P="
-                f"{self.club_id}&Page=Spielbetrieb&Sportart=96&Saison={self.season}"
-            )
-            html = ranking_scraper.http_client.fetch(url)  # type: ignore[attr-defined]
-            teams_overview = ranking_parser.extract_team_overview(html)
-            teams = [
-                TeamEntry(team_id=t.id, name=t.name, division=t.division_name or "")
-                for t in teams_overview.values()
-            ]
-            teams.sort(key=lambda t: (t.division, t.name))
-            self.finished.emit(teams, "")
+            conn = _services.try_get("sqlite_conn")
+            if conn is not None:
+                # Check if we have ingested data
+                state = DataStateService(conn).current_state()
+                if state.has_data:
+                    repos = create_sqlite_repositories(conn)
+                    # Aggregate teams by division for now (no club filter yet)
+                    all_divs = repos.divisions.list_divisions()
+                    teams: list[TeamEntry] = []
+                    for d in all_divs:
+                        for t in repos.teams.list_teams_in_division(d.id):
+                            teams.append(TeamEntry(team_id=t.id, name=t.name, division=d.name))
+                    teams.sort(key=lambda t: (t.division, t.name))
+                    self.finished.emit(teams, "")
+                    return
+            # If we reach here, no ingested data present: return empty (gate)
+            self.finished.emit([], "")
         except Exception:
             self.finished.emit([], traceback.format_exc())
 

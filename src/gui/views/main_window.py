@@ -661,6 +661,15 @@ class MainWindow(QMainWindow):  # Dock-based
             self._set_status("Failed to load teams")
             return
         self.teams = teams
+        if not teams:
+            # No ingested data yet; show informational empty state instead of silently blank tree.
+            self._set_status("No ingested data. Run 'Data -> Run Full Scrape' to populate teams.")
+            try:
+                # Clear tree model if previously populated
+                self.team_tree.setModel(None)
+            except Exception:
+                pass
+            return
         base_model = NavigationTreeModel(self.season, teams)
         # Wrap in filter proxy for search (Milestone 4.2)
         self.team_filter_proxy = NavigationFilterProxyModel()
@@ -987,6 +996,17 @@ class MainWindow(QMainWindow):  # Dock-based
             return
         from gui.views.division_table_view import DivisionTableView
         from gui.services.division_data_service import DivisionDataService
+        from gui.services.data_state_service import DataStateService
+
+        # Gate: prevent opening division table before ingestion
+        from gui.services.service_locator import services as _services
+
+        conn = _services.try_get("sqlite_conn")
+        if conn is None or not DataStateService(conn).current_state().has_data:
+            QMessageBox.information(
+                self, "Division Table", "No ingested data yet. Run a full scrape first."
+            )
+            return
 
         def factory():
             view = DivisionTableView()
