@@ -49,3 +49,30 @@ def test_execute_missing():
     reg = CommandRegistry()
     ok, err = reg.execute("nope")
     assert not ok and "not found" in err.lower()
+
+
+def test_recency_and_frequency_weighting_affects_ordering():
+    """Ensure that recently/frequently executed commands are boosted in search results.
+
+    Strategy:
+        - Register three commands with similar fuzzy match baseline for query 'open'.
+        - Execute one command multiple times; execute another once very recently.
+        - Search and assert boosted commands appear earlier than untouched.
+    """
+    reg = CommandRegistry()
+    reg.register("alpha.open", "Open Alpha", lambda: None)
+    reg.register("beta.open", "Open Beta", lambda: None)
+    reg.register("gamma.open", "Open Gamma", lambda: None)
+    # Initial ordering (baseline) - collect for sanity
+    base_ids = [e.command_id for e in reg.search("open")]
+    assert set(base_ids) == {"alpha.open", "beta.open", "gamma.open"}
+    # Execute beta twice (frequency boost) and gamma once (recency boost most recent)
+    reg.execute("beta.open")
+    reg.execute("beta.open")
+    reg.execute("gamma.open")  # most recent
+    ordered_ids = [e.command_id for e in reg.search("open")]
+    # gamma should appear before beta (most recent), beta before alpha due to frequency
+    gamma_index = ordered_ids.index("gamma.open")
+    beta_index = ordered_ids.index("beta.open")
+    alpha_index = ordered_ids.index("alpha.open")
+    assert gamma_index < beta_index < alpha_index

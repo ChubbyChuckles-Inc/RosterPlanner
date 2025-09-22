@@ -41,6 +41,13 @@ class CommandRegistry:
 
     def __init__(self):
         self._commands: Dict[str, CommandEntry] = {}
+        # Usage tracking for 2.4.2 recently executed weighting:
+        # _last_exec_order stores an incrementing sequence number for each execution.
+        # _exec_sequence is the global monotonically increasing counter.
+        # _usage_count tracks how many times a command was executed (frequency boost).
+        self._last_exec_order: Dict[str, int] = {}
+        self._usage_count: Dict[str, int] = {}
+        self._exec_sequence: int = 0
 
     # Registration -------------------------------------------------
     def register(
@@ -70,18 +77,51 @@ class CommandRegistry:
          - Base score = first match index * 4 + gaps_penalty + length_penalty
          - gaps_penalty = (# of gaps between matched chars) * 2
          - length_penalty = total_hay_length / 200 (small nudge favoring shorter strings)
+         - Recency/Frequency adjustments (2.4.2):
+             * Recently executed commands receive a negative offset scaling with recency.
+               We treat *lower* composite score as better, so we subtract a boost.
+               boost_recent = max(0, (RECENCY_WINDOW - age)) * RECENCY_UNIT where
+               age = exec_sequence_now - last_exec_order.
+             * Frequently executed commands receive a smaller logarithmic boost.
+               boost_freq = log2(usage_count + 1) * FREQ_UNIT.
+           These boosts are capped so they can't dominate fuzzy relevance entirely.
         Returns up to *limit* best matches. Empty query returns first *limit* commands (stable order by id).
         """
         if not query:
             return sorted(self._commands.values(), key=lambda e: e.command_id)[:limit]
         q = query.lower()
         scored: List[Tuple[float, CommandEntry]] = []
+        # Constants tuned conservatively to avoid overpowering fuzzy score
+        RECENCY_WINDOW = 50  # how many executions back can still give benefit
+        RECENCY_UNIT = 0.6  # each step of recency worth this many points subtracted
+        FREQ_UNIT = 0.9  # multiplier for logarithmic usage count
+        import math
+
         for entry in self._commands.values():
             hay_original = f"{entry.command_id} {entry.title}"
             hay = hay_original.lower()
             score = _fuzzy_subsequence_score(q, hay)
             if score is not None:
-                scored.append((score, entry))
+                # Apply recency + frequency boosts if present.
+                # Lower score is better; subtract boosts.
+                last_order = self._last_exec_order.get(entry.command_id)
+                if last_order is not None:
+                    age = self._exec_sequence - last_order
+                    if age < RECENCY_WINDOW:
+                        rec_boost = (RECENCY_WINDOW - age) * RECENCY_UNIT
+                    else:
+                        rec_boost = 0.0
+                else:
+                    rec_boost = 0.0
+                usage = self._usage_count.get(entry.command_id, 0)
+                if usage > 0:
+                    freq_boost = math.log2(usage + 1) * FREQ_UNIT
+                else:
+                    freq_boost = 0.0
+                # Cap boosts to at most 40% of original score to preserve fuzzy ordering.
+                max_total_boost = score * 0.4 if score > 0 else 5.0
+                total_boost = min(rec_boost + freq_boost, max_total_boost)
+                scored.append((score - total_boost, entry))
         scored.sort(key=lambda t: (t[0], t[1].command_id))
         return [s[1] for s in scored[:limit]]
 
@@ -92,6 +132,10 @@ class CommandRegistry:
             return False, f"Command not found: {command_id}"
         try:
             entry.callback()
+            # Update recency/frequency tracking (2.4.2)
+            self._exec_sequence += 1
+            self._last_exec_order[command_id] = self._exec_sequence
+            self._usage_count[command_id] = self._usage_count.get(command_id, 0) + 1
             return True, None
         except Exception as e:  # pragma: no cover (would need failing callback)
             tb = traceback.format_exc()
