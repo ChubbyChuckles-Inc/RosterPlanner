@@ -8,5 +8,6 @@
   "last_data_dir": null,
   "window_geometry_raw": null,
   "data_dir_history": null,
-  "window_state_version": 1
+  "window_state_version": 1,
+  "density_mode": "compact"
 }

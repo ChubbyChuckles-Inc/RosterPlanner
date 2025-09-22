@@ -207,7 +207,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.4 Iconography integration: replace placeholder text buttons with registered SVG icons (navigation + common actions) -- registry, refresh/save/load icons, caching & color variant
 [x] 5.10.5 Motion polish: add easing curve animations for dock show/hide & tab transitions (reuse easing presets)
 [x] 5.10.6 Live theme toggle action (default/brand-neutral/high-contrast) wiring + status indication
-[ ] 5.10.7 Density mode switch (comfortable ↔ compact) applying spacing scale; persistence
+[x] 5.10.7 Density mode switch (comfortable ↔ compact) applying spacing scale; persistence
 [ ] 5.10.8 Focus ring audit & unification across interactive widgets (ensure design token colors)
 [ ] 5.10.9 Empty & error state components: replace plain labels with design templates (empty state registry)
 [ ] 5.10.10 Skeleton loaders in Division Table & Team Detail while async data loads (remove instantaneous pop-in)

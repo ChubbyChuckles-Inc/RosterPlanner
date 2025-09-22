@@ -289,6 +289,12 @@ class MainWindow(QMainWindow):  # Dock-based
         act_theme_default.triggered.connect(lambda: self._set_theme_variant("default"))  # type: ignore[attr-defined]
         act_theme_brand.triggered.connect(lambda: self._set_theme_variant("brand-neutral"))  # type: ignore[attr-defined]
         act_theme_high.triggered.connect(lambda: self._set_theme_variant("high-contrast"))  # type: ignore[attr-defined]
+        # Density toggle submenu (Milestone 5.10.7)
+        density_menu = view_menu.addMenu("Density Mode")
+        act_density_comfort = density_menu.addAction("Comfortable")
+        act_density_compact = density_menu.addAction("Compact")
+        act_density_comfort.triggered.connect(lambda: self._set_density_mode("comfortable"))  # type: ignore[attr-defined]
+        act_density_compact.triggered.connect(lambda: self._set_density_mode("compact"))  # type: ignore[attr-defined]
         # Add actions via convenience overload (returns QAction object)
         reset_action = view_menu.addAction("Reset Layout")
         reset_action.triggered.connect(self._on_reset_layout)  # type: ignore[attr-defined]
@@ -441,6 +447,66 @@ class MainWindow(QMainWindow):  # Dock-based
             self._set_status(f"Theme set to {variant}")
         except Exception:
             pass
+
+    def _set_density_mode(self, mode: str):  # pragma: no cover - GUI path
+        try:
+            from gui.services.service_locator import services as _services
+        except Exception:
+            return
+        svc = _services.try_get("density_service")
+        if not svc:
+            return
+        try:
+            diff = svc.set_mode(mode)  # type: ignore[attr-defined]
+            self._apply_density_spacing()
+            if diff and not getattr(diff, "no_changes", False):  # type: ignore
+                self._set_status(f"Density set to {mode}")
+        except Exception:
+            pass
+
+    def _apply_density_spacing(self):  # pragma: no cover - GUI relayout path
+        """Apply active density spacing to key widgets.
+
+        Currently adjusts row height for DivisionTableView instances and may
+        be extended for padding/margins in future components.
+        """
+        try:
+            from gui.services.service_locator import services as _services
+        except Exception:
+            return
+        svc = _services.try_get("density_service")
+        if not svc:
+            return
+        spacing = None
+        try:
+            spacing = svc.spacing()  # type: ignore[attr-defined]
+        except Exception:
+            return
+        # Determine a representative row height using small/medium spacing tokens if present
+        base = 24
+        row_extra = 0
+        if spacing:
+            small = spacing.get("sm") or spacing.get("s")
+            medium = spacing.get("md") or spacing.get("m")
+            if isinstance(small, int) and isinstance(medium, int):
+                row_extra = int(round((small + medium) / 4))
+        target_height = base + row_extra
+        # Iterate all open document widgets for table adjustments
+        try:
+            from gui.views.division_table_view import DivisionTableView as _DTV
+        except Exception:
+            _DTV = None  # type: ignore
+        if getattr(self, "document_area", None):
+            for i in range(self.document_area.count()):  # type: ignore[attr-defined]
+                w = self.document_area.widget(i)  # type: ignore[attr-defined]
+                if _DTV and isinstance(w, _DTV):
+                    tbl = getattr(w, "table", None)
+                    if tbl is not None:
+                        try:
+                            for r in range(tbl.rowCount()):
+                                tbl.setRowHeight(r, target_height)
+                        except Exception:
+                            pass
 
     # Export helpers -------------------------------------------------
     def _current_document_widget(self):  # pragma: no cover - simple helper

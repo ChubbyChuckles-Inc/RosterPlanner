@@ -172,6 +172,14 @@ def create_app(
                 services.register("theme_service", ThemeService.create_default())
         except Exception:  # pragma: no cover - non-fatal
             pass
+        # Density service registration (Milestone 5.10.7)
+        try:
+            from gui.services.density_service import DensityService  # local import
+
+            if not services.try_get("density_service"):
+                services.register("density_service", DensityService.create_default())
+        except Exception:  # pragma: no cover
+            pass
         # Always override previous startup timing (each bootstrap has its own session metrics)
         services.register("startup_timing", timing, allow_override=True)
         # Register EventBus if not already present

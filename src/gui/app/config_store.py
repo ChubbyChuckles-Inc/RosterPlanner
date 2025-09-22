@@ -62,6 +62,8 @@ class AppConfig:
     # History of previously used data directories (most recent first, capped later if needed)
     data_dir_history: list[str] | None = None
     window_state_version: int = WINDOW_STATE_VERSION
+    # Visual density mode (Milestone 5.10.7) persisted across sessions. Defaults to "comfortable".
+    density_mode: str = "comfortable"
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -81,6 +83,7 @@ class AppConfig:
             window_geometry_raw=data.get("window_geometry_raw"),
             data_dir_history=data.get("data_dir_history"),
             window_state_version=int(data.get("window_state_version", WINDOW_STATE_VERSION)),
+            density_mode=str(data.get("density_mode", "comfortable")),
         )
         return inst
 

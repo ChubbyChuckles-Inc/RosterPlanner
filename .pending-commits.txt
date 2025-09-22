@@ -1,3 +1,4 @@
+feat: implement density mode switch (comfortable/compact) with persistence (Milestone 5.10.7)
 feat(pipeline): deterministic primary club backfill ensuring all club overview teams persisted\n+\n+Rewrote Step 7d in run_full to always refetch primary club overview and generate both club_team_* and division-style team_roster_* files for every team listed. Added ordering fix in test stub so club overview HTML not shadowed by generic landing response. Added coverage test (test_pipeline_club_team_coverage) now passing.\n+
 feat(export): add ExportService and integrate CSV/JSON export actions (Milestone 5.6)
 
