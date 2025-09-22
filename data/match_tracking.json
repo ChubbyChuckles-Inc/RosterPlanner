@@ -1,5 +1,5 @@
 {
-  "last_scrape": "2025-09-22T15:59:23.001965",
+  "last_scrape": "2025-09-22T22:46:08.173086",
   "divisions": {
     "1. Bezirksliga Erwachsene": {
       "name": "1. Bezirksliga Erwachsene",
@@ -4322,18 +4322,6 @@
     },
     {
       "team_id": "128859",
-      "match_number": "216",
-      "date": "22.09.25",
-      "time": "19:15",
-      "weekday": "Mo",
-      "home_team": "SG C. Zetkin Leipzig 5",
-      "guest_team": "Leutzscher Füchse 7",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "128859",
       "match_number": "221",
       "date": "20.10.25",
       "time": "19:30",
@@ -4544,18 +4532,6 @@
       "weekday": "Mo",
       "home_team": "Leutzscher Füchse 7",
       "guest_team": "MDR SG",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "129749",
-      "match_number": "216",
-      "date": "22.09.25",
-      "time": "19:15",
-      "weekday": "Mo",
-      "home_team": "SG C. Zetkin Leipzig 5",
-      "guest_team": "Leutzscher Füchse 7",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -5060,18 +5036,6 @@
       "weekday": "Fr",
       "home_team": "Leutzscher Füchse 9",
       "guest_team": "TSV Grünau Leipzig",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "129700",
-      "match_number": "519",
-      "date": "26.09.25",
-      "time": "19:30",
-      "weekday": "Fr",
-      "home_team": "Leutzscher Füchse 11",
-      "guest_team": "SG C. Zetkin Leipzig 7",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -5096,6 +5060,18 @@
       "weekday": "Mo",
       "home_team": "TSV Grünau Leipzig 2",
       "guest_team": "Leutzscher Füchse 11",
+      "home_score": null,
+      "guest_score": null,
+      "status": "upcoming"
+    },
+    {
+      "team_id": "129700",
+      "match_number": "519",
+      "date": "24.10.25",
+      "time": "19:30",
+      "weekday": "Fr",
+      "home_team": "Leutzscher Füchse 11",
+      "guest_team": "SG C. Zetkin Leipzig 7",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -5150,24 +5126,24 @@
     },
     {
       "team_id": "130372",
-      "match_number": "519",
-      "date": "26.09.25",
-      "time": "19:30",
-      "weekday": "Fr",
-      "home_team": "Leutzscher Füchse 11",
-      "guest_team": "SG C. Zetkin Leipzig 7",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "130372",
       "match_number": "521",
       "date": "20.10.25",
       "time": "19:15",
       "weekday": "Mo",
       "home_team": "SG C. Zetkin Leipzig 7",
       "guest_team": "TTV Liebertwolkwitz 3",
+      "home_score": null,
+      "guest_score": null,
+      "status": "upcoming"
+    },
+    {
+      "team_id": "130372",
+      "match_number": "519",
+      "date": "24.10.25",
+      "time": "19:30",
+      "weekday": "Fr",
+      "home_team": "Leutzscher Füchse 11",
+      "guest_team": "SG C. Zetkin Leipzig 7",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -6572,18 +6548,6 @@
       "weekday": "Fr",
       "home_team": "TTV Markranstädt 3",
       "guest_team": "TTC Holzhausen 9",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "130042",
-      "match_number": "915",
-      "date": "22.09.25",
-      "time": "19:00",
-      "weekday": "Mo",
-      "home_team": "SV Rot. Süd Leipzig 8",
-      "guest_team": "ATV Volkmarsdorf 2",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -7112,18 +7076,6 @@
       "weekday": "Fr",
       "home_team": "SV Mölkau 04 4",
       "guest_team": "SG Lindenthal/STOV 3",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "130509",
-      "match_number": "915",
-      "date": "22.09.25",
-      "time": "19:00",
-      "weekday": "Mo",
-      "home_team": "SV Rot. Süd Leipzig 8",
-      "guest_team": "ATV Volkmarsdorf 2",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"

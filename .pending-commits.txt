@@ -31,3 +31,8 @@ feat(gating): add DataStateService and gate team/division UI until ingestion pre
 chore(roadmap): mark 5.9.25 partial ([~]) noting DataStateService gating progress
 fix(scrape): ensure all club overview teams are scraped and persisted (both club_team_* and team_roster_* forms); augment pipeline to always include primary club id, backfill missing roster files, add coverage test
 
+feat(cli): add ingest-only command (Milestone 5.9.21) with schema bootstrap, JSON/human output, consistency validation inclusion, test
+feat(commands): add Command Palette actions for force re-ingest & data freshness (Milestone 5.9.22) with registration module and tests
+docs(adr): add ADR-0001 for ingestion lifecycle & repository abstraction (Milestone 5.9.23) with presence test
+feat(logging): structured JSONL ingest event logging (Milestone 5.9.24) with start/division/error/complete events & test
+
