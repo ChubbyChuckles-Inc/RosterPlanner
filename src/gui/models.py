@@ -50,6 +50,31 @@ class PlayerHistoryEntry:
     live_pz_delta: Optional[int] = None
 
 
+@dataclass
+class DivisionStandingEntry:
+    """Represents a single team's row within a division ranking table.
+
+    Fields intentionally generic to allow mapping from multiple league
+    formats. Draws (D) may be zero for sports without draws.
+    """
+
+    position: int
+    team_name: str
+    matches_played: int
+    wins: int
+    draws: int
+    losses: int
+    goals_for: int | None = None  # or sets / points scored depending on sport
+    goals_against: int | None = None
+    points: int = 0
+    recent_form: str | None = None  # e.g. "WWDLW" capped to last 5
+
+    def differential(self) -> int | None:
+        if self.goals_for is None or self.goals_against is None:
+            return None
+        return self.goals_for - self.goals_against
+
+
 __all__ = [
     "TeamEntry",
     "PlayerEntry",
@@ -57,4 +82,5 @@ __all__ = [
     "TeamRosterBundle",
     "LoadResult",
     "PlayerHistoryEntry",
+    "DivisionStandingEntry",
 ]

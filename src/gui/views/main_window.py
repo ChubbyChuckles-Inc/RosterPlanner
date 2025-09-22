@@ -46,7 +46,7 @@ from gui.views.document_area import DocumentArea
 from gui.views import dock_registry
 from gui.workers import LandingLoadWorker, RosterLoadWorker
 from gui.models import TeamEntry, TeamRosterBundle
-from gui.models import PlayerEntry, PlayerHistoryEntry
+from gui.models import PlayerEntry, PlayerHistoryEntry, DivisionStandingEntry
 from gui.navigation_tree_model import NavigationTreeModel
 from gui.navigation_filter_proxy import NavigationFilterProxyModel
 from gui.availability_table import AvailabilityTable
@@ -700,6 +700,10 @@ class MainWindow(QMainWindow):  # Dock-based
             act_open = QAction("Open in New Tab", self)
             act_open.triggered.connect(lambda: team and self.open_team_detail(team))  # type: ignore
             menu.addAction(act_open)
+            # Division table action (Milestone 5.3)
+            act_div = QAction("Open Division Table", self)
+            act_div.triggered.connect(lambda: team and self.open_division_table(team.division))  # type: ignore
+            menu.addAction(act_div)
         if team:
             if self._perm_service.can_copy_team_id():
                 act_copy = QAction("Copy Team ID", self)
@@ -748,6 +752,52 @@ class MainWindow(QMainWindow):  # Dock-based
             QMessageBox.information(self, "Export", f"Exported to {dlg_path}")
         except Exception as e:
             QMessageBox.warning(self, "Export Failed", str(e))
+
+    # Division Table Tabs (Milestone 5.3) -------------------------
+    def open_division_table(self, division_name: str):  # pragma: no cover - GUI path
+        doc_id = f"division:{division_name}"
+        if not hasattr(self, "document_area"):
+            return
+        from gui.views.division_table_view import DivisionTableView
+
+        def factory():
+            view = DivisionTableView()
+            rows = self._generate_placeholder_division_rows(division_name)
+            try:
+                view.title_label.setText(f"Division: {division_name}")
+                view.set_rows(rows)
+            except Exception:
+                pass
+            return view
+
+        existing = self.document_area.open_or_focus(doc_id, division_name, factory)
+        from gui.views.division_table_view import DivisionTableView as _DTV
+
+        if isinstance(existing, _DTV):
+            try:
+                existing.set_rows(self._generate_placeholder_division_rows(division_name))
+            except Exception:
+                pass
+
+    def _generate_placeholder_division_rows(self, division_name: str):  # pragma: no cover - helper
+        rows: list[DivisionStandingEntry] = []
+        base_points = 30
+        for i in range(6):
+            rows.append(
+                DivisionStandingEntry(
+                    position=i + 1,
+                    team_name=f"{division_name} Team {i+1}",
+                    matches_played=10 + i,
+                    wins=7 - i if 7 - i > 0 else 0,
+                    draws=i % 2,
+                    losses=i,
+                    goals_for=40 - i * 3,
+                    goals_against=20 + i * 2,
+                    points=base_points - i * 3,
+                    recent_form=("WWDLW"[i:] + "WDL")[:5],
+                )
+            )
+        return rows
 
     # Qt event overrides -------------------------------------------
     def closeEvent(self, event):  # type: ignore[override]
