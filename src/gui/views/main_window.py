@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QMenuBar,
     QMenu,
+    QTreeView,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -39,6 +40,7 @@ from gui.views.document_area import DocumentArea
 from gui.views import dock_registry
 from gui.workers import LandingLoadWorker, RosterLoadWorker
 from gui.models import TeamEntry, TeamRosterBundle
+from gui.navigation_tree_model import NavigationTreeModel
 from gui.availability_table import AvailabilityTable
 from planning import availability_store
 from gui.services.layout_persistence import LayoutPersistenceService
@@ -291,9 +293,10 @@ class MainWindow(QMainWindow):  # Dock-based
         button_bar.addWidget(self.save_btn)
         layout.addLayout(button_bar)
 
-        layout.addWidget(QLabel("Teams"))
-        self.team_list = QListWidget()
-        layout.addWidget(self.team_list)
+        layout.addWidget(QLabel("Teams / Divisions"))
+        self.team_tree = QTreeView()
+        self.team_tree.setHeaderHidden(True)
+        layout.addWidget(self.team_tree)
 
         layout.addWidget(QLabel("Match Dates (Calendar)"))
         self.calendar = QCalendarWidget()
@@ -359,21 +362,22 @@ class MainWindow(QMainWindow):  # Dock-based
             self._set_status("Failed to load teams")
             return
         self.teams = teams
-        self.team_list.clear()
-        for t in teams:
-            item = QListWidgetItem(f"{t.division} - {t.name}")
-            item.setData(Qt.ItemDataRole.UserRole, t)
-            self.team_list.addItem(item)
+        model = NavigationTreeModel(self.season, teams)
+        self.team_tree.setModel(model)
+        # Expand root divisions by default
+        self.team_tree.expand(model.index(0, 0, Qt.QModelIndex()))  # pragma: no cover
+        self.team_tree.clicked.connect(self._on_tree_item_clicked)  # type: ignore
         self._set_status(f"Loaded {len(teams)} teams")
 
     # Roster + Players -----------------------------------------------
     def _load_selected_roster(self):
-        item = (
-            getattr(self, "team_list", None).currentItem() if hasattr(self, "team_list") else None
-        )
-        if not item:
+        sel = self.team_tree.currentIndex() if hasattr(self, "team_tree") else None
+        if not sel or not sel.isValid():
             return
-        team: TeamEntry = item.data(Qt.ItemDataRole.UserRole)
+        model: NavigationTreeModel = self.team_tree.model()  # type: ignore
+        team = model.get_team_entry(sel)
+        if not team:
+            return
         self._set_status(f"Loading roster for {team.name}...")
         self.roster_worker = RosterLoadWorker(team, self.season)
         self.roster_worker.finished.connect(self._on_roster_loaded)
@@ -397,10 +401,12 @@ class MainWindow(QMainWindow):  # Dock-based
 
     # Persistence ----------------------------------------------------
     def _save_availability(self):
-        selected_item = self.team_list.currentItem() if hasattr(self, "team_list") else None
         team: TeamEntry | None = None
-        if selected_item:
-            team = selected_item.data(Qt.ItemDataRole.UserRole)
+        if hasattr(self, "team_tree"):
+            idx = self.team_tree.currentIndex()
+            if idx.isValid():
+                model: NavigationTreeModel = self.team_tree.model()  # type: ignore
+                team = model.get_team_entry(idx)
         for player, date_map in self.table.export_status().items():
             for date_iso, status in date_map.items():
                 if team:
@@ -424,6 +430,15 @@ class MainWindow(QMainWindow):  # Dock-based
             return w
 
         self.document_area.open_or_focus(doc_id, team.name, factory)
+
+    # Tree interaction -------------------------------------------------
+    def _on_tree_item_clicked(self, index):  # pragma: no cover - GUI path
+        if not index.isValid():
+            return
+        model: NavigationTreeModel = self.team_tree.model()  # type: ignore
+        team = model.get_team_entry(index)
+        if team:
+            self._load_selected_roster()
 
     # Qt event overrides -------------------------------------------
     def closeEvent(self, event):  # type: ignore[override]

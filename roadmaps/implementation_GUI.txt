@@ -137,7 +137,7 @@ Milestone 3: Data Layer & SQLite Integration
 [x] 3.10 Index advisor script (analyze EXPLAIN query plans)
 
 Milestone 4: Data Navigation UI
-[ ] 4.1 Navigation Dock: tree model (Season -> Division -> Team -> Roster) using QAbstractItemModel
+[x] 4.1 Navigation Dock: tree model (Season -> Division -> Team -> Roster) using QAbstractItemModel
 [ ] 4.1.1 Virtualization for large node counts (lazy children loading)
 [ ] 4.2 Search bar (incremental fuzzy search across teams & players)
 [ ] 4.2.1 Debounce + background thread indexing
