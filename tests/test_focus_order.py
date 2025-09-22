@@ -64,6 +64,14 @@ def _composite_widget_factory():  # Factory returning a QWidget
 
 
 def test_logical_and_real_tab_order_align():
+    # Ensure QApplication exists for widget creation
+    try:
+        if PYQT_AVAILABLE and QApplication.instance() is None:
+            import sys as _sys
+
+            QApplication(_sys.argv[:1])
+    except Exception:
+        pass
     logical_entries = compute_logical_focus_order(_composite_widget_factory)
     logical_names = focus_order_names(logical_entries)
     real_names = tab_traversal_names(_composite_widget_factory)

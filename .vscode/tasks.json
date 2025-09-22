@@ -1,0 +1,17 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "pytest-venv",
+			"type": "shell",
+			"command": "F:/Coding/RosterPlanner/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest",
+				"-k",
+				"ingestion_end_to_end",
+				"-q"
+			]
+		}
+	]
+}

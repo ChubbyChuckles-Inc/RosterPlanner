@@ -78,3 +78,6 @@ exclude = [
 minversion = "6.0"
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: marks tests that require GUI components or longer setup",
+]

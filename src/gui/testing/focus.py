@@ -81,8 +81,8 @@ def _is_focusable(w: QWidget) -> bool:
     try:
         policy = w.focusPolicy()
         enabled = w.isEnabled()
-        visible = w.isVisible()
-        if not enabled or not visible:
+        # Visibility can be False before the widget is shown; for logical order we ignore it
+        if not enabled:
             return False
         # Accept anything except NoFocus
         if hasattr(policy, "__int__"):
@@ -98,6 +98,16 @@ def compute_logical_focus_order(root_factory: Callable[[], QWidget]) -> List[Foc
     The traversal is depth-first based on child enumeration returned by
     QWidget.findChildren, filtered to focusable widgets.
     """
+    # Ensure a QApplication exists for widget instantiation in headless tests
+    try:
+        from PyQt6.QtWidgets import QApplication  # type: ignore
+        import sys as _sys
+
+        if QApplication.instance() is None:  # pragma: no cover - environment setup
+            QApplication(_sys.argv[:1])
+    except Exception:
+        pass
+
     root = root_factory()
     order: List[FocusEntry] = []
 
@@ -108,6 +118,11 @@ def compute_logical_focus_order(root_factory: Callable[[], QWidget]) -> List[Foc
             visit(child, f"{path}.{idx}")
 
     visit(root, "root")
+    try:
+        # Attach root to list to extend lifetime in simplistic contexts (test introspection)
+        setattr(order, "_root_ref", root)  # type: ignore[attr-defined]
+    except Exception:
+        pass
     return order
 
 

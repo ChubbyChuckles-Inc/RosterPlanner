@@ -14,6 +14,14 @@ from gui.views.dock_manager import DockManager
 
 
 def test_dock_manager_registration_and_creation():
+    # Ensure a QApplication for QDockWidget usage
+    try:
+        if QApplication is not None and QApplication.instance() is None:
+            import sys as _sys
+
+            QApplication(_sys.argv[:1])  # type: ignore
+    except Exception:
+        pass
     dm = DockManager()
     created = []
 

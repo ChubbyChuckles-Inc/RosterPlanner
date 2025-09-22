@@ -49,6 +49,19 @@ class CommandRegistry:
         self._usage_count: Dict[str, int] = {}
         self._exec_sequence: int = 0
 
+    # Maintenance / Testing ---------------------------------------
+    def reset(self):
+        """Clear all registered commands and usage tracking.
+
+        Intended for test isolation to avoid cross-test leakage of
+        globally registered commands. Not exposed in __all__ to keep
+        public API minimal.
+        """
+        self._commands.clear()
+        self._last_exec_order.clear()
+        self._usage_count.clear()
+        self._exec_sequence = 0
+
     # Registration -------------------------------------------------
     def register(
         self, command_id: str, title: str, callback: Callable[[], None], description: str = ""

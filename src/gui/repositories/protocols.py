@@ -40,7 +40,7 @@ __all__ = [
 # -----------------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Division:
     id: str
     name: str
@@ -48,13 +48,13 @@ class Division:
     category: Optional[str] = None  # Erwachsene / Jugend
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Club:
     id: str
     name: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Team:
     id: str
     name: str
@@ -62,7 +62,7 @@ class Team:
     club_id: Optional[str] = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Player:
     id: str
     name: str
@@ -70,7 +70,7 @@ class Player:
     live_pz: Optional[int] = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Match:
     id: str
     division_id: str

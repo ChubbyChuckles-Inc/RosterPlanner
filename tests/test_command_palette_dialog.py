@@ -18,6 +18,10 @@ def test_palette_populates_and_filters(qtbot):  # requires pytest-qt if availabl
     if QApplication.instance() is None:
         _app = QApplication(sys.argv)  # noqa: F841
     # Register sample commands (ensure clean slate by creating a local set)
+    try:
+        global_command_registry.reset()  # type: ignore[attr-defined]
+    except Exception:
+        pass
     global_command_registry.register("sample.one", "Sample One", lambda: None)
     global_command_registry.register("sample.two", "Second Sample", lambda: None)
     dlg = CommandPaletteDialog()

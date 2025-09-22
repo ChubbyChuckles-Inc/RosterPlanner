@@ -228,6 +228,28 @@ To disable this behavior temporarily, remove or rename `match_tracking.json` bef
   - Edit `.env` in VS Code to add project-specific environment variables (e.g., API keys, database URLs).
   - Do not commit sensitive data to `.env`. For production use, add `.env` to `.gitignore` after setup and use a `.env.example` file for templates.
 
+### Running Tests
+
+Always invoke pytest with the project virtual environment interpreter so GUI dependencies (PyQt6) are available:
+
+```powershell
+F:/Coding/RosterPlanner/.venv/Scripts/python.exe -m pytest -q
+```
+
+Run only integration (GUI) tests:
+
+```powershell
+F:/Coding/RosterPlanner/.venv/Scripts/python.exe -m pytest -m integration -q
+```
+
+Run the focused ingestion navigation test:
+
+```powershell
+F:/Coding/RosterPlanner/.venv/Scripts/python.exe -m pytest tests/test_gui_ingestion_end_to_end.py::test_end_to_end_ingest_and_gui_navigation -q
+```
+
+If you accidentally run `pytest` with the system Python and see `ModuleNotFoundError: No module named 'PyQt6'`, re-run using the fully qualified venv path above.
+
 ### Documentation
 
 - Documentation is built with Sphinx. To generate HTML documentation:

@@ -92,7 +92,7 @@ class RebuildPhase(Enum):
     ERROR = auto()
 
 
-@dataclass(slots=True)
+@dataclass
 class RebuildProgressEvent:
     """Represents a progress update for the rebuild flow.
 

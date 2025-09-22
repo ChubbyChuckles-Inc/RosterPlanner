@@ -52,7 +52,7 @@ __all__ = [
 ]
 
 
-@dataclass(slots=True)
+@dataclass
 class QueryRecord:
     sql: str
     params: Any

@@ -86,6 +86,15 @@ def test_end_to_end_ingest_and_gui_navigation(tmp_path):
     assert "–" in label, f"Expected club prefix in label: {label}"
     # Suffix should be last token (numeric)
     assert label.split()[-1].isdigit(), f"Expected numeric suffix at end: {label}"
+    # Founding year (e.g. 1968 or 1990) must not be mistaken for suffix when a trailing team number exists
+    parts = label.split()
+    if any(y in parts for y in ["1968", "1990", "1861"]):
+        # Ensure final numeric token is small (team number) and any earlier year token retained
+        final_num = int(parts[-1]) if parts[-1].isdigit() else None
+        if final_num is not None and final_num <= 20:
+            assert not (
+                parts[-2].isdigit() and 1850 <= int(parts[-2]) <= 2099
+            ), f"Year token incorrectly treated as suffix context: {label}"
 
     # 7. Load roster via TeamDataService directly (bypassing async thread)
     from gui.services.team_data_service import TeamDataService
@@ -93,8 +102,10 @@ def test_end_to_end_ingest_and_gui_navigation(tmp_path):
     svc = TeamDataService(conn=conn)
     bundle = svc.load_team_bundle(teams[0])
     assert bundle is not None, "Bundle not returned"
-    assert bundle.players, "Expected placeholder player inserted during ingestion"
-    assert any("Placeholder" in p.name for p in bundle.players), "Placeholder player missing"
+    assert bundle.players, "Expected at least one player parsed or placeholder inserted"
+    # Accept either real parsed players or placeholder fallback; ensure names look non-empty
+    names = [p.name for p in bundle.players]
+    assert any(len(n.split()) >= 1 for n in names), f"Unexpected empty player names: {names}"
 
     # 8. (Optional) ensure display_name property consistent
     assert teams[0].display_name.startswith(teams[0].club_name.split()[0])

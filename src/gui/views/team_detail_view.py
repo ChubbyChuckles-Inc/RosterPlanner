@@ -143,7 +143,12 @@ class TeamDetailView(QWidget):
             Parsed roster + matches for a given team.
         """
         self._bundle = bundle
-        self.title_label.setText(f"Team: {bundle.team.name}")
+        # Use display_name (includes club + suffix) for clearer context
+        try:
+            display_name = bundle.team.display_name  # type: ignore[attr-defined]
+        except Exception:
+            display_name = bundle.team.name
+        self.title_label.setText(f"Team: {display_name}")
         self._populate_roster(bundle.players)
         self._populate_matches(bundle.match_dates)
         self._populate_summary(bundle.players)

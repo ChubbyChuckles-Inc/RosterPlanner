@@ -86,7 +86,13 @@ class DataAuditService:
                 if not fname.endswith(".html"):
                     continue
                 if fname.startswith(self.RANKING_PREFIX):
-                    division = fname.removeprefix(self.RANKING_PREFIX).removesuffix(".html")
+                    # Backward-compatible removal of prefix/suffix (avoid str.removeprefix for <3.9)
+                    base = fname
+                    if base.startswith(self.RANKING_PREFIX):
+                        base = base[len(self.RANKING_PREFIX) :]
+                    if base.endswith(".html"):
+                        base = base[:-5]
+                    division = base
                     info = self._file_info(p / fname)
                     audit = divisions.setdefault(
                         division,
@@ -95,17 +101,27 @@ class DataAuditService:
                     audit.ranking_table = info
                 elif fname.startswith(self.TEAM_PREFIX):
                     # Format (observed): team_roster_<division>_<Team_Name_...>_<id>.html
-                    stem = fname.removesuffix(".html").removeprefix(self.TEAM_PREFIX)
+                    base = fname
+                    if base.endswith(".html"):
+                        base = base[:-5]
+                    if base.startswith(self.TEAM_PREFIX):
+                        base = base[len(self.TEAM_PREFIX) :]
+                    stem = base
                     tokens = stem.split("_")
                     if len(tokens) < 3:  # need at least division + name + id
                         continue
                     team_id = tokens[-1]
                     # Reconstruct division by matching longest prefix that appears as a ranking_table_<division>.html in same dir (if present)
-                    ranking_candidates = {
-                        dn.removeprefix(self.RANKING_PREFIX).removesuffix(".html")
-                        for dn in files
-                        if dn.startswith(self.RANKING_PREFIX)
-                    }
+                    ranking_candidates = set()
+                    for dn in files:
+                        if not dn.startswith(self.RANKING_PREFIX):
+                            continue
+                        rbase = dn
+                        if rbase.startswith(self.RANKING_PREFIX):
+                            rbase = rbase[len(self.RANKING_PREFIX) :]
+                        if rbase.endswith(".html"):
+                            rbase = rbase[:-5]
+                        ranking_candidates.add(rbase)
                     division = None
                     for i in range(
                         len(tokens) - 2, 0, -1

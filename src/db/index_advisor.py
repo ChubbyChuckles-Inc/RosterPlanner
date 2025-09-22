@@ -30,7 +30,7 @@ __all__ = [
 _WHERE_EQ_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:\?|[0-9]+|'[^']*')")
 
 
-@dataclass(slots=True)
+@dataclass
 class IndexSuggestion:
     table: str
     columns: Tuple[str, ...]

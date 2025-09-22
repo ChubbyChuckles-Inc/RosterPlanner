@@ -21,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import sqlite3
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Tuple, List
 
 from .data_audit import DataAuditService
 from .event_bus import EventBus, Event  # type: ignore
@@ -57,10 +57,28 @@ class IngestionCoordinator:
         self.base_dir = Path(base_dir)
         self.conn = conn
         self.event_bus = event_bus
+        self._singular_mode = True  # auto-detected per connection
+        self._table_division = "division"
+        self._table_team = "team"
+        self._table_club = "club"
+        self._table_player = "player"
+        self._table_ranking = "division_ranking"
+        self._detect_schema()
 
     # Public ------------------------------------------------------
     def run(self) -> IngestionSummary:
         self._ensure_provenance_table()
+        self._ensure_normalized_provenance_view()
+        if self._singular_mode:
+            self._ensure_id_map_table()
+            self._ensure_ranking_table()
+        else:
+            # Rebind table attribute names to legacy plural schema so downstream code paths
+            # that reference self._table_* write to correct tables. This keeps new logic centralized.
+            self._table_division = "divisions"
+            self._table_team = "teams"
+            self._table_club = "clubs"
+            self._table_player = "players"
         audit = DataAuditService(str(self.base_dir)).run()
         divisions_ingested = 0
         teams_ingested = 0
@@ -71,7 +89,7 @@ class IngestionCoordinator:
         with self.conn:  # single transaction for now (not per-division yet)
             # Upsert divisions & roster-derived teams
             for d in audit.divisions:
-                self._upsert_division(d.division)
+                div_id = self._upsert_division(d.division)
                 divisions_ingested += 1
                 # Ranking table provenance (not yet parsing content)
                 if d.ranking_table:
@@ -80,31 +98,50 @@ class IngestionCoordinator:
                     else:
                         processed_files += 1
                         self._record_provenance(d.ranking_table.path, d.ranking_table.sha1)
+                    # Parse ranking if enabled / singular mode
+                    try:
+                        if self._singular_mode:
+                            self._parse_and_upsert_ranking(div_id, d.ranking_table.path)
+                    except Exception:
+                        pass
 
-                # --- Deduplication phase (group by numeric id extracted from filename path) ---
-                # Build map: numeric_team_id -> list[(team_name, info)]
-                grouped: dict[str, list[tuple[str, object]]] = {}
-                for team_name, info in d.team_rosters.items():
-                    numeric_id = self._extract_numeric_id_from_path(
-                        info.path
-                    ) or self._derive_team_id(team_name)
-                    grouped.setdefault(numeric_id, []).append((team_name, info))
+                    # --- Deduplication phase (group by numeric id extracted from filename path) ---
+                    if not self._singular_mode:
+                        # Legacy plural schema: treat each roster file independently (no dedup grouping)
+                        for team_name, info in d.team_rosters.items():
+                            if self._is_unchanged(info.path, info.sha1):
+                                skipped_files += 1
+                            else:
+                                processed_files += 1
+                                self._record_provenance(info.path, info.sha1)
+                            team_id = self._derive_team_id(team_name)
+                            player_rows = self._upsert_team(team_id, team_name, d.division)
+                            teams_ingested += 1
+                            players_ingested += player_rows
+                    else:
+                        # Build map: numeric_team_id -> list[(team_name, info)] for dedup
+                        grouped: dict[str, list[tuple[str, object]]] = {}
+                        for team_name, info in d.team_rosters.items():
+                            numeric_id = self._extract_numeric_id_from_path(
+                                info.path
+                            ) or self._derive_team_id(team_name)
+                            grouped.setdefault(numeric_id, []).append((team_name, info))
 
-                for numeric_id, entries in grouped.items():
-                    canonical_name = self._choose_canonical_name([n for n, _ in entries])
-                    chosen_info = None
-                    for name, info in entries:
-                        if self._is_unchanged(info.path, info.sha1):
-                            skipped_files += 1
-                        else:
-                            processed_files += 1
-                            self._record_provenance(info.path, info.sha1)
-                        if name == canonical_name:
-                            chosen_info = info
-                    team_id = self._derive_team_id(canonical_name)
-                    player_rows = self._upsert_team(team_id, canonical_name, d.division)
-                    teams_ingested += 1
-                    players_ingested += player_rows
+                        for numeric_id, entries in grouped.items():
+                            canonical_name = self._choose_canonical_name([n for n, _ in entries])
+                            chosen_info = None
+                            for name, info in entries:
+                                if self._is_unchanged(info.path, info.sha1):
+                                    skipped_files += 1
+                                else:
+                                    processed_files += 1
+                                    self._record_provenance(info.path, info.sha1)
+                                if name == canonical_name:
+                                    chosen_info = info
+                            team_id = self._derive_team_id(canonical_name)
+                            player_rows = self._upsert_team(team_id, canonical_name, d.division)
+                            teams_ingested += 1
+                            players_ingested += player_rows
 
         summary = IngestionSummary(
             divisions_ingested=divisions_ingested,
@@ -146,13 +183,27 @@ class IngestionCoordinator:
         return summary
 
     # Internal helpers --------------------------------------------
-    def _upsert_division(self, division_name: str):
-        # For now treat provided division_id string as name; assign synthetic numeric id via hash
-        # Future parsing will extract proper season + level.
-        self.conn.execute(
-            "INSERT OR IGNORE INTO division(division_id, name, season) VALUES(?,?,?)",
-            (abs(hash(division_name)) % 10_000_000, division_name.replace("_", " "), 2025),
-        )
+    def _upsert_division(self, division_name: str) -> int | str:
+        readable_name = division_name.replace("_", " ")
+        if self._singular_mode:
+            # Stable id mapping
+            assigned = self._assign_id("division", readable_name)
+            self.conn.execute(
+                f"INSERT OR IGNORE INTO {self._table_division}(division_id, name, season) VALUES(?,?,?)",
+                (assigned, readable_name, 2025),
+            )
+            return assigned
+        else:
+            # Plural legacy schema uses textual id (reuse name hash string for compatibility)
+            div_id = str(abs(hash(readable_name)) % 10_000_000)
+            try:
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO divisions(id, name) VALUES(?,?)",
+                    (div_id, readable_name),
+                )
+            except Exception:
+                pass
+            return div_id
 
     def _ensure_club(self, club_code: str):  # legacy helper retained (unused in new flow)
         self.conn.execute(
@@ -168,26 +219,67 @@ class IngestionCoordinator:
         Otherwise whole name considered club and synthetic suffix '1' used (avoids empty names).
         """
         club_full_name, team_suffix = self._split_club_and_suffix(full_team_name)
-        club_numeric_id = abs(hash(club_full_name.lower())) % 10_000_000
-        self.conn.execute(
-            "INSERT OR IGNORE INTO club(club_id, name) VALUES(?,?)",
-            (club_numeric_id, club_full_name),
-        )
-        div_row = self.conn.execute(
-            "SELECT division_id FROM division WHERE name=?",
-            (division_name.replace("_", " "),),
-        ).fetchone()
-        if not div_row:
+        readable_division = division_name.replace("_", " ")
+        if self._singular_mode:
+            club_id = self._assign_id("club", club_full_name)
+            self.conn.execute(
+                f"INSERT OR IGNORE INTO {self._table_club}(club_id, name) VALUES(?,?)",
+                (club_id, club_full_name),
+            )
+            div_row = self.conn.execute(
+                f"SELECT division_id FROM {self._table_division} WHERE name=?",
+                (readable_division,),
+            ).fetchone()
+            if not div_row:
+                return 0
+            division_id = div_row[0]
+            team_id_assigned = self._assign_id("team", full_team_name)
+            self.conn.execute(
+                f"INSERT OR REPLACE INTO {self._table_team}(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
+                (team_id_assigned, club_id, division_id, team_suffix),
+            )
+            added_players = self._parse_and_upsert_players(team_id_assigned, full_team_name)
+            if added_players == 0:  # ensure at least placeholder only if none parsed
+                placeholder_id = self._assign_id("player", f"{team_id_assigned}:Placeholder Player")
+                try:
+                    self.conn.execute(
+                        f"INSERT OR IGNORE INTO {self._table_player}(player_id, team_id, full_name, live_pz) VALUES(?,?,?,?)",
+                        (placeholder_id, team_id_assigned, "Placeholder Player", None),
+                    )
+                    added_players = 1
+                except Exception:
+                    pass
+            return added_players
+        else:  # plural legacy fallback
+            # Use textual IDs based on lower tokens (backwards compatibility with tests)
+            club_id = club_full_name.split()[0].lower()
+            try:
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO clubs(id, name) VALUES(?,?)",
+                    (club_id, club_full_name),
+                )
+            except Exception:
+                pass
+            div_row = self.conn.execute(
+                "SELECT id FROM divisions WHERE name=?",
+                (readable_division,),
+            ).fetchone()
+            if not div_row:
+                return 0
+            division_id = div_row[0]
+            # Legacy original collapsed different roster variants; enhance by appending numeric suffix when present
+            suffix = team_suffix if team_suffix.isdigit() else "1"
+            base_prefix = team_code.split("-")[0]
+            team_id = f"{base_prefix}{suffix}" if base_prefix and suffix else base_prefix
+            try:
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO teams(id, name, division_id, club_id) VALUES(?,?,?,?)",
+                    (team_id, team_suffix, division_id, club_id),
+                )
+            except Exception:
+                pass
+            # Legacy flow does not ingest players (skip)
             return 0
-        division_id = div_row[0]
-        team_numeric_id = abs(hash(team_code)) % 10_000_000
-        self.conn.execute(
-            "INSERT OR REPLACE INTO team(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
-            (team_numeric_id, club_numeric_id, division_id, team_suffix),
-        )
-        # Parse real roster HTML if available (look for a roster file referencing this team id pattern)
-        added_players = self._parse_and_upsert_players(team_numeric_id, full_team_name)
-        return added_players
 
     # Roster Parsing ----------------------------------------------
     def _parse_and_upsert_players(self, team_numeric_id: int, full_team_name: str) -> int:
@@ -205,12 +297,12 @@ class IngestionCoordinator:
         except Exception:
             return 0  # BeautifulSoup not installed yet
 
-        # Build candidate files list
+        # Build candidate file list containing the full team name text
         roster_files: list[Path] = []
         lower_name = full_team_name.lower().replace("_", " ")
         for p in self.base_dir.rglob("team_roster_*.html"):
             try:
-                txt = p.read_text(errors="ignore")
+                txt = self._read_html(p)
             except Exception:
                 continue
             if lower_name in txt.lower():
@@ -226,44 +318,209 @@ class IngestionCoordinator:
         )
         for rf in roster_files:
             try:
-                soup = BeautifulSoup(rf.read_text(errors="ignore"), "html.parser")
+                soup = BeautifulSoup(self._read_html(rf), "html.parser")
             except Exception:
                 continue
-            # Candidate selectors: table rows cells, list items
-            candidates: list[str] = []
-            for sel in ["td", "li", "span"]:
-                for node in soup.select(sel):  # type: ignore
-                    text = (node.get_text(" ").strip()).replace("\xa0", " ")
-                    if not text:
+            gathered: list[tuple[str, int | None]] = []
+            # Locate roster table with both 'Spieler' and 'LivePZ'
+            target_table = None
+            for tbl in soup.find_all("table"):
+                text_sample = " ".join(c.get_text(" ").lower() for c in tbl.find_all("td")[:30])
+                if "spieler" in text_sample and "livepz" in text_sample:
+                    target_table = tbl
+                    break
+            if target_table:
+                for tr in target_table.find_all("tr"):
+                    cells = [c.get_text(" ").strip() for c in tr.find_all("td")]
+                    if len(cells) < 6:
                         continue
-                    if len(text) < 4:
+                    pos_token = cells[1]
+                    if not (
+                        pos_token.rstrip(".").isdigit()
+                        or "Er/" in pos_token
+                        or pos_token.endswith(".")
+                    ):
                         continue
-                    if text.lower().startswith("geb."):
+                    name_candidate = cells[3].strip() if len(cells) > 3 else ""
+                    if not name_candidate or len(name_candidate) < 3:
                         continue
-                    # Basic name heuristic: at least one space and start with letter
-                    if " " in text and re.match(r"[A-Za-zÄÖÜäöü]", text):
-                        candidates.append(text)
-            # Deduplicate preserving order
-            unique: list[str] = []
+                    # Extract last pure integer as LivePZ (ignore scores containing ':')
+                    live_pz = None
+                    for token in reversed(cells):
+                        t = token.replace("\xa0", "").strip()
+                        if t.isdigit():
+                            if ":" in t:
+                                continue
+                            try:
+                                live_pz = int(t)
+                            except Exception:
+                                live_pz = None
+                            break
+                    gathered.append((name_candidate, live_pz))
+            # Fallback generic if specialized failed
+            if len(gathered) < 2:
+                generic_candidates: list[str] = []
+                for tbl in soup.find_all("table")[:3]:
+                    header = []
+                    for row in tbl.find_all("tr"):
+                        cells = [c.get_text(" ").strip() for c in row.find_all(["td", "th"])]
+                        if not cells:
+                            continue
+                        if not header and any(h.lower() in {"spieler", "name"} for h in cells):
+                            header = [h.lower() for h in cells]
+                            continue
+                        name_idx = None
+                        for i, h in enumerate(header):
+                            if h in {"spieler", "name"}:
+                                name_idx = i
+                                break
+                        if name_idx is not None and name_idx < len(cells):
+                            cand = cells[name_idx].strip()
+                            if " " in cand and 3 <= len(cand) <= 80:
+                                generic_candidates.append(cand)
+                noise = {"aktuelle tabelle", "allgemeine ligastatistiken"}
+                for c in generic_candidates:
+                    if c.lower() in noise:
+                        continue
+                    gathered.append((c, None))
+            # Insert unique
             seen_local = set()
-            for c in candidates:
-                if c not in seen_local and c.lower() not in {u.lower() for u in unique}:
-                    unique.append(c)
-                    seen_local.add(c)
-            for name in unique:
-                if name in seen:
+            for name, lpz in gathered:
+                norm = name.strip()
+                if not norm or norm.lower() in seen_local or norm in seen:
                     continue
-                player_id = abs(hash((team_numeric_id, name))) % 10_000_000
+                seen_local.add(norm.lower())
+                player_id = abs(hash((team_numeric_id, norm))) % 10_000_000
                 try:
                     self.conn.execute(
-                        "INSERT OR IGNORE INTO player(player_id, team_id, full_name, live_pz) VALUES(?,?,?,?)",
-                        (player_id, team_numeric_id, name, None),
+                        f"INSERT OR IGNORE INTO {self._table_player}(player_id, team_id, full_name, live_pz) VALUES(?,?,?,?)",
+                        (player_id, team_numeric_id, norm, lpz),
                     )
-                    seen.add(name)
                     inserted += 1
+                    seen.add(norm)
                 except Exception:
-                    continue
+                    pass
         return inserted
+
+    # Ranking Parsing ---------------------------------------------
+    def _ensure_ranking_table(self):
+        try:
+            self.conn.execute(
+                f"CREATE TABLE IF NOT EXISTS {self._table_ranking}(division_id INTEGER, position INTEGER, team_name TEXT, matches_played INTEGER, wins INTEGER, draws INTEGER, losses INTEGER, points INTEGER, PRIMARY KEY(division_id, position))"
+            )
+        except Exception:
+            pass
+
+    def _parse_and_upsert_ranking(self, division_id: int | str, path: str):
+        try:
+            from bs4 import BeautifulSoup  # type: ignore
+        except Exception:
+            return
+        try:
+            html = Path(path).read_text(errors="ignore")
+        except Exception:
+            return
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+        except Exception:
+            return
+        table = None
+        # Prefer table with ranking/tabelle keyword
+        for t in soup.find_all("table"):
+            cls = " ".join(t.get("class", [])).lower() if t.get("class") else ""
+            if any(k in cls for k in ["ranking", "tabelle", "standings", "tabelle"]):
+                table = t
+                break
+        if table is None:
+            tables = soup.find_all("table")
+            table = tables[0] if tables else None
+        if table is None:
+            return
+        rows = []
+        for tr in table.find_all("tr"):
+            cells = [c.get_text(" ").strip() for c in tr.find_all(["td", "th"])]
+            if len(cells) < 2:
+                continue
+            rows.append(cells)
+        # Heuristic: first row headers if contains non-numeric token 'Team'
+        if rows and any("team" in c.lower() or "mann" in c.lower() for c in rows[0]):
+            rows = rows[1:]
+        position = 0
+        for r in rows:
+            # Determine position and team name
+            pos_candidate = r[0]
+            if not pos_candidate.isdigit():
+                continue
+            position = int(pos_candidate)
+            team_name = r[1]
+            # Points heuristic: last numeric cell
+            points = None
+            for token in reversed(r):
+                if token.isdigit():
+                    points = int(token)
+                    break
+            try:
+                self.conn.execute(
+                    f"INSERT OR REPLACE INTO {self._table_ranking}(division_id, position, team_name, points, matches_played, wins, draws, losses) VALUES(?,?,?,?,NULL,NULL,NULL,NULL)",
+                    (division_id, position, team_name, points),
+                )
+            except Exception:
+                pass
+
+    # Stable ID Mapping -------------------------------------------
+    def _ensure_id_map_table(self):
+        try:
+            self.conn.execute(
+                "CREATE TABLE IF NOT EXISTS id_map(\n"
+                "entity_type TEXT NOT NULL,\n"
+                "source_key TEXT NOT NULL,\n"
+                "assigned_id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+                "UNIQUE(entity_type, source_key)\n"
+                ")"
+            )
+        except Exception:
+            pass
+
+    def _assign_id(self, entity_type: str, source_key: str) -> int:
+        cur = self.conn.execute(
+            "SELECT assigned_id FROM id_map WHERE entity_type=? AND source_key=?",
+            (entity_type, source_key),
+        )
+        row = cur.fetchone()
+        if row:
+            return int(row[0])
+        self.conn.execute(
+            "INSERT INTO id_map(entity_type, source_key) VALUES(?,?)",
+            (entity_type, source_key),
+        )
+        return int(
+            self.conn.execute(
+                "SELECT assigned_id FROM id_map WHERE entity_type=? AND source_key=?",
+                (entity_type, source_key),
+            ).fetchone()[0]
+        )
+
+    # Schema detection ---------------------------------------------
+    def _detect_schema(self):
+        try:
+            cur = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = {r[0] for r in cur.fetchall()}
+            if "division" not in tables and "divisions" in tables:
+                self._singular_mode = False
+        except Exception:
+            self._singular_mode = True
+
+    # Provenance normalization view -------------------------------
+    def _ensure_normalized_provenance_view(self):
+        try:
+            self.conn.execute(
+                "CREATE VIEW IF NOT EXISTS provenance_normalized AS \n"
+                "SELECT 'file' AS kind, path, sha1, last_ingested_at AS ingested_at, NULL AS divisions, NULL AS teams, NULL AS players, NULL AS files_processed, NULL AS files_skipped FROM provenance\n"
+                "UNION ALL\n"
+                "SELECT 'summary' AS kind, NULL, NULL, ingested_at, divisions, teams, players, files_processed, files_skipped FROM provenance_summary"
+            )
+        except Exception:
+            pass
 
     # Provenance --------------------------------------------------
     def _ensure_provenance_table(self):
@@ -298,9 +555,32 @@ class IngestionCoordinator:
 
     @staticmethod
     def _split_club_and_suffix(full_team_name: str) -> tuple[str, str]:
+        """Heuristically split a raw team label into (club_name, team_suffix).
+
+        Rules:
+        - Trailing small integer (1..20) -> team suffix (e.g. 'LTTV Leutzscher Füchse 1990 3').
+        - Trailing year (1850-2099) alone => part of club, assign suffix '1'.
+        - Pattern '<club> <year> <n>' -> year stays in club, n becomes suffix.
+        - Otherwise whole string is club, suffix '1'.
+        """
         tokens = full_team_name.strip().split()
-        if len(tokens) >= 2 and tokens[-1].isdigit():
-            return " ".join(tokens[:-1]), tokens[-1]
+        if not tokens:
+            return full_team_name, "1"
+
+        def is_year(tok: str) -> bool:
+            return tok.isdigit() and 1850 <= int(tok) <= 2099
+
+        def is_team_num(tok: str) -> bool:
+            return tok.isdigit() and 1 <= int(tok) <= 20
+
+        if len(tokens) >= 2:
+            last = tokens[-1]
+            prev = tokens[-2]
+            if is_team_num(last):
+                # If previous token is a year include it in club name
+                return " ".join(tokens[:-1]), last
+            if is_year(last):
+                return full_team_name, "1"
         return full_team_name, "1"
 
     # New helpers -------------------------------------------------
@@ -344,3 +624,18 @@ class IngestionCoordinator:
 
         norm.sort(key=score, reverse=True)
         return norm[0]
+
+    @staticmethod
+    def _read_html(path: Path) -> str:
+        """Robust file reader attempting utf-8 then latin-1.
+
+        Some league pages occasionally contain mojibake; this makes parsing
+        resilient and reduces decoding noise in player names.
+        """
+        try:
+            return path.read_text(encoding="utf-8")
+        except Exception:
+            try:
+                return path.read_bytes().decode("latin-1")
+            except Exception:
+                return path.read_text(errors="ignore")
