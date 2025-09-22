@@ -43,3 +43,5 @@ feat(gui): navigation tree virtualization (lazy division loading) (Milestone 4.1
 test(gui): lazy loading tests for navigation tree divisions (Milestone 4.1.1)
 feat(gui): navigation search bar + filter proxy (Milestone 4.2)
 test(gui): navigation search filter tests (Milestone 4.2)
+feat(gui): debounced navigation search + background index build (Milestone 4.2.1)
+test(gui): debounce & index readiness tests (Milestone 4.2.1)

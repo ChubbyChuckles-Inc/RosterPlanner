@@ -140,7 +140,7 @@ Milestone 4: Data Navigation UI
 [x] 4.1 Navigation Dock: tree model (Season -> Division -> Team -> Roster) using QAbstractItemModel
 [x] 4.1.1 Virtualization for large node counts (lazy children loading)
 [x] 4.2 Search bar (incremental fuzzy search across teams & players)
-[ ] 4.2.1 Debounce + background thread indexing
+[x] 4.2.1 Debounce + background thread indexing
 [ ] 4.3 Filter chips (Division type: Erwachsene / Jugend, Level: Bezirksliga/Stadtklasse, Status: Active)
 [ ] 4.3.1 Persist active filters to settings
 [ ] 4.4 Persist navigation state (expanded nodes, last selection)

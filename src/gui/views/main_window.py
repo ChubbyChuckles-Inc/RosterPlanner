@@ -374,7 +374,7 @@ class MainWindow(QMainWindow):  # Dock-based
         self.team_tree.setModel(self.team_filter_proxy)
         # Wire search input
         if hasattr(self, "search_input"):
-            self.search_input.textChanged.connect(self.team_filter_proxy.setFilterPattern)  # type: ignore
+            self.search_input.textChanged.connect(self.team_filter_proxy.scheduleFilterPattern)  # type: ignore
         # Expand root divisions by default (use proxy's first row)
         root_idx = self.team_filter_proxy.index(0, 0)
         if root_idx.isValid():  # pragma: no cover
