@@ -17,16 +17,22 @@
 #>
 [CmdletBinding()]
 param(
-    [int]$ClubId = 2294,
-    [int]$Season = 2025,
-    [string]$DataDir = $(if ($env:ROSTERPLANNER_DATA_DIR) { $env:ROSTERPLANNER_DATA_DIR } else { "data" }),
-    [switch]$NoVenv
+  [int]$ClubId = 2294,
+  [int]$Season = 2025,
+  [string]$DataDir = $(if ($env:ROSTERPLANNER_DATA_DIR) { $env:ROSTERPLANNER_DATA_DIR } else { "data" }),
+  [switch]$NoVenv,
+  [switch]$SafeMode,
+  [switch]$VerboseStartup,
+  [switch]$ForceUnlock,
+  [switch]$ResetLayout,
+  [switch]$IgnoreLock,
+  [switch]$LockVerbose
 )
 
 $ErrorActionPreference = 'Stop'
 
 Write-Host "== RosterPlanner GUI Launcher ==" -ForegroundColor Cyan
-Write-Host "ClubId=$ClubId Season=$Season DataDir=$DataDir"
+Write-Host "ClubId=$ClubId Season=$Season DataDir=$DataDir SafeMode=$SafeMode VerboseStartup=$VerboseStartup"
 
 # Activate venv if present
 if (-not $NoVenv) {
@@ -40,26 +46,86 @@ if (-not $NoVenv) {
     }
 }
 
-# Ensure PyQt6 is available (lightweight check)
+function Test-PythonModule {
+  param(
+    [Parameter(Mandatory)][string]$Name
+  )
+  $code = "import importlib,sys; importlib.import_module('$Name')"
+  & python -c $code 2>$null
+  return ($LASTEXITCODE -eq 0)
+}
+
 try {
-    python -c "import importlib, sys;\nimport importlib;\nimport sys;\nimportlib.import_module('PyQt6')" 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "PyQt6 not installed. Installing..." -ForegroundColor Yellow
-        pip install PyQt6 | Out-Null
-    }
+  if (-not (Test-PythonModule -Name 'PyQt6')) {
+    Write-Host "PyQt6 not installed. Installing..." -ForegroundColor Yellow
+    pip install PyQt6 | Out-Null
+  }
 }
 catch {
-    Write-Host "Python not available or pip issue: $_" -ForegroundColor Red
-    exit 2
+  Write-Host "Python not available or pip issue: $_" -ForegroundColor Red
+  exit 2
 }
 
 # Export environment variables
+if ($ForceUnlock) {
+  $lockPath = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath 'rosterplanner.lock'
+  if (Test-Path $lockPath) {
+    try {
+      Remove-Item $lockPath -Force -ErrorAction Stop
+      Write-Host "Removed stale lock file: $lockPath" -ForegroundColor Yellow
+    } catch {
+      $errMsg = $_
+      Write-Host ("Failed to remove lock file {0}: {1}" -f $lockPath, $errMsg) -ForegroundColor Red
+    }
+  }
+}
+
 $env:ROSTERPLANNER_DATA_DIR = $DataDir
-$env:PYTHONPATH = "src"
+# Merge existing PYTHONPATH if present
+if ($env:PYTHONPATH) {
+  if ($env:PYTHONPATH.Split([IO.Path]::PathSeparator) -notcontains 'src') {
+    $env:PYTHONPATH = "src" + [IO.Path]::PathSeparator + $env:PYTHONPATH
+  }
+} else {
+  $env:PYTHONPATH = 'src'
+}
+
+if ($VerboseStartup) {
+  Write-Host "PYTHONPATH=$($env:PYTHONPATH)" -ForegroundColor DarkGray
+  Write-Host "Using python: $(Get-Command python | Select-Object -ExpandProperty Source)" -ForegroundColor DarkGray
+}
+
+if ($ResetLayout) {
+  $env:ROSTERPLANNER_RESET_LAYOUT = '1'
+  if ($VerboseStartup) { Write-Host "Will reset persisted layout (ROSTERPLANNER_RESET_LAYOUT=1)" -ForegroundColor DarkGray }
+}
+
+if ($IgnoreLock) {
+  $env:ROSTERPLANNER_IGNORE_LOCK = '1'
+  Write-Host "WARNING: Ignoring single-instance lock (ROSTERPLANNER_IGNORE_LOCK=1)" -ForegroundColor Yellow
+}
+if ($LockVerbose) {
+  $env:ROSTERPLANNER_LOCK_VERBOSE = '1'
+  if ($VerboseStartup) { Write-Host "Lock verbose diagnostics enabled" -ForegroundColor DarkGray }
+}
+$lockPath = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath 'rosterplanner.lock'
+if ($VerboseStartup -and (Test-Path $lockPath)) {
+  try {
+    $pid = Get-Content $lockPath -ErrorAction Stop
+    Write-Host "Existing lock contents: PID=$pid ($lockPath)" -ForegroundColor DarkGray
+    $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    if ($proc) { Write-Host "Process alive: $($proc.ProcessName) (StartTime=$($proc.StartTime))" -ForegroundColor DarkGray } else { Write-Host "Process not alive (stale candidate)" -ForegroundColor DarkGray }
+  } catch {
+    Write-Host "Could not read existing lock file ($lockPath): $_" -ForegroundColor DarkGray
+  }
+}
 
 # Launch (club/season currently hardcoded inside launcher; future: parameterize)
 Write-Host "Launching GUI..." -ForegroundColor Green
-python -m gui
+$argsList = @('-m','gui')
+if ($SafeMode) { $argsList += '--safe-mode' }
+if ($VerboseStartup) { $argsList += '--verbose-startup' }
+python @argsList
 $exitCode = $LASTEXITCODE
 
 if ($exitCode -ne 0) {

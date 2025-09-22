@@ -238,6 +238,8 @@ def create_app(
             "startup_timing": timing.as_dict(),
             "app_config": app_config.to_dict(),
             "layout_direction": get_layout_direction(),
+            # Filled later once single-instance attempt performed (see create_application)
+            "single_instance_acquired": None,
         },
         timing=timing,
     )
@@ -296,6 +298,15 @@ def acquire_single_instance(
     honor O_EXCL on existing open handles the same way so we write a PID).
     """
     global _LOCK_FD, _LOCK_PATH
+    # Emergency override: allow running multiple instances (debug only)
+    if os.environ.get("ROSTERPLANNER_IGNORE_LOCK") == "1":  # pragma: no cover - debug path
+        try:
+            print(
+                "[Lock] IGNORE active (ROSTERPLANNER_IGNORE_LOCK=1) – lock bypassed."
+            )  # noqa: T201
+        except Exception:
+            pass
+        return True
     if _LOCK_FD is not None:
         return True  # already acquired
     path = _default_lock_path(lock_name)
@@ -305,6 +316,11 @@ def acquire_single_instance(
         os.write(fd, str(os.getpid()).encode("utf-8"))
         _LOCK_FD = fd
         _LOCK_PATH = path
+        if os.environ.get("ROSTERPLANNER_LOCK_VERBOSE") == "1":  # pragma: no cover
+            try:
+                print(f"[Lock] Acquired: {path} (pid={os.getpid()})")  # noqa: T201
+            except Exception:
+                pass
         return True
     except FileExistsError:
         # Possible stale lock; inspect existing file
@@ -314,7 +330,22 @@ def acquire_single_instance(
             stale_pid = int(contents) if contents.isdigit() else None
         except Exception:
             stale_pid = None
-        if stale_pid is not None and not _pid_alive(stale_pid) and force_reclaim_stale:
+        # Self-PID edge case (very rare PID reuse scenario) – treat as stale
+        if stale_pid == os.getpid():
+            try:
+                os.unlink(path)
+            except Exception:
+                pass
+            stale_pid = None
+        alive = _pid_alive(stale_pid) if stale_pid is not None else None
+        if os.environ.get("ROSTERPLANNER_LOCK_VERBOSE") == "1":  # pragma: no cover
+            try:
+                print(
+                    f"[Lock] Existing lock detected: path={path} pid={stale_pid} alive={alive}"
+                )  # noqa: T201
+            except Exception:
+                pass
+        if stale_pid is not None and alive is False and force_reclaim_stale:
             # Remove stale file and retry once
             try:
                 os.unlink(path)
@@ -322,9 +353,22 @@ def acquire_single_instance(
                 os.write(fd, str(os.getpid()).encode("utf-8"))
                 _LOCK_FD = fd
                 _LOCK_PATH = path
+                if os.environ.get("ROSTERPLANNER_LOCK_VERBOSE") == "1":  # pragma: no cover
+                    try:
+                        print(
+                            f"[Lock] Reclaimed stale lock: {path} (previous pid={stale_pid})"
+                        )  # noqa: T201
+                    except Exception:
+                        pass
                 return True
             except Exception:  # pragma: no cover - race or permission
                 return False
+        # Final failure path
+        if os.environ.get("ROSTERPLANNER_LOCK_VERBOSE") == "1":  # pragma: no cover
+            try:
+                print("[Lock] Acquisition failed (another instance active).")  # noqa: T201
+            except Exception:
+                pass
         return False
     except Exception:  # pragma: no cover - defensive fallback
         return True  # Do not block startup on unexpected FS semantics
@@ -373,16 +417,15 @@ def create_application(
     - Creates the app context (non-headless) and returns it.
     """
     ctx = create_app(safe_mode=safe_mode, headless=False, rtl=rtl, data_dir=data_dir)
-    # Attempt lock after minimal construction so we have tokens/logging if desired.
-    if not acquire_single_instance():  # Another instance is running
-        print("Another RosterPlanner instance is already running.")  # noqa: T201
-        # Graceful teardown: ensure QApplication (if any) not left around.
+    acquired = acquire_single_instance()
+    ctx.metadata["single_instance_acquired"] = acquired
+    if not acquired:  # Another instance is running
+        # Do NOT keep QApplication lingering; caller may decide to exit immediately.
         if ctx.qt_app is not None:
             try:  # pragma: no cover - depends on Qt availability
                 ctx.qt_app.quit()
             except Exception:
                 pass
-        # We purposefully do not raise; caller can inspect return if needed.
     # Attach post-scrape ingestion hook if requested and available
     if enable_post_scrape_ingest and PostScrapeIngestionHook is not None:
         try:

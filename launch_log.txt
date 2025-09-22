@@ -1,0 +1,8 @@
+== RosterPlanner GUI Launcher ==
+ClubId=2294 Season=2025 DataDir=data SafeMode=False VerboseStartup=True
+Activating virtual environment (.venv)...
+PYTHONPATH=src
+Using python: F:\Coding\RosterPlanner\.venv\Scripts\python.exe
+Launching GUI...
+Another RosterPlanner instance is already running.
+GUI exited normally.
