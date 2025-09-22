@@ -14,6 +14,7 @@ class Team:
     division_name: Optional[str] = None
     club_id: Optional[str] = None
     is_additional_club_team: bool = False
+    division_id: Optional[str] = None  # new: separate division identifier used in roster links
 
 
 @dataclass

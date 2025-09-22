@@ -35,6 +35,8 @@ class LandingLoadWorker(QThread):
         from gui.services.data_state_service import DataStateService
         from gui.repositories.sqlite_impl import create_sqlite_repositories
         from gui.services.service_locator import services as _services
+        from gui.services.ingestion_coordinator import IngestionCoordinator
+        from config import settings as _settings
 
         try:
             conn = _services.try_get("sqlite_conn")
@@ -42,20 +44,55 @@ class LandingLoadWorker(QThread):
                 # Check if we have ingested data
                 state = DataStateService(conn).current_state()
                 if state.has_data:
-                    repos = create_sqlite_repositories(conn)
-                    # Aggregate teams by division for now (no club filter yet)
-                    all_divs = repos.divisions.list_divisions()
-                    teams: list[TeamEntry] = []
-                    for d in all_divs:
-                        for t in repos.teams.list_teams_in_division(d.id):
-                            teams.append(TeamEntry(team_id=t.id, name=t.name, division=d.name))
-                    teams.sort(key=lambda t: (t.division, t.name))
-                    self.finished.emit(teams, "")
+                    self.finished.emit(self._load_teams_from_db(conn), "")
                     return
+                # Auto-ingest fallback: if DB empty but scraped HTML assets exist in data dir
+                data_dir = getattr(_settings, "DATA_DIR", None)
+                if data_dir and os.path.isdir(data_dir):
+                    # Heuristic: presence of at least one ranking_table_*.html or team_roster_*.html
+                    have_assets = False
+                    for root, _, files in os.walk(data_dir):
+                        for f in files:
+                            if (
+                                f.startswith("ranking_table_") or f.startswith("team_roster_")
+                            ) and f.endswith(".html"):
+                                have_assets = True
+                                break
+                        if have_assets:
+                            break
+                    if have_assets:
+                        try:
+                            coordinator = IngestionCoordinator(
+                                base_dir=data_dir,
+                                conn=conn,
+                                event_bus=_services.try_get("event_bus"),
+                            )
+                            coordinator.run()
+                            # Re-check state after ingest
+                            state2 = DataStateService(conn).current_state()
+                            if state2.has_data:
+                                self.finished.emit(self._load_teams_from_db(conn), "")
+                                return
+                        except Exception as _e:  # pragma: no cover - debug fallback
+                            # Swallow auto-ingest failure and fall through to empty state
+                            import sys
+
+                            print(f"[LandingLoadWorker] Auto-ingest failed: {_e}", file=sys.stderr)
             # If we reach here, no ingested data present: return empty (gate)
             self.finished.emit([], "")
         except Exception:
             self.finished.emit([], traceback.format_exc())
+
+    def _load_teams_from_db(self, conn):
+        from gui.repositories.sqlite_impl import create_sqlite_repositories
+
+        repos = create_sqlite_repositories(conn)
+        teams: list[TeamEntry] = []
+        for d in repos.divisions.list_divisions():
+            for t in repos.teams.list_teams_in_division(d.id):
+                teams.append(TeamEntry(team_id=t.id, name=t.name, division=d.name))
+        teams.sort(key=lambda t: (t.division, t.name))
+        return teams
 
 
 class RosterLoadWorker(QThread):

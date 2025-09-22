@@ -1,5 +1,5 @@
 {
-  "last_scrape": "2025-09-22T04:19:59.769344",
+  "last_scrape": "2025-09-22T12:43:34.588023",
   "divisions": [],
   "upcoming_matches": [
     {
@@ -928,24 +928,24 @@
     },
     {
       "team_id": "128770",
-      "match_number": "3221",
-      "date": "25.10.25",
-      "time": "14:00",
-      "weekday": "Sa",
-      "home_team": "SV Eintracht Leipzig",
-      "guest_team": "Brandiser TTC 1946",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "128770",
       "match_number": "3224",
       "date": "01.11.25",
       "time": "14:00",
       "weekday": "Sa",
       "home_team": "Brandiser TTC 1946",
       "guest_team": "TTC Holzhausen 4",
+      "home_score": null,
+      "guest_score": null,
+      "status": "upcoming"
+    },
+    {
+      "team_id": "128770",
+      "match_number": "3221",
+      "date": "08.11.25",
+      "time": "13:00",
+      "weekday": "Sa",
+      "home_team": "SV Eintracht Leipzig",
+      "guest_team": "Brandiser TTC 1946",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -1432,24 +1432,24 @@
     },
     {
       "team_id": "129169",
-      "match_number": "3221",
-      "date": "25.10.25",
-      "time": "14:00",
-      "weekday": "Sa",
-      "home_team": "SV Eintracht Leipzig",
-      "guest_team": "Brandiser TTC 1946",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "129169",
       "match_number": "3227",
       "date": "02.11.25",
       "time": "10:00",
       "weekday": "So",
       "home_team": "SG C. Zetkin Leipzig 3",
       "guest_team": "SV Eintracht Leipzig",
+      "home_score": null,
+      "guest_score": null,
+      "status": "upcoming"
+    },
+    {
+      "team_id": "129169",
+      "match_number": "3221",
+      "date": "08.11.25",
+      "time": "13:00",
+      "weekday": "Sa",
+      "home_team": "SV Eintracht Leipzig",
+      "guest_team": "Brandiser TTC 1946",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -4421,9 +4421,9 @@
     {
       "team_id": "129658",
       "match_number": "1019",
-      "date": "26.09.25",
+      "date": "02.10.25",
       "time": "19:30",
-      "weekday": "Fr",
+      "weekday": "Do",
       "home_team": "TTV Markranstädt 3",
       "guest_team": "SG MoGoNo Leipzig 4",
       "home_score": null,
@@ -5021,9 +5021,9 @@
     {
       "team_id": "130051",
       "match_number": "1019",
-      "date": "26.09.25",
+      "date": "02.10.25",
       "time": "19:30",
-      "weekday": "Fr",
+      "weekday": "Do",
       "home_team": "TTV Markranstädt 3",
       "guest_team": "SG MoGoNo Leipzig 4",
       "home_score": null,

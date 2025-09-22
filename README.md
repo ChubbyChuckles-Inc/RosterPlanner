@@ -139,6 +139,31 @@ python -m gui.app
 
 If a scrape is already running the action is disabled (or you will be notified). Errors appear in a dialog.
 
+### Automatic Ingestion of Existing Scrape Assets (Auto-Ingest Fallback)
+
+If you previously ran a scrape (via CLI, another machine, or an earlier session) and the HTML assets already exist under the configured `data` directory, the GUI now attempts to make those teams immediately available without requiring a manual ingestion step.
+
+Behavior overview:
+
+1. On startup (initial landing load) the application checks the database state. If there are no ingested teams/provenance rows yet (empty DB gate) it performs a lightweight scan of `DATA_DIR`.
+2. If at least one `ranking_table_*.html` or `team_roster_*.html` file is found, an automatic ingestion pass is triggered (filename audit → derived divisions/teams → DB insert + provenance rows).
+3. After ingestion succeeds the navigation tree is populated with the available teams. If ingestion fails, the failure is logged to stderr and the UI simply shows an empty state (allowing you to still run a fresh full scrape).
+
+Key points / limitations:
+
+- The auto-ingest only runs when the DB is empty (no previously ingested data). It will not overwrite or re-import existing records.
+- It is heuristic: presence of at least one qualifying HTML file triggers it. Partial or malformed sets may lead to fewer teams than expected; running a full scrape will reconcile.
+- Failures are intentionally non-blocking; they do not present a modal error dialog—look at stderr / logs for `[LandingLoadWorker] Auto-ingest failed:` messages.
+- Provenance rows are created during this process so subsequent launches skip the fallback and load directly from the DB.
+
+Future enhancements (tracked/planned):
+
+- Preference/flag to disable auto-ingest for power users who want a clean manual ingest.
+- Progress / toast notification in the GUI when auto-ingest runs.
+- Retry button in the empty state panel if assets are detected but initial ingest failed.
+
+Manual override: If you want to force a fresh end‑to‑end scrape even after auto-ingest, just use `Data > Run Full Scrape`; existing DB entries will be augmented/updated according to the scrape + ingestion rules.
+
 - **Pre-Commit Hook Failures**:
 
   - If `scripts/commit-push.ps1` fails due to pre-commit hooks (e.g., `black`, `flake8`, `sphinx-build`), check the error output in the terminal.
@@ -222,6 +247,7 @@ The following internal milestones have been implemented to evolve the GUI/servic
 - 1.4 / 1.4.1: Service locator enhancements and repository injection helpers
 - 1.5: Typed `EventBus` signals (core synchronous pub/sub)
 - 1.5.1: Event tracing (recent event ring buffer)
+- 1.5.2: Auto-ingest fallback for pre-existing scrape assets (startup HTML → DB bridging)
 
 ### Milestone 1.5.1 – EventBus Tracing
 

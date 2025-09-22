@@ -29,7 +29,13 @@ def extract_team_overview(html: str) -> Dict[str, Team]:
         team_name = tds[1].get_text(strip=True)
         division_name = tds[2].get_text(strip=True)
         if team_id and team_name and division_name:
-            teams[team_id] = Team(id=team_id, name=team_name, division_name=division_name)
+            # At this stage we only have L2P (legacy combined id); store also as division_id for downstream clarity
+            teams[team_id] = Team(
+                id=team_id,
+                name=team_name,
+                division_name=division_name,
+                division_id=team_id,
+            )
     return teams
 
 
@@ -119,5 +125,17 @@ def parse_ranking_table(html: str, source_hint: str | None = None) -> Tuple[str,
                 href = roster_a["href"]
                 tname = span.get_text(strip=True)
                 if tname and href:
-                    teams.append({"team_name": tname, "roster_link": href})
+                    # Extract division_id (L2P) and team_id (L3P) if present for downstream accurate roster link building
+                    div_id_match = re.search(r"L2P=([^&]+)", href)
+                    team_id_match = re.search(r"L3P=([^&]+)", href)
+                    division_id = div_id_match.group(1) if div_id_match else None
+                    team_id = team_id_match.group(1) if team_id_match else None
+                    teams.append(
+                        {
+                            "team_name": tname,
+                            "roster_link": href,
+                            "division_id": division_id,
+                            "team_id": team_id,
+                        }
+                    )
     return division_name, teams

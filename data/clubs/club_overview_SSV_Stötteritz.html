@@ -64,7 +64,7 @@
 <table class="ui-widget-header PageHeadline" width="100%" cellpadding="0" cellspacing="0"><tr>
   <td style="width:5px"></td>
   <td style="text-align:left">SSV Stötteritz</td>
-  <td class="HeadlineIcons" style="width:47px;"><a href="?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&Print=true" target="_blank"><img src="/Resource/img/PageHeadline_Print.gif?1=2" width="22px" height="22px" style="border:0px; padding-right:10px" class="tooltip" title="Diese Seite drucken" alt="Diese Seite drucken" /></a></td>
+  <td class="HeadlineIcons" style="width:47px;"><a href="?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&Saison=2025&Print=true" target="_blank"><img src="/Resource/img/PageHeadline_Print.gif?1=2" width="22px" height="22px" style="border:0px; padding-right:10px" class="tooltip" title="Diese Seite drucken" alt="Diese Seite drucken" /></a></td>
 </tr></table>
 
 
@@ -91,7 +91,7 @@
 <script>
 	$( function() { $('#navGlobalVerein li:has(ul)').doubleTapToGo(); });
 </script>
-<br/><table class="ui-widget-header PageSubHeadline" style="width:100%; max-width:650px"><tr>    <td style="width:5px"></td>    <td style="text-align:left">Spielbetrieb Tischtennis</td>    <form name="SaisonForm" method="post" action="?">    <td style="text-align:right"><select name="Saison" class="InputBox" onchange="document.location.href='?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&Page2=&Saison='+document.SaisonForm.Saison.options[document.SaisonForm.Saison.options.selectedIndex].value"><option value="2025" >2025/26</option><option value="2024" >2024/25</option><option value="2023" >2023/24</option><option value="2022" >2022/23</option><option value="2021" >2021/22</option><option value="2020" >2020/21</option><option value="2019" >2019/20</option><option value="2018" >2018/19</option><option value="2017" >2017/18</option><option value="2016" >2016/17</option></select>    </td>    </form></tr></table>
+<br/><table class="ui-widget-header PageSubHeadline" style="width:100%; max-width:650px"><tr>    <td style="width:5px"></td>    <td style="text-align:left">Spielbetrieb Tischtennis</td>    <form name="SaisonForm" method="post" action="?">    <td style="text-align:right"><select name="Saison" class="InputBox" onchange="document.location.href='?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&Page2=&Saison='+document.SaisonForm.Saison.options[document.SaisonForm.Saison.options.selectedIndex].value"><option value="2025" selected>2025/26</option><option value="2024" >2024/25</option><option value="2023" >2023/24</option><option value="2022" >2022/23</option><option value="2021" >2021/22</option><option value="2020" >2020/21</option><option value="2019" >2019/20</option><option value="2018" >2018/19</option><option value="2017" >2017/18</option><option value="2016" >2016/17</option></select>    </td>    </form></tr></table>
 <nav id="navVerein" class="navrow" role="navigation" style="top:-20px;width:100%; max-width:100%; max-width:100%; max-width:650px">
 <ul class="clearfix">
 <li style="width:20%"><a aria-haspopup="true" href="?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&Saison=2025" class="Navi_Item_Marked">Team Übersicht</a></li>
@@ -137,7 +137,7 @@
        $(document).ready(function() {
            $('#SocialDiv').share({
                networks: ['email', 'facebook', 'twitter', 'pinterest', 'linkedin'],
-               urlToShare: 'https://leipzig.tischtennislive.de/default.aspx?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96',
+               urlToShare: 'https://leipzig.tischtennislive.de/default.aspx?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&Saison=2025',
                title: 'TischtennisLive: > Startseite '
            });
        });
@@ -186,7 +186,7 @@
 		</script>
 <!-- dialog window content -->
 <div id="dialog" title="Benutzeranmeldung" style="display:none">
-		<form id="LogInForm" name="LogInForm" action="Default.aspx?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&LogIn=true" method="post">
+		<form id="LogInForm" name="LogInForm" action="Default.aspx?L1=Public&L2=Verein&L2P=2294&Page=Spielbetrieb&Sportart=96&Saison=2025&LogIn=true" method="post">
 <br/><table width="340px" border="0" cellpadding="5" class="CONTENTTEXT"><tr>  <td>Benutzerkennung<br/><span class="SmallInfoText">Email-Adresse<br/><br/></span></td>  <td><input type="email" id="username" name="username" class="ui-state-default ui-corner-all" style="width:180px" maxlength="50" value="" /><br/>      <span class="SmallInfoText"><input type="checkbox" value="1" name="b_Cookie" >Benutzerkennung merken</span></td></tr><tr>  <td>Passwort</td>  <td><input type="password" name="password" id="password" class="ui-state-default ui-corner-all" style="width:180px" maxlength="50" /></td></tr><tr>  <td/><td><button type="submit" class="ui-state-default ui-corner-all" style="width:100px">Anmelden</button></td></tr></table></form><br/><div style="width:340px; text-align:left;"><img src="/Resource/img/Arrow_Yellow.gif" width="11px" height="11px" border="0px" alt="" /> <a href="?L1=Public&L2=Register">Neuen Account beantragen</a><br/><img src="/Resource/img/Arrow_Yellow.gif" width="11px" height="11px" border="0px" alt="" /> <a href="?L1=Public&L2=PWReset">Passwort vergessen?</a><br/></div>
 </div>
 

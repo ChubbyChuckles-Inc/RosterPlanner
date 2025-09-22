@@ -7,7 +7,13 @@ from bs4 import BeautifulSoup  # type: ignore
 from domain.models import Team
 from utils import html_utils
 
-ROSTER_LINK_TEMPLATE = "?L1=Ergebnisse&L2=TTStaffeln&L2P={id}&L3=Mannschaften&L3P={id}"
+# Roster link template: We explicitly request the 'Vorrunde' page variant because the default
+# landing (without &Page=) can sometimes omit the immediate player table (depending on
+# server-side state or caching). By forcing &Page=Vorrunde we consistently receive the
+# roster section including player anchor rows and LivePZ tooltip cells used by the parser.
+ROSTER_LINK_TEMPLATE = (
+    "?L1=Ergebnisse&L2=TTStaffeln&L2P={division_id}&L3=Mannschaften&L3P={team_id}&Page=Vorrunde"
+)
 
 
 def extract_club_teams(html: str, *, club_id: str) -> Dict[str, Team]:
@@ -34,14 +40,27 @@ def extract_club_teams(html: str, *, club_id: str) -> Dict[str, Team]:
         if not a:
             continue
         href = a.get("href", "")
-        m = re.search(r"L2P=([^&]+)", href)
-        if not m:
-            continue
-        team_id = m.group(1)
+        # Distinguish division_id vs team_id if both parameters present (L2P & L3P). Legacy pages may only contain L2P.
+        m_div = re.search(r"L2P=([^&]+)", href)
+        m_team = re.search(r"L3P=([^&]+)", href)
+        division_id = m_div.group(1) if m_div else None
+        team_id = m_team.group(1) if m_team else (division_id or None)
         if name and division and team_id:
-            teams[team_id] = Team(id=team_id, name=name, division_name=division, club_id=club_id)
+            teams[team_id] = Team(
+                id=team_id,
+                name=name,
+                division_name=division,
+                club_id=club_id,
+                division_id=division_id,
+            )
     return teams
 
 
-def build_roster_link(team_id: str) -> str:
-    return ROSTER_LINK_TEMPLATE.format(id=team_id)
+def build_roster_link(team_id: str, division_id: str | None = None) -> str:
+    # If division_id missing, fall back to team_id (legacy behaviour) to avoid breaking callers, but mark for repair.
+    div_id = division_id or team_id
+    link = ROSTER_LINK_TEMPLATE.format(division_id=div_id, team_id=team_id)
+    if "Page=" not in link:
+        sep = "&" if "?" in link else "?"
+        link = f"{link}{sep}Page=Vorrunde"
+    return link

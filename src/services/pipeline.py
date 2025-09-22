@@ -62,6 +62,8 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
 
     # Step 2: Fetch ranking tables & parse for division roster lists
     division_team_lists: dict[str, list[dict]] = {}
+    # Map team_id -> division_id (distinct) gathered from ranking tables for later repair of legacy incorrect files
+    team_division_map: dict[str, str] = {}
     for idx, rlink in enumerate(ranking_links, start=1):
         # Fetch ranking table HTML directly (do not persist with generic name first)
         ranking_html = ranking_scraper.http_client.fetch(rlink)  # type: ignore[attr-defined]
@@ -74,6 +76,11 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
         ranking_filename = naming.ranking_table_filename(division_name)
         filesystem.write_text(os.path.join(div_dir, ranking_filename), ranking_html)
         division_team_lists[division_name] = teams
+        for t in teams:
+            tid = t.get("team_id") or None
+            did = t.get("division_id") or None
+            if tid and did and tid != did:
+                team_division_map[tid] = did
 
     # Step 3: Fetch rosters for each team in divisions
     all_matches: dict[str, list[Match]] = {}
@@ -93,6 +100,9 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
 
             m = re.search(r"L3P=(\d+)", roster_link)
             team_id = m.group(1) if m else f"unknown_{team['team_name']}"
+            # Division id (L2P) distinct from team id
+            m_div = re.search(r"L2P=(\d+)", roster_link)
+            division_id = m_div.group(1) if m_div else None
             # Ensure division dir
             div_dir = os.path.join(data_dir, naming.sanitize(division_name))
             os.makedirs(div_dir, exist_ok=True)
@@ -164,7 +174,7 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
     os.makedirs(club_team_dir, exist_ok=True)
     for team_id, team in club_extra_teams.items():
         # Construct roster detail URL using known template; if division id (L2P) is unknown leave blank
-        roster_url = club_parser.build_roster_link(team_id)
+        roster_url = club_parser.build_roster_link(team_id, getattr(team, "division_id", None))
         full_url = (
             roster_url if roster_url.startswith("http") else f"{settings.ROOT_URL}{roster_url}"
         )
@@ -196,7 +206,9 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
                 tid = m.group(1)
                 if tid in produced_flat_ids:
                     continue
-                url = club_parser.build_roster_link(tid)
+                # Use captured division id if available in parsed ranking entry
+                division_id = t.get("division_id")
+                url = club_parser.build_roster_link(tid, division_id)
                 full_url = url if url.startswith("http") else f"{settings.ROOT_URL}{url}"
                 try:
                     html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
@@ -210,7 +222,7 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
     for tid, team in club_extra_teams.items():
         if tid in produced_flat_ids:
             continue
-        url = club_parser.build_roster_link(tid)
+        url = club_parser.build_roster_link(tid, getattr(team, "division_id", None))
         full_url = url if url.startswith("http") else f"{settings.ROOT_URL}{url}"
         try:
             html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
@@ -250,12 +262,23 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
         # 1. club_team_*
         club_team_filename = naming.club_team_by_name_filename(club_display, t.name, t.id)
         if club_team_filename not in existing_club_team_files:
-            roster_url = club_parser.build_roster_link(tid)
+            roster_url = club_parser.build_roster_link(tid, getattr(t, "division_id", None))
             full_url = (
                 roster_url if roster_url.startswith("http") else f"{settings.ROOT_URL}{roster_url}"
             )
             try:
                 html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
+                # Fallback: if player anchors missing, attempt alternate page variants
+                if "?L1=" in full_url and "Page=Vorrunde" in full_url and "Spieler" not in html:
+                    for alt in ("Gesamt", "Rueckrunde"):
+                        alt_url = full_url.replace("Page=Vorrunde", f"Page={alt}")
+                        try:
+                            alt_html = ranking_scraper.http_client.fetch(alt_url)  # type: ignore[attr-defined]
+                            if "Spieler" in alt_html:
+                                html = alt_html
+                                break
+                        except Exception:
+                            continue
                 filesystem.write_text(os.path.join(club_team_dir, club_team_filename), html)
                 existing_club_team_files.add(club_team_filename)
             except Exception:  # pragma: no cover - network/parse resilience
@@ -266,18 +289,71 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
         os.makedirs(div_dir, exist_ok=True)
         roster_filename = naming.team_roster_filename(div_name, t.name, t.id)
         if roster_filename not in existing_division_rosters:
-            roster_url = club_parser.build_roster_link(tid)
+            roster_url = club_parser.build_roster_link(tid, getattr(t, "division_id", None))
             full_url = (
                 roster_url if roster_url.startswith("http") else f"{settings.ROOT_URL}{roster_url}"
             )
             try:
                 html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
+                if "?L1=" in full_url and "Page=Vorrunde" in full_url and "Spieler" not in html:
+                    for alt in ("Gesamt", "Rueckrunde"):
+                        alt_url = full_url.replace("Page=Vorrunde", f"Page={alt}")
+                        try:
+                            alt_html = ranking_scraper.http_client.fetch(alt_url)  # type: ignore[attr-defined]
+                            if "Spieler" in alt_html:
+                                html = alt_html
+                                break
+                        except Exception:
+                            continue
                 filesystem.write_text(os.path.join(div_dir, roster_filename), html)
                 existing_division_rosters.add(roster_filename)
             except Exception:  # pragma: no cover
                 pass
 
     # Step 8: Persist tracking state
+    # Step 7e: Repair previously fetched incorrect roster files where L2P (division) and L3P (team) were the same
+    # (Only when we have a distinct division id captured for that team.)
+    for team_id, division_id in team_division_map.items():
+        if team_id == division_id:
+            continue
+        # Look for roster files ending with this team id
+        for root_dir, _dirs, files in os.walk(data_dir):
+            for f in files:
+                if not f.startswith("team_roster_") or not f.endswith(f"_{team_id}.html"):
+                    continue
+                fpath = os.path.join(root_dir, f)
+                try:
+                    html_existing = filesystem.read_text(fpath)
+                except Exception:
+                    continue
+                # If already correct (contains distinct division id) skip
+                if f"L2P={division_id}" in html_existing and f"L3P={team_id}" in html_existing:
+                    continue
+                # If shows legacy duplicated pattern attempt refetch
+                if f"L2P={team_id}" in html_existing and f"L3P={team_id}" in html_existing:
+                    try:
+                        repair_url = club_parser.build_roster_link(team_id, division_id)
+                        full_url = (
+                            repair_url
+                            if repair_url.startswith("http")
+                            else f"{settings.ROOT_URL}{repair_url}"
+                        )
+                        new_html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
+                        # Fallback to alternate pages if still missing players
+                        if "Spieler" not in new_html and "Page=Vorrunde" in full_url:
+                            for alt in ("Gesamt", "Rueckrunde"):
+                                alt_url = full_url.replace("Page=Vorrunde", f"Page={alt}")
+                                try:
+                                    alt_html = ranking_scraper.http_client.fetch(alt_url)  # type: ignore[attr-defined]
+                                    if "Spieler" in alt_html:
+                                        new_html = alt_html
+                                        break
+                                except Exception:
+                                    continue
+                        filesystem.write_text(fpath, new_html)
+                    except Exception:
+                        continue
+
     state = TrackingState(last_scrape=datetime.utcnow(), divisions={}, upcoming_matches=upcoming)
     tracking_store.save_state(state, data_dir)
 
