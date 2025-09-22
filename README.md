@@ -116,6 +116,29 @@ Before starting, ensure the following are set up on your Windows 10 system:
 
 ### Troubleshooting
 
+### Running a Full Scrape (CLI & GUI)
+
+You can populate the application dataset by running the scrape pipeline either via CLI or directly inside the GUI:
+
+CLI:
+
+```powershell
+python -m src.main run-full --club 2294 --season 2025 --out data
+```
+
+GUI:
+
+1. Launch the GUI:
+
+```powershell
+python -m gui.app
+```
+
+2. Use the menu: `Data > Run Full Scrape`.
+3. Wait for the status bar to show completion; the navigation tree will refresh automatically.
+
+If a scrape is already running the action is disabled (or you will be notified). Errors appear in a dialog.
+
 - **Pre-Commit Hook Failures**:
 
   - If `scripts/commit-push.ps1` fails due to pre-commit hooks (e.g., `black`, `flake8`, `sphinx-build`), check the error output in the terminal.

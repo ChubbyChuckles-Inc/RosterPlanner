@@ -6,4 +6,5 @@ feat(detail): implement Player Detail View (Milestone 5.2) with PlayerDetailView
 feat(detail): add sparkline micro charts (Milestone 5.2.1) with SparklineBuilder service, trend column in TeamDetailView, column visibility integration, unit & integration tests, and roadmap update
 feat(detail): implement Division Table View (Milestone 5.3) adding DivisionStandingEntry model, normalizer service, DivisionTableViewModel, DivisionTableView, MainWindow integration (open_division_table), placeholder rows, unit tests (normalizer), integration test (tab open/refresh), and roadmap update
 feat(detail): add multi-column sorting (Milestone 5.3.1) via MultiColumnSorter service, DivisionTableView header integration (shift-click priority), programmatic API, unit & integration tests, and roadmap update
+feat(data): integrate scraping into GUI with ScrapeRunner service, async worker, Data menu action (Run Full Scrape), team reload, unit tests, and README instructions
 

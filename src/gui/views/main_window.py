@@ -69,6 +69,7 @@ from gui.services.navigation_state_persistence import (
 from gui.services.permissions import PermissionService
 from gui.components.breadcrumb import BreadcrumbBuilder
 from gui.services.recent_teams import RecentTeamsTracker
+from gui.services.scrape_runner import ScrapeRunner
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
@@ -99,6 +100,11 @@ class MainWindow(QMainWindow):  # Dock-based
         self._breadcrumb_builder = BreadcrumbBuilder()
         # Recently viewed teams tracker (Milestone 4.7)
         self._recent_tracker = RecentTeamsTracker()
+        # Scrape runner integration
+        self._scrape_runner = ScrapeRunner()
+        self._scrape_runner.scrape_started.connect(self._on_scrape_started)  # type: ignore
+        self._scrape_runner.scrape_finished.connect(self._on_scrape_finished)  # type: ignore
+        self._scrape_runner.scrape_failed.connect(self._on_scrape_failed)  # type: ignore
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -201,11 +207,14 @@ class MainWindow(QMainWindow):  # Dock-based
         mb = self.menuBar() if self.menuBar() else QMenuBar(self)
         view_menu = None
         help_menu = None
+        data_menu = None
         for a in mb.actions():  # reuse if exists
             if a.text() == "&View":
                 view_menu = a.menu()
             if a.text() == "&Help":
                 help_menu = a.menu()
+            if a.text() == "&Data":
+                data_menu = a.menu()
                 break
         if view_menu is None:
             view_menu = QMenu("&View", self)
@@ -213,6 +222,9 @@ class MainWindow(QMainWindow):  # Dock-based
         if help_menu is None:
             help_menu = QMenu("&Help", self)
             mb.addMenu(help_menu)
+        if data_menu is None:
+            data_menu = QMenu("&Data", self)
+            mb.addMenu(data_menu)
         # Add actions via convenience overload (returns QAction object)
         reset_action = view_menu.addAction("Reset Layout")
         reset_action.triggered.connect(self._on_reset_layout)  # type: ignore[attr-defined]
@@ -220,6 +232,9 @@ class MainWindow(QMainWindow):  # Dock-based
         palette_action.triggered.connect(self._open_command_palette)  # type: ignore[attr-defined]
         cheatsheet_action = help_menu.addAction("Keyboard Shortcuts...")
         cheatsheet_action.triggered.connect(self._open_shortcut_cheatsheet)  # type: ignore[attr-defined]
+        # Scrape action in Data menu
+        self._act_scrape = data_menu.addAction("Run Full Scrape")
+        self._act_scrape.triggered.connect(self._trigger_full_scrape)  # type: ignore[attr-defined]
         # Global shortcut (in addition to menu for clarity)
         QShortcut(QKeySequence("Ctrl+P"), self, activated=self._open_command_palette)
         # Register shortcut in registry (id stable for future conflict detection)
@@ -424,6 +439,51 @@ class MainWindow(QMainWindow):  # Dock-based
     def _set_status(self, text: str):
         if hasattr(self, "status_label"):
             self.status_label.setText(text)
+        else:
+            try:
+                self.setWindowTitle(f"Roster Planner - {text}")
+            except Exception:
+                pass
+
+    # Scrape integration ------------------------------------------------
+    def _trigger_full_scrape(self):  # pragma: no cover - GUI event
+        if self._scrape_runner.is_running():
+            QMessageBox.information(self, "Scrape", "A scrape is already running.")
+            return
+        confirm = QMessageBox.question(
+            self,
+            "Run Full Scrape",
+            f"Run full scrape for club {self.club_id} season {self.season}? This may take several minutes.",
+        )
+        if confirm != QMessageBox.StandardButton.Yes:  # type: ignore
+            return
+        self._scrape_runner.start(self.club_id, self.season, self.data_dir)
+
+    def _on_scrape_started(self):  # pragma: no cover
+        self._set_status("Scrape running...")
+        try:
+            self._act_scrape.setEnabled(False)  # type: ignore
+        except Exception:
+            pass
+
+    def _on_scrape_finished(self, result: dict):  # pragma: no cover
+        self._set_status("Scrape complete. Reloading teams...")
+        try:
+            self._load_landing()
+        except Exception as e:
+            QMessageBox.warning(self, "Reload", f"Scrape finished but reload failed: {e}")
+        try:
+            self._act_scrape.setEnabled(True)  # type: ignore
+        except Exception:
+            pass
+
+    def _on_scrape_failed(self, msg: str):  # pragma: no cover
+        QMessageBox.critical(self, "Scrape Failed", msg)
+        self._set_status("Scrape failed")
+        try:
+            self._act_scrape.setEnabled(True)  # type: ignore
+        except Exception:
+            pass
 
     # Landing + Teams ------------------------------------------------
     def _load_landing(self):
