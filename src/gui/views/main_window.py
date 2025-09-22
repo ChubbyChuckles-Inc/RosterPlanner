@@ -59,6 +59,10 @@ from gui.services.navigation_filter_persistence import (
     NavigationFilterPersistenceService,
     NavigationFilterState,
 )
+from gui.services.navigation_state_persistence import (
+    NavigationStatePersistenceService,
+    NavigationState,
+)
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
@@ -80,6 +84,9 @@ class MainWindow(QMainWindow):  # Dock-based
         # Navigation filter persistence (Milestone 4.3.1)
         self._nav_filter_service = NavigationFilterPersistenceService(base_dir=self.data_dir)
         self._nav_filter_state = self._nav_filter_service.load()
+        # Navigation expansion/selection persistence (Milestone 4.4)
+        self._nav_state_service = NavigationStatePersistenceService(base_dir=self.data_dir)
+        self._nav_state = self._nav_state_service.load()
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -422,6 +429,8 @@ class MainWindow(QMainWindow):  # Dock-based
         self.team_tree.clicked.connect(self._on_tree_item_clicked)  # type: ignore
         # Apply persisted chip filters after model set
         self._apply_persisted_filters()
+        # Restore expanded divisions & last selection
+        self._restore_navigation_state()
         self._set_status(f"Loaded {len(teams)} teams")
 
     def _on_filter_chips_changed(self):  # pragma: no cover - GUI path
@@ -559,14 +568,74 @@ class MainWindow(QMainWindow):  # Dock-based
             team = model_obj.get_team_entry(index)  # type: ignore
         if team:
             self._load_selected_roster()
+            # Persist last selected team id
+            self._nav_state.last_selected_team_id = team.team_id
+            self._nav_state_service.save(self._nav_state)
 
     # Qt event overrides -------------------------------------------
     def closeEvent(self, event):  # type: ignore[override]
         # Save layout before closing
         try:
             self._layout_service.save_layout("main", self)
+            # Save navigation state snapshot on close
+            self._snapshot_navigation_state()
+            self._nav_state_service.save(self._nav_state)
         finally:
             super().closeEvent(event)
+
+    # --- Navigation State Persistence (Milestone 4.4) ------------
+    def _snapshot_navigation_state(self):  # pragma: no cover - GUI path
+        if not hasattr(self, "team_tree"):
+            return
+        expanded = set()
+        model = self.team_tree.model()
+        # Iterate top-level divisions through proxy if used
+        rows = model.rowCount()
+        for r in range(rows):
+            idx = model.index(r, 0)
+            if self.team_tree.isExpanded(idx):
+                # Map to source if proxy
+                label = model.data(idx)
+                expanded.add(label)
+        self._nav_state.expanded_divisions = expanded
+
+    def _restore_navigation_state(self):  # pragma: no cover - GUI path
+        if not hasattr(self, "team_tree"):
+            return
+        model = self.team_tree.model()
+        rows = model.rowCount()
+        for r in range(rows):
+            idx = model.index(r, 0)
+            label = model.data(idx)
+            if label in self._nav_state.expanded_divisions:
+                self.team_tree.expand(idx)
+        # Attempt to restore selection if team present
+        if self._nav_state.last_selected_team_id:
+            self._restore_last_selection()
+
+    def _restore_last_selection(self):  # pragma: no cover - GUI path
+        model = self.team_tree.model()
+        rows = model.rowCount()
+        for r in range(rows):
+            div_idx = model.index(r, 0)
+            # Expand to load children lazily
+            self.team_tree.expand(div_idx)
+            # Force child load via rowCount
+            _ = model.rowCount(div_idx)
+            child_rows = model.rowCount(div_idx)
+            for c in range(child_rows):
+                team_idx = model.index(c, 0, div_idx)
+                # Map to team entry
+                mobj = model
+                entry = None
+                if isinstance(mobj, NavigationFilterProxyModel):
+                    src: NavigationTreeModel = mobj.sourceModel()  # type: ignore
+                    entry = src.get_team_entry(mobj.mapToSource(team_idx))
+                else:
+                    entry = mobj.get_team_entry(team_idx)  # type: ignore
+                if entry and entry.team_id == self._nav_state.last_selected_team_id:
+                    self.team_tree.setCurrentIndex(team_idx)
+                    return
 
 
 __all__ = ["MainWindow"]

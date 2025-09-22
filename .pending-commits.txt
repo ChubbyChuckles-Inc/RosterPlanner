@@ -49,3 +49,5 @@ feat(gui): navigation filter chips (division type, level, active) (Milestone 4.3
 test(gui): navigation filter chips tests (Milestone 4.3)
 feat(gui): persist navigation filter state (search text, division type/level, active flag) (Milestone 4.3.1)
 test(gui): navigation filter persistence roundtrip & corrupt file backup tests (Milestone 4.3.1)
+feat(gui): persist navigation tree state (expanded divisions + last selected team) (Milestone 4.4)
+test(gui): navigation state persistence roundtrip & corrupt file backup (Milestone 4.4)
