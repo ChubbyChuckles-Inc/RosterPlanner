@@ -46,6 +46,7 @@ from gui.views.document_area import DocumentArea
 from gui.views import dock_registry
 from gui.workers import LandingLoadWorker, RosterLoadWorker
 from gui.models import TeamEntry, TeamRosterBundle
+from gui.models import PlayerEntry, PlayerHistoryEntry
 from gui.navigation_tree_model import NavigationTreeModel
 from gui.navigation_filter_proxy import NavigationFilterProxyModel
 from gui.availability_table import AvailabilityTable
@@ -606,8 +607,59 @@ class MainWindow(QMainWindow):  # Dock-based
         if bundle is not None and isinstance(existing, TeamDetailView):
             try:
                 existing.set_bundle(bundle)
+                # Connect player activation once (idempotent guard via attribute flag)
+                if not hasattr(existing, "_player_activation_hooked"):
+                    try:
+                        existing.playerActivated.connect(lambda name, t=team: self.open_player_detail(t, name))  # type: ignore
+                        existing._player_activation_hooked = True  # type: ignore
+                    except Exception:
+                        pass
             except Exception:
                 pass
+
+    # Player Detail Tabs (Milestone 5.2) ---------------------------
+    def open_player_detail(self, team: TeamEntry, player_name: str):  # pragma: no cover - GUI path
+        doc_id = f"player:{team.team_id}:{player_name}"
+        if not hasattr(self, "document_area"):
+            return
+        from gui.views.player_detail_view import PlayerDetailView
+
+        # Attempt to find player entry from latest loaded roster (availability table or last bundle not cached yet; synthetic entry fallback)
+        player_entry = PlayerEntry(team_id=team.team_id, name=player_name)
+        # Placeholder history generation (will be replaced by real repository fetch later)
+        history = self._generate_placeholder_history(player_entry)
+
+        def factory():
+            view = PlayerDetailView(player_entry)
+            try:
+                view.set_history(history)
+            except Exception:
+                pass
+            return view
+
+        existing = self.document_area.open_or_focus(doc_id, player_name, factory)
+        # If already open, refresh history (placeholder refresh)
+        from gui.views.player_detail_view import PlayerDetailView as _PDV
+
+        if isinstance(existing, _PDV):
+            try:
+                existing.set_history(history)
+            except Exception:
+                pass
+
+    def _generate_placeholder_history(
+        self, player: PlayerEntry
+    ):  # pragma: no cover - simple helper
+        import datetime as _dt
+
+        history: list[PlayerHistoryEntry] = []
+        today = _dt.date.today()
+        # Create last 5 weekly entries with alternating +/- deltas
+        deltas = [5, -3, 0, 4, -2]
+        for i, d in enumerate(deltas):
+            date = today - _dt.timedelta(days=i * 7)
+            history.append(PlayerHistoryEntry(iso_date=date.isoformat(), live_pz_delta=d))
+        return list(reversed(history))
 
     # Tree interaction -------------------------------------------------
     def _on_tree_item_clicked(self, index):  # pragma: no cover - GUI path

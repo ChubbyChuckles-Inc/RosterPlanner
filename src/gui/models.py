@@ -36,3 +36,25 @@ class TeamRosterBundle:
 @dataclass
 class LoadResult:
     teams: List[TeamEntry]
+
+
+@dataclass
+class PlayerHistoryEntry:
+    """Placeholder model representing a single historical performance entry.
+
+    For now only stores date and LivePZ delta placeholder; future expansion
+    could include opponent, match id, result, etc.
+    """
+
+    iso_date: str
+    live_pz_delta: Optional[int] = None
+
+
+__all__ = [
+    "TeamEntry",
+    "PlayerEntry",
+    "MatchDate",
+    "TeamRosterBundle",
+    "LoadResult",
+    "PlayerHistoryEntry",
+]

@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QAction,
 )
-from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtWidgets import QToolTip
 
 from gui.models import TeamRosterBundle, PlayerEntry, MatchDate
@@ -43,6 +43,9 @@ class TeamDetailView(QWidget):
     the caller. This keeps the view free of repository logic and easy
     to unit test (populate with synthetic bundle instances).
     """
+
+    # Emitted when a player row is activated (double-click). Argument: player name.
+    playerActivated = pyqtSignal(str)
 
     def __init__(
         self,
@@ -96,6 +99,11 @@ class TeamDetailView(QWidget):
         self.roster_table.setHorizontalHeaderLabels(["Player", "LivePZ"])  # minimal for now
         self.roster_table.horizontalHeader().setStretchLastSection(True)
         roster_layout.addWidget(self.roster_table)
+        # Double-click to open player detail
+        try:
+            self.roster_table.itemDoubleClicked.connect(self._on_player_double_clicked)  # type: ignore
+        except Exception:
+            pass
         root.addWidget(roster_box)
         # Enable cell tracking for hover tooltips
         try:
@@ -211,6 +219,17 @@ class TeamDetailView(QWidget):
             QToolTip.showText(pos, text, self.roster_table)
         except Exception:
             pass
+
+    def _on_player_double_clicked(self, item):  # pragma: no cover - GUI path
+        if not item:
+            return
+        row = item.row()
+        if self._bundle and 0 <= row < len(self._bundle.players):
+            name = self._bundle.players[row].name
+            try:
+                self.playerActivated.emit(name)
+            except Exception:
+                pass
 
     # Accessors for tests -------------------------------------------------
     def bundle(self) -> Optional[TeamRosterBundle]:  # pragma: no cover - trivial
