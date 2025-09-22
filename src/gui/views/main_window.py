@@ -986,10 +986,18 @@ class MainWindow(QMainWindow):  # Dock-based
         if not hasattr(self, "document_area"):
             return
         from gui.views.division_table_view import DivisionTableView
+        from gui.services.division_data_service import DivisionDataService
 
         def factory():
             view = DivisionTableView()
-            rows = self._generate_placeholder_division_rows(division_name)
+            # Attempt repository-backed standings; fallback to placeholder generator if empty
+            try:
+                svc = DivisionDataService()
+                rows = svc.load_division_standings(division_name)
+                if not rows:
+                    rows = self._generate_placeholder_division_rows(division_name)
+            except Exception:
+                rows = self._generate_placeholder_division_rows(division_name)
             try:
                 view.title_label.setText(f"Division: {division_name}")
                 view.set_rows(rows)
@@ -1002,7 +1010,11 @@ class MainWindow(QMainWindow):  # Dock-based
 
         if isinstance(existing, _DTV):
             try:
-                existing.set_rows(self._generate_placeholder_division_rows(division_name))
+                svc = DivisionDataService()
+                rows = svc.load_division_standings(division_name)
+                if not rows:
+                    rows = self._generate_placeholder_division_rows(division_name)
+                existing.set_rows(rows)
             except Exception:
                 pass
 

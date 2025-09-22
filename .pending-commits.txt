@@ -25,4 +25,5 @@ feat(ingest): add HTML hash provenance skipping (Milestone 5.9.4) with provenanc
 
 feat(ingest): automate post-scrape ingestion (Milestone 5.9.5) adding PostScrapeIngestionHook, bootstrap + MainWindow integration, sqlite_conn auto-registration, integration test (post-scrape ingestion events), and roadmap update
 feat(data): repository-backed team roster loading (Milestone 5.9.6) introducing TeamDataService, integrating into RosterLoadWorker, and adding unit test
+feat(data): division standings service (Milestone 5.9.7) adding DivisionDataService with computed standings from matches (points W=2/D=1/L=0), integrating into MainWindow.open_division_table, adding unit test, and updating roadmap
 
