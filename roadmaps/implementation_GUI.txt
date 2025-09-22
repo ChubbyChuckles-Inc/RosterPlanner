@@ -166,7 +166,7 @@ Milestone 5: Detail Views
 [x] 5.8 Tab pinning & color tagging
 
 Milestone 5.9: Data Integration & Persistence Bridging (Scraped HTML -> SQLite -> GUI Views)
-[ ] 5.9.0 Audit current scraped assets & schema alignment (HTML fields vs DB tables)
+[x] 5.9.0 Audit current scraped assets & schema alignment (HTML fields vs DB tables)
 [ ] 5.9.1 Define repository interface layer (TeamRepo, PlayerRepo, MatchRepo, DivisionRepo, ClubRepo) with type-hinted contracts
 [ ] 5.9.2 Implement SQLite-backed repositories (read-only for now) using existing schema
 [ ] 5.9.3 Introduce IngestionCoordinator service (detect new/changed HTML, invoke parsers, upsert via repositories)

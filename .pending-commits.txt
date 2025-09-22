@@ -16,4 +16,5 @@ feat(detail): add raw/clean HTML toggle (Milestone 5.5.1) with HtmlDiffService.c
 feat(export): implement export presets management (Milestone 5.6.1) with ExportPresetsService (JSON persistence), MainWindow presets submenu, save preset action, column subset application, tests (round-trip + filtering), and roadmap update
 feat(compare): add SplitTeamCompareView and MainWindow integration (Milestone 5.7) with context menu 'Compare With...', side-by-side team tabs, unit test, and roadmap update
 feat(tabs): implement tab pinning & color tagging (Milestone 5.8) with TabMetadataPersistenceService, DocumentArea context menu, persistence, ordering, tests, and roadmap update
+feat(data): add DataAuditService (Milestone 5.9.0) to scan scraped HTML assets, compute hashes, map ranking tables & team rosters, unit test, and roadmap update
 
