@@ -5,7 +5,7 @@ Simple QTableWidget-based view showing division standings. Backed by
 """
 
 from __future__ import annotations
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -13,9 +13,12 @@ from PyQt6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QApplication,
 )
 
 from gui.viewmodels.division_table_viewmodel import DivisionTableViewModel, NormalizedDivisionRow
+from gui.services.multi_column_sort import MultiColumnSorter, SortKey
+from PyQt6.QtCore import Qt
 from gui.models import DivisionStandingEntry
 
 __all__ = ["DivisionTableView"]
@@ -25,6 +28,8 @@ class DivisionTableView(QWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.viewmodel = DivisionTableViewModel()
+        # sort priority: list of (column_index, ascending)
+        self._sort_priority: List[Tuple[int, bool]] = []
         self._build_ui()
 
     def _build_ui(self):
@@ -46,8 +51,10 @@ class DivisionTableView(QWidget):
                 "Form",
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        header.setStretchLastSection(True)
+        header.sectionClicked.connect(self._on_header_clicked)  # type: ignore
         root.addWidget(self.table)
         self.summary_label = QLabel("No teams")
         root.addWidget(self.summary_label)
@@ -60,8 +67,26 @@ class DivisionTableView(QWidget):
         self.summary_label.setText(self.viewmodel.summary.as_text())
 
     def _populate(self, rows: List[NormalizedDivisionRow]):
-        self.table.setRowCount(len(rows))
-        for r, row in enumerate(rows):
+        # Apply sort priority if any to the viewmodel rows (without mutating original ordering)
+        display_rows = rows
+        if self._sort_priority:
+            # Map column index to value extraction
+            index_to_key = {
+                0: lambda nr: nr.entry.position,
+                1: lambda nr: nr.entry.team_name.lower(),
+                2: lambda nr: nr.entry.matches_played,
+                3: lambda nr: nr.entry.wins,
+                4: lambda nr: nr.entry.draws,
+                5: lambda nr: nr.entry.losses,
+                6: lambda nr: nr.differential_text or "",  # treat as string
+                7: lambda nr: nr.entry.points,
+                8: lambda nr: nr.form or "",
+            }
+            sort_keys = [SortKey(index_to_key[idx], asc) for idx, asc in self._sort_priority]
+            display_rows = MultiColumnSorter(display_rows).sort(sort_keys)
+
+        self.table.setRowCount(len(display_rows))
+        for r, row in enumerate(display_rows):
             e = row.entry
             cells = [
                 str(e.position),
@@ -76,3 +101,37 @@ class DivisionTableView(QWidget):
             ]
             for c, text in enumerate(cells):
                 self.table.setItem(r, c, QTableWidgetItem(text))
+
+    # Sorting logic -------------------------------------------------
+    def _on_header_clicked(self, logical_index: int):  # pragma: no cover - GUI event
+        modifiers = QApplication.keyboardModifiers()  # type: ignore
+        shift = bool(modifiers & Qt.KeyboardModifier.ShiftModifier)
+        # Determine if column already in priority
+        existing = next(
+            (i for i, (col, _) in enumerate(self._sort_priority) if col == logical_index), None
+        )
+        if not shift:
+            # Reset priority to this column, toggle ascending if was sole column
+            if existing is not None and len(self._sort_priority) == 1:
+                col, asc = self._sort_priority[0]
+                self._sort_priority = [(col, not asc)]
+            else:
+                self._sort_priority = [(logical_index, True)]
+        else:
+            # Shift-click adds or toggles that column while preserving earlier order
+            if existing is None:
+                self._sort_priority.append((logical_index, True))
+            else:
+                col, asc = self._sort_priority[existing]
+                self._sort_priority[existing] = (col, not asc)
+        # Re-populate with new ordering
+        self._populate(self.viewmodel.rows())
+
+    def apply_sort_priority(self, priority: List[Tuple[int, bool]]):
+        """Programmatic API for tests to set multi-column sort priority.
+
+        Args:
+            priority: list of (column_index, ascending)
+        """
+        self._sort_priority = list(priority)
+        self._populate(self.viewmodel.rows())
