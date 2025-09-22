@@ -35,4 +35,5 @@ feat(cli): add ingest-only command (Milestone 5.9.21) with schema bootstrap, JSO
 feat(commands): add Command Palette actions for force re-ingest & data freshness (Milestone 5.9.22) with registration module and tests
 docs(adr): add ADR-0001 for ingestion lifecycle & repository abstraction (Milestone 5.9.23) with presence test
 feat(logging): structured JSONL ingest event logging (Milestone 5.9.24) with start/division/error/complete events & test
+feat(ingest): add GracefulIngestService to summarize available data after partial ingests; add tests and roadmap update (5.9.26)
 
