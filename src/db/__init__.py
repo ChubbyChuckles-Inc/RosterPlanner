@@ -17,6 +17,11 @@ from .migration_manager import (
 from .ingest import ingest_path, hash_html  # noqa: F401
 from .integrity import run_integrity_checks  # noqa: F401
 from .rebuild import rebuild_database  # noqa: F401
+from .query_perf import (  # noqa: F401
+    install_query_performance_logger,
+    QueryPerformanceLogger,
+    QueryRecord,
+)
 from .repositories import (  # noqa: F401
     DivisionRepository,
     TeamRepository,
@@ -43,6 +48,9 @@ __all__ = [
     "hash_html",
     "run_integrity_checks",
     "rebuild_database",
+    "install_query_performance_logger",
+    "QueryPerformanceLogger",
+    "QueryRecord",
     # Repositories
     "DivisionRepository",
     "TeamRepository",
