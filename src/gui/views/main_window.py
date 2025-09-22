@@ -74,6 +74,7 @@ from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
 from gui.services.export_service import ExportService, ExportFormat
+from gui.services.export_presets import ExportPresetsService
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -106,8 +107,9 @@ class MainWindow(QMainWindow):  # Dock-based
         self._scrape_runner.scrape_started.connect(self._on_scrape_started)  # type: ignore
         self._scrape_runner.scrape_finished.connect(self._on_scrape_finished)  # type: ignore
         self._scrape_runner.scrape_failed.connect(self._on_scrape_failed)  # type: ignore
-        # Export service (Milestone 5.6)
+        # Export + Presets services (Milestones 5.6 / 5.6.1)
         self._export_service = ExportService()
+        self._export_presets = ExportPresetsService(self.data_dir)
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -211,14 +213,13 @@ class MainWindow(QMainWindow):  # Dock-based
         view_menu = None
         help_menu = None
         data_menu = None
-        for a in mb.actions():  # reuse if exists
+        for a in mb.actions():
             if a.text() == "&View":
                 view_menu = a.menu()
             if a.text() == "&Help":
                 help_menu = a.menu()
             if a.text() == "&Data":
                 data_menu = a.menu()
-                break
         if view_menu is None:
             view_menu = QMenu("&View", self)
             mb.addMenu(view_menu)
@@ -227,41 +228,6 @@ class MainWindow(QMainWindow):  # Dock-based
             mb.addMenu(help_menu)
         if data_menu is None:
             data_menu = QMenu("&Data", self)
-
-            def _current_document_widget(self):  # pragma: no cover - simple helper
-                try:
-                    return self.document_area.currentWidget()
-                except Exception:
-                    return None
-
-            def _export_current_view(self, fmt: str):  # pragma: no cover - GUI path
-                w = self._current_document_widget()
-                if not w:
-                    QMessageBox.warning(self, "Export", "No active view to export.")
-                    return
-                try:
-                    result = self._export_service.export(w, fmt)
-                except Exception as e:  # broad user feedback
-                    QMessageBox.critical(self, "Export Failed", f"Could not export: {e}")
-                    return
-                # Ask for destination path
-                suffix = result.suggested_extension
-                dlg_path, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "Save Export",
-                    f"export{suffix}",
-                    f"*{suffix};;All Files (*)",
-                )
-                if not dlg_path:
-                    return
-                try:
-                    with open(dlg_path, "w", encoding="utf-8") as f:
-                        f.write(result.content)
-                except Exception as e:
-                    QMessageBox.critical(self, "Export Failed", f"Write error: {e}")
-                    return
-                QMessageBox.information(self, "Export", f"Export saved to {dlg_path}")
-
             mb.addMenu(data_menu)
         # Add actions via convenience overload (returns QAction object)
         reset_action = view_menu.addAction("Reset Layout")
@@ -276,6 +242,16 @@ class MainWindow(QMainWindow):  # Dock-based
         # Club overview (Milestone 5.4)
         self._act_club_overview = data_menu.addAction("Open Club Overview")
         self._act_club_overview.triggered.connect(self._open_club_overview)  # type: ignore[attr-defined]
+        # Export submenu (Milestones 5.6 / 5.6.1)
+        export_menu = data_menu.addMenu("Export Current View")
+        act_export_csv = export_menu.addAction("As CSV")
+        act_export_csv.triggered.connect(lambda: self._export_current_view(ExportFormat.CSV))  # type: ignore[attr-defined]
+        act_export_json = export_menu.addAction("As JSON")
+        act_export_json.triggered.connect(lambda: self._export_current_view(ExportFormat.JSON))  # type: ignore[attr-defined]
+        self._presets_menu = export_menu.addMenu("Presets")
+        self._populate_presets_menu()
+        act_save_preset = export_menu.addAction("Save Export Preset...")
+        act_save_preset.triggered.connect(self._save_export_preset)  # type: ignore[attr-defined]
         # Global shortcut (in addition to menu for clarity)
         QShortcut(QKeySequence("Ctrl+P"), self, activated=self._open_command_palette)
         # Register shortcut in registry (id stable for future conflict detection)
@@ -405,6 +381,91 @@ class MainWindow(QMainWindow):  # Dock-based
             QMessageBox.critical(self, "Export Failed", f"Write error: {e}")
             return
         QMessageBox.information(self, "Export", f"Export saved to {dlg_path}")
+
+    # Presets (Milestone 5.6.1) ----------------------------------
+    def _populate_presets_menu(self):  # pragma: no cover - GUI path
+        if not hasattr(self, "_presets_menu"):
+            return
+        self._presets_menu.clear()
+        presets = self._export_presets.all()
+        if not presets:
+            act_empty = self._presets_menu.addAction("(No Presets)")
+            act_empty.setEnabled(False)
+            return
+        for p in presets:
+            act = self._presets_menu.addAction(p.name)
+            act.triggered.connect(lambda checked=False, name=p.name: self._export_with_preset_dialog(name))  # type: ignore[attr-defined]
+
+    def _export_with_preset_dialog(self, preset_name: str):  # pragma: no cover - GUI path
+        w = self._current_document_widget()
+        if not w:
+            QMessageBox.warning(self, "Export", "No active view to export.")
+            return
+        # Ask format
+        m = QMessageBox(self)
+        m.setWindowTitle("Export Format")
+        m.setText(f"Export using preset '{preset_name}'. Choose format:")
+        csv_btn = m.addButton("CSV", QMessageBox.ButtonRole.AcceptRole)
+        json_btn = m.addButton("JSON", QMessageBox.ButtonRole.DestructiveRole)
+        cancel_btn = m.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+        m.exec()
+        if m.clickedButton() == cancel_btn:
+            return
+        fmt = ExportFormat.CSV if m.clickedButton() == csv_btn else ExportFormat.JSON
+        try:
+            result = self._export_presets.apply(self._export_service, w, fmt, preset_name)
+        except Exception as e:
+            QMessageBox.critical(self, "Export Failed", f"Could not export: {e}")
+            return
+        suffix = result.suggested_extension
+        dlg_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Export",
+            f"export{suffix}",
+            f"*{suffix};;All Files (*)",
+        )
+        if not dlg_path:
+            return
+        try:
+            with open(dlg_path, "w", encoding="utf-8") as f:
+                f.write(result.content)
+        except Exception as e:
+            QMessageBox.critical(self, "Export Failed", f"Write error: {e}")
+            return
+        QMessageBox.information(self, "Export", f"Export saved to {dlg_path}")
+
+    def _save_export_preset(self):  # pragma: no cover - GUI path
+        # Determine current tab widget must provide tabular export interface
+        w = self._current_document_widget()
+        if not w:
+            QMessageBox.warning(self, "Presets", "No active view to save preset from.")
+            return
+        # Acquire headers
+        headers = []
+        try:
+            if hasattr(w, "get_export_rows"):
+                headers = list(w.get_export_rows()[0])  # type: ignore
+        except Exception:
+            pass
+        if not headers:
+            QMessageBox.information(self, "Presets", "Active view does not support tabular export.")
+            return
+        # Simple input for preset name
+        from PyQt6.QtWidgets import QInputDialog
+
+        name, ok = QInputDialog.getText(self, "Preset Name", "Enter preset name:")
+        if not ok or not name.strip():
+            return
+        name = name.strip()
+        # For first iteration: save full header list (UI for selecting subset can be future enhancement)
+        try:
+            self._export_presets.add_or_replace(name, headers)
+            self._populate_presets_menu()
+            QMessageBox.information(
+                self, "Presets", f"Preset '{name}' saved ({len(headers)} columns)."
+            )
+        except Exception as e:
+            QMessageBox.warning(self, "Presets", f"Failed to save preset: {e}")
 
     # Shortcuts / Help --------------------------------------------
     def _open_shortcut_cheatsheet(self):

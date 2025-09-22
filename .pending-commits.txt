@@ -13,3 +13,5 @@ feat(detail): implement Club Detail View (Milestone 5.4) with ClubDetailView wid
 feat(detail): add HTML source preview panel (Milestone 5.5) with HtmlDiffService, HtmlSourceView (source + diff tabs), MainWindow context menu integration, unit tests, and roadmap update
 feat(detail): add raw/clean HTML toggle (Milestone 5.5.1) with HtmlDiffService.clean_html, HtmlSourceView checkbox mode switching, tests, and roadmap update
 
+feat(export): implement export presets management (Milestone 5.6.1) with ExportPresetsService (JSON persistence), MainWindow presets submenu, save preset action, column subset application, tests (round-trip + filtering), and roadmap update
+
