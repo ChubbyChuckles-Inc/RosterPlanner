@@ -35,9 +35,11 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QGroupBox,
     QSizePolicy,
+    QPlainTextEdit,
+    QFileDialog,
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut, QClipboard, QAction
 
 from gui.views.dock_manager import DockManager
 from gui.views.document_area import DocumentArea
@@ -345,6 +347,8 @@ class MainWindow(QMainWindow):  # Dock-based
         layout.addWidget(chips_box)
         self.team_tree = QTreeView()
         self.team_tree.setHeaderHidden(True)
+        self.team_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.team_tree.customContextMenuRequested.connect(self._on_nav_context_menu)  # type: ignore
         layout.addWidget(self.team_tree)
 
         layout.addWidget(QLabel("Match Dates (Calendar)"))
@@ -571,6 +575,70 @@ class MainWindow(QMainWindow):  # Dock-based
             # Persist last selected team id
             self._nav_state.last_selected_team_id = team.team_id
             self._nav_state_service.save(self._nav_state)
+
+    # Context Menu (Milestone 4.5) ---------------------------------
+    def _team_entry_from_index(self, index):  # pragma: no cover - GUI path
+        if not index or not index.isValid():
+            return None
+        model_obj = self.team_tree.model()
+        if isinstance(model_obj, NavigationFilterProxyModel):
+            src: NavigationTreeModel = model_obj.sourceModel()  # type: ignore
+            return src.get_team_entry(model_obj.mapToSource(index))
+        return model_obj.get_team_entry(index)  # type: ignore
+
+    def _on_nav_context_menu(self, pos):  # pragma: no cover - GUI path
+        index = self.team_tree.indexAt(pos)
+        team = self._team_entry_from_index(index)
+        menu = QMenu(self)
+        act_open = QAction("Open in New Tab", self)
+        act_open.triggered.connect(lambda: team and self.open_team_detail(team))  # type: ignore
+        menu.addAction(act_open)
+        if team:
+            act_copy = QAction("Copy Team ID", self)
+            act_copy.triggered.connect(lambda: self._copy_team_id(team.team_id))  # type: ignore
+            menu.addAction(act_copy)
+            act_export = QAction("Export Team JSON...", self)
+            act_export.triggered.connect(lambda: self._export_team_json(team))  # type: ignore
+            menu.addAction(act_export)
+        menu.exec(self.team_tree.viewport().mapToGlobal(pos))
+
+    def _copy_team_id(self, team_id: str):  # pragma: no cover - GUI path
+        cb: QClipboard = self.application().clipboard() if hasattr(self, "application") else self.parent().clipboard()  # type: ignore
+        try:
+            QApplication = type(
+                self
+            ).parent  # placeholder to satisfy linter if QApplication not imported
+        except Exception:  # pragma: no cover
+            pass
+        clipboard = self.window().clipboard() if hasattr(self.window(), "clipboard") else None  # type: ignore
+        if clipboard:
+            clipboard.setText(team_id)
+
+    def _export_team_json(self, team):  # pragma: no cover - GUI path
+        if not team:
+            return
+        dlg_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Team JSON",
+            f"team_{team.team_id}.json",
+            "JSON Files (*.json)",
+        )
+        if not dlg_path:
+            return
+        import json
+
+        data = {
+            "team_id": team.team_id,
+            "name": team.name,
+            "division": team.division,
+            "season": self.season,
+        }
+        try:
+            with open(dlg_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            QMessageBox.information(self, "Export", f"Exported to {dlg_path}")
+        except Exception as e:
+            QMessageBox.warning(self, "Export Failed", str(e))
 
     # Qt event overrides -------------------------------------------
     def closeEvent(self, event):  # type: ignore[override]

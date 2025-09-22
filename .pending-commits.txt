@@ -51,3 +51,5 @@ feat(gui): persist navigation filter state (search text, division type/level, ac
 test(gui): navigation filter persistence roundtrip & corrupt file backup tests (Milestone 4.3.1)
 feat(gui): persist navigation tree state (expanded divisions + last selected team) (Milestone 4.4)
 test(gui): navigation state persistence roundtrip & corrupt file backup (Milestone 4.4)
+feat(gui): navigation tree context menu (open tab, copy id, export JSON) (Milestone 4.5)
+test(gui): context menu helper tests (team entry lookup, export json) (Milestone 4.5)
