@@ -36,4 +36,12 @@ feat(commands): add Command Palette actions for force re-ingest & data freshness
 docs(adr): add ADR-0001 for ingestion lifecycle & repository abstraction (Milestone 5.9.23) with presence test
 feat(logging): structured JSONL ingest event logging (Milestone 5.9.24) with start/division/error/complete events & test
 feat(ingest): add GracefulIngestService to summarize available data after partial ingests; add tests and roadmap update (5.9.26)
+feat(parser): add ParserRegistry for plugin parsers with exception isolation + tests (5.9.27)
+chore(security): add basic HTML sanitizer helper for GUI previews; tests and roadmap update (5.9.28)
+feat(telemetry): add TelemetryService counters for ingest metrics + tests (5.9.29)
+
+chore(ingest): gate placeholder generation behind SettingsService.allow_placeholders (5.9.30 ~in-progress)
+ - Introduce `SettingsService` singleton with `allow_placeholders` flag (default True)
+ - Update `MainWindow.open_division_table` to consult setting before producing placeholders
+ - Add tests for SettingsService; roadmap updated to [~]
 

@@ -193,10 +193,13 @@ Milestone 5.9: Data Integration & Persistence Bridging (Scraped HTML -> SQLite -
 [x] 5.9.24 Logging: structured JSON lines for ingest events (start, parsed, skipped, error) (ingestion_coordinator JSONL emitter + tests)
 [x] 5.9.25 Fallback behavior: if ingest not yet run, views display informative empty states -- DataStateService gating (teams & division table) + deterministic primary club team completeness backfill
 [x] 5.9.26 Graceful degradation: partial ingest (some divisions) still surfaces available data
-[ ] 5.9.27 Future hook placeholders for plugin-based parsers (register additional transforms)
-[ ] 5.9.28 Security / integrity note: sanitize HTML inputs before parsing (baseline helper)
-[ ] 5.9.29 Telemetry counters (optional) for ingest stats (parsed count, skipped count) behind debug flag
-[ ] 5.9.30 Roadmap review & clean-up of placeholder generation code removal
+[x] 5.9.27 Future hook placeholders for plugin-based parsers (register additional transforms)
+[x] 5.9.28 Security / integrity note: sanitize HTML inputs before parsing (baseline helper)
+[x] 5.9.29 Telemetry counters (optional) for ingest stats (parsed count, skipped count) behind debug flag
+[~] 5.9.30 Roadmap review & clean-up of placeholder generation code removal
+		- Gate placeholder generation behind `SettingsService.allow_placeholders`.
+		- Default remains True to avoid breaking existing tests; follow-up to flip default
+			and remove placeholder generator after integration test updates.
 
 Milestone 6: Advanced Statistics Engine
 [ ] 6.1 Stats service: compute aggregated KPIs (win %, avg LivePZ per lineup, player participation rate)

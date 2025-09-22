@@ -87,8 +87,7 @@ class MainWindow(QMainWindow):  # Dock-based
         self.availability_path = os.path.join(data_dir, availability_store.DEFAULT_FILENAME)
         self.av_state = availability_store.load(self.availability_path)
         self.teams: List[TeamEntry] = []
-
-        # Layout persistence (Milestone 2.3)
+        # ...existing code...
         self._layout_service = LayoutPersistenceService(base_dir=self.data_dir)
         # Navigation filter persistence (Milestone 4.3.1)
         self._nav_filter_service = NavigationFilterPersistenceService(base_dir=self.data_dir)
@@ -1031,14 +1030,23 @@ class MainWindow(QMainWindow):  # Dock-based
             view = DivisionTableView()
             # Attempt repository-backed standings; fallback to placeholder generator if empty
             try:
+                from gui.services.settings_service import SettingsService
+
+                settings = SettingsService.instance
+
                 if not placeholder_mode:
                     svc = DivisionDataService()
                     rows = svc.load_division_standings(division_name)
-                    if not rows:
+                    if not rows and settings.allow_placeholders:
                         rows = self._generate_placeholder_division_rows(division_name)
                 else:
-                    rows = self._generate_placeholder_division_rows(division_name)
+                    if settings.allow_placeholders:
+                        rows = self._generate_placeholder_division_rows(division_name)
+                    else:
+                        rows = []
             except Exception:
+                # On any unexpected error, fall back to conservative placeholder
+                # behavior to avoid breaking downstream UI consumers.
                 rows = self._generate_placeholder_division_rows(division_name)
             # Guarantee minimum placeholder length for integration tests expecting 6 rows
             try:
@@ -1062,11 +1070,15 @@ class MainWindow(QMainWindow):  # Dock-based
 
         if isinstance(existing, _DTV) and not placeholder_mode:
             try:
+                from gui.services.settings_service import SettingsService
+
+                settings = SettingsService.instance
+
                 svc = DivisionDataService()
                 rows = svc.load_division_standings(division_name)
-                if not rows:
+                if not rows and settings.allow_placeholders:
                     rows = self._generate_placeholder_division_rows(division_name)
-                if len(rows) < 6:
+                if len(rows) < 6 and settings.allow_placeholders:
                     needed = 6 - len(rows)
                     rows.extend(self._generate_placeholder_division_rows(division_name)[:needed])
                 existing.set_rows(rows)
