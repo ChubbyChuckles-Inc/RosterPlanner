@@ -132,6 +132,8 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
             discovered_club_ids.add(t.club_id)  # type: ignore[attr-defined]
 
     club_id_to_name: dict[str, str] = {}
+    # Always ensure the primary club_id requested is included even if not discovered via roster links yet
+    discovered_club_ids.add(str(club_id))
     for club_id_key in sorted(discovered_club_ids):
         # If we already have a full club link use it; otherwise synthesize typical pattern (landing Verein page)
         club_link = club_links.get(club_id_key)
@@ -218,6 +220,62 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
             os.path.join(flat_team_roster_dir, f"team_roster_L2P_{tid}.html"), html
         )
         produced_flat_ids.add(tid)
+
+    # Step 7d (rewritten): Deterministic primary club backfill ensuring BOTH club_team_* and division-style team_roster_* files
+    # Rationale: Earlier logic attempted to infer primary club teams from merged extras; this could fail in heavily mocked
+    # test environments where team.club_id mutation differs. We now always (re)fetch the primary club overview explicitly.
+    try:
+        primary_club_url = LANDING_URL_TEMPLATE.format(club_id=club_id, season=season)
+        primary_name, primary_teams = club_scraper.fetch_and_parse_club(
+            primary_club_url, str(club_id), data_dir
+        )
+        if primary_name:
+            club_id_to_name[str(club_id)] = primary_name
+    except Exception:  # pragma: no cover - defensive
+        primary_name, primary_teams = None, {}
+
+    # Existing file inventories
+    club_team_dir = os.path.join(data_dir, "club_teams")
+    os.makedirs(club_team_dir, exist_ok=True)
+    existing_club_team_files = set(os.listdir(club_team_dir))
+    existing_division_rosters: set[str] = set()
+    for root, dirs, files in os.walk(data_dir):  # pragma: no cover - traversal
+        for f in files:
+            if f.startswith("team_roster_") and f.endswith(".html"):
+                existing_division_rosters.add(f)
+
+    for tid, t in primary_teams.items():
+        # Determine display club name preference order: explicit primary_name -> mapped name -> numeric id fallback
+        club_display = primary_name or club_id_to_name.get(str(club_id)) or str(club_id)
+        # 1. club_team_*
+        club_team_filename = naming.club_team_by_name_filename(club_display, t.name, t.id)
+        if club_team_filename not in existing_club_team_files:
+            roster_url = club_parser.build_roster_link(tid)
+            full_url = (
+                roster_url if roster_url.startswith("http") else f"{settings.ROOT_URL}{roster_url}"
+            )
+            try:
+                html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
+                filesystem.write_text(os.path.join(club_team_dir, club_team_filename), html)
+                existing_club_team_files.add(club_team_filename)
+            except Exception:  # pragma: no cover - network/parse resilience
+                pass
+        # 2. division-style team_roster_<division>_... (fallback 'unknown_division' if absent)
+        div_name = getattr(t, "division_name", None) or "unknown_division"
+        div_dir = os.path.join(data_dir, naming.sanitize(div_name))
+        os.makedirs(div_dir, exist_ok=True)
+        roster_filename = naming.team_roster_filename(div_name, t.name, t.id)
+        if roster_filename not in existing_division_rosters:
+            roster_url = club_parser.build_roster_link(tid)
+            full_url = (
+                roster_url if roster_url.startswith("http") else f"{settings.ROOT_URL}{roster_url}"
+            )
+            try:
+                html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
+                filesystem.write_text(os.path.join(div_dir, roster_filename), html)
+                existing_division_rosters.add(roster_filename)
+            except Exception:  # pragma: no cover
+                pass
 
     # Step 8: Persist tracking state
     state = TrackingState(last_scrape=datetime.utcnow(), divisions={}, upcoming_matches=upcoming)

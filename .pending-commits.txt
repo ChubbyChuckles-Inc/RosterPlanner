@@ -1,3 +1,4 @@
+feat(pipeline): deterministic primary club backfill ensuring all club overview teams persisted\n+\n+Rewrote Step 7d in run_full to always refetch primary club overview and generate both club_team_* and division-style team_roster_* files for every team listed. Added ordering fix in test stub so club overview HTML not shadowed by generic landing response. Added coverage test (test_pipeline_club_team_coverage) now passing.\n+
 feat(export): add ExportService and integrate CSV/JSON export actions (Milestone 5.6)
 
 feat(detail): scaffold Team Detail View (Milestone 5.1) with TeamDetailView widget, ViewModel, summary metrics, and opening integration; add unit & integration tests and mark roadmap 5.1 partial
@@ -28,4 +29,5 @@ feat(data): repository-backed team roster loading (Milestone 5.9.6) introducing 
 feat(data): division standings service (Milestone 5.9.7) adding DivisionDataService with computed standings from matches (points W=2/D=1/L=0), integrating into MainWindow.open_division_table, adding unit test, and updating roadmap
 feat(gating): add DataStateService and gate team/division UI until ingestion present; modify LandingLoadWorker to avoid live pre-scrape HTTP load; add DataStateService tests and empty-state status message
 chore(roadmap): mark 5.9.25 partial ([~]) noting DataStateService gating progress
+fix(scrape): ensure all club overview teams are scraped and persisted (both club_team_* and team_roster_* forms); augment pipeline to always include primary club id, backfill missing roster files, add coverage test
 

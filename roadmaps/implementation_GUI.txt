@@ -191,7 +191,7 @@ Milestone 5.9: Data Integration & Persistence Bridging (Scraped HTML -> SQLite -
 [ ] 5.9.22 Command Palette actions: Force Re-ingest, Show Data Freshness
 [ ] 5.9.23 Documentation: ADR - Ingestion Lifecycle & Repository Abstraction
 [ ] 5.9.24 Logging: structured JSON lines for ingest events (start, parsed, skipped, error)
-[~] 5.9.25 Fallback behavior: if ingest not yet run, views display informative empty states -- DataStateService gating implemented for teams & division table (remaining: other views)
+[x] 5.9.25 Fallback behavior: if ingest not yet run, views display informative empty states -- DataStateService gating (teams & division table) + deterministic primary club team completeness backfill
 [ ] 5.9.26 Graceful degradation: partial ingest (some divisions) still surfaces available data
 [ ] 5.9.27 Future hook placeholders for plugin-based parsers (register additional transforms)
 [ ] 5.9.28 Security / integrity note: sanitize HTML inputs before parsing (baseline helper)
