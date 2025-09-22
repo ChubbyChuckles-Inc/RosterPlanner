@@ -776,6 +776,10 @@ class MainWindow(QMainWindow):  # Dock-based
                 act_export = QAction("Export Team JSON...", self)
                 act_export.triggered.connect(lambda: self._export_team_json(team))  # type: ignore
                 menu.addAction(act_export)
+            # HTML source preview (Milestone 5.5)
+            act_html = QAction("View HTML Source", self)
+            act_html.triggered.connect(lambda: self.open_html_source(team))  # type: ignore
+            menu.addAction(act_html)
         menu.exec(self.team_tree.viewport().mapToGlobal(pos))
 
     def _copy_team_id(self, team_id: str):  # pragma: no cover - GUI path
@@ -839,6 +843,45 @@ class MainWindow(QMainWindow):  # Dock-based
         if isinstance(existing, _DTV):
             try:
                 existing.set_rows(self._generate_placeholder_division_rows(division_name))
+            except Exception:
+                pass
+
+    # HTML Source Tabs (Milestone 5.5) -----------------------------
+    def open_html_source(self, team: TeamEntry):  # pragma: no cover - GUI path
+        if not hasattr(self, "document_area"):
+            return
+        from gui.views.html_source_view import HtmlSourceView
+        from gui.services.html_diff import HtmlDiffService
+
+        service = HtmlDiffService(self.data_dir)
+        source = service.find_team_roster_html(team.name)
+        if not source:
+            QMessageBox.information(
+                self,
+                "HTML Source",
+                f"No HTML source found for {team.name}. Run a full scrape first.",
+            )
+            return
+
+        doc_id = f"html:{team.team_id}"
+
+        def factory():
+            view = HtmlSourceView(service)
+            try:
+                view.set_html_source(source)
+            except Exception:
+                pass
+            return view
+
+        existing = self.document_area.open_or_focus(doc_id, f"HTML {team.team_id}", factory)
+        from gui.views.html_source_view import HtmlSourceView as _HSV
+
+        if isinstance(existing, _HSV):
+            try:
+                # Refresh (in case file updated)
+                refreshed = service.find_team_roster_html(team.name)
+                if refreshed:
+                    existing.set_html_source(refreshed)
             except Exception:
                 pass
 
