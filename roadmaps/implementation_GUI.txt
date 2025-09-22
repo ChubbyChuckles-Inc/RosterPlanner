@@ -115,7 +115,7 @@ Milestone 2: Dockable Main Window Architecture
 
 Milestone 3: Data Layer & SQLite Integration
 [x] 3.1 Design SQLite schema (divisions, teams, matches, players, clubs, availability, planning_scenarios)
-[ ] 3.1.1 Create schema ER diagram doc (auto-generated via script)
+[x] 3.1.1 Create schema ER diagram doc (auto-generated via script)
 [ ] 3.1.2 Define naming conventions (snake_case, singular table names)
 [ ] 3.2 Implement migration manager (apply incremental migrations on startup)
 [ ] 3.2.1 Add migration checksum verification
