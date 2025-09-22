@@ -18,3 +18,5 @@ feat(db): add migration dry-run SQL preview (Milestone 3.2.2)
 feat(ingest): scaffolding + hashing + provenance recording + upsert logic (Milestone 3.3 / 3.3.1 / 3.3.2 initial)
 feat(db): integrity checks module (foreign keys + team duplicate detection) (Milestone 3.4)
 feat(cli): integrity check runner script (Milestone 3.4.1)
+feat(db): repository layer (division, team, player) with read/write segregation (Milestone 3.5 / 3.5.1)
+test(db): add repository tests for upsert, update, search

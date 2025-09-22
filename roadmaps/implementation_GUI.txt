@@ -125,8 +125,8 @@ Milestone 3: Data Layer & SQLite Integration
 [x] 3.3.2 Record ingestion provenance table (timestamp, source file, parser version)
 [x] 3.4 Add integrity checks (foreign keys, uniqueness of team_id per season)
 [x] 3.4.1 Automated integrity test runnable from CLI
-[ ] 3.5 Abstract Repository layer (TeamRepo, MatchRepo, PlayerRepo, ClubRepo, AvailabilityRepo)
-[ ] 3.5.1 Introduce read-only vs write repo segregation interfaces
+[x] 3.5 Abstract Repository layer (TeamRepo, MatchRepo, PlayerRepo, ClubRepo, AvailabilityRepo)
+[x] 3.5.1 Introduce read-only vs write repo segregation interfaces
 [ ] 3.6 Implement unit tests for repositories (in-memory SQLite)
 [ ] 3.6.1 Add factory fixtures for test data
 [ ] 3.7 Add incremental refresh logic (only changed HTML re-parsed; hash-based caching)

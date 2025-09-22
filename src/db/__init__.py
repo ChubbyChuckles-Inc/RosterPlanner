@@ -16,3 +16,14 @@ from .migration_manager import (
 )  # noqa: F401
 from .ingest import ingest_path, hash_html  # noqa: F401
 from .integrity import run_integrity_checks  # noqa: F401
+from .repositories import (  # noqa: F401
+    DivisionRepository,
+    TeamRepository,
+    PlayerRepository,
+    DivisionReadRepository,
+    DivisionWriteRepository,
+    TeamReadRepository,
+    TeamWriteRepository,
+    PlayerReadRepository,
+    PlayerWriteRepository,
+)
