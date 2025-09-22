@@ -20,3 +20,5 @@ feat(db): integrity checks module (foreign keys + team duplicate detection) (Mil
 feat(cli): integrity check runner script (Milestone 3.4.1)
 feat(db): repository layer (division, team, player) with read/write segregation (Milestone 3.5 / 3.5.1)
 test(db): add repository tests for upsert, update, search
+feat(db): add match & availability repositories with upsert logic (Milestone 3.6)
+test(db): add match & availability repository tests and factory utilities (Milestone 3.6.1)

@@ -12,7 +12,7 @@ Rationale:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, Iterable, Optional, runtime_checkable, Sequence
+from typing import Protocol, Optional, runtime_checkable, Sequence
 import sqlite3
 
 
@@ -39,6 +39,28 @@ class PlayerRow:
     team_id: int
     full_name: str
     live_pz: Optional[int]
+
+
+@dataclass(frozen=True)
+class MatchRow:
+    match_id: int
+    division_id: int
+    home_team_id: int
+    away_team_id: int
+    match_date: str
+    status: str
+    home_score: Optional[int]
+    away_score: Optional[int]
+
+
+@dataclass(frozen=True)
+class AvailabilityRow:
+    availability_id: int
+    player_id: int
+    date: str
+    status: str
+    confidence: Optional[int]
+    note: Optional[str]
 
 
 @runtime_checkable
@@ -183,10 +205,114 @@ class PlayerRepository(PlayerReadRepository, PlayerWriteRepository, _BaseRepo):
         return [PlayerRow(*r) for r in cur.fetchall()]
 
 
+class MatchRepository(_BaseRepo):
+    """Match repository (combined read/write for now; can split later)."""
+
+    def upsert(
+        self,
+        division_id: int,
+        home_team_id: int,
+        away_team_id: int,
+        match_date: str,
+        status: str = "scheduled",
+        home_score: Optional[int] = None,
+        away_score: Optional[int] = None,
+    ) -> int:
+        cur = self._c.cursor()
+        cur.execute(
+            """
+            SELECT match_id, home_score, away_score, status FROM match
+            WHERE division_id=? AND home_team_id=? AND away_team_id=? AND match_date=?
+            """,
+            (division_id, home_team_id, away_team_id, match_date),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.execute(
+                """
+                INSERT INTO match(division_id, home_team_id, away_team_id, match_date, status, home_score, away_score)
+                VALUES(?,?,?,?,?,?,?)
+                """,
+                (
+                    division_id,
+                    home_team_id,
+                    away_team_id,
+                    match_date,
+                    status,
+                    home_score,
+                    away_score,
+                ),
+            )
+            return int(cur.lastrowid)
+        mid, existing_home, existing_away, existing_status = row
+        if existing_home != home_score or existing_away != away_score or existing_status != status:
+            cur.execute(
+                "UPDATE match SET status=?, home_score=?, away_score=? WHERE match_id=?",
+                (status, home_score, away_score, mid),
+            )
+        return int(mid)
+
+    def list_by_division(self, division_id: int) -> Sequence[MatchRow]:
+        cur = self._c.cursor()
+        cur.execute(
+            """
+            SELECT match_id, division_id, home_team_id, away_team_id, match_date, status, home_score, away_score
+            FROM match WHERE division_id=? ORDER BY match_date
+            """,
+            (division_id,),
+        )
+        return [MatchRow(*r) for r in cur.fetchall()]
+
+
+class AvailabilityRepository(_BaseRepo):
+    """Availability repository with upsert semantics on (player_id, date)."""
+
+    def upsert(
+        self,
+        player_id: int,
+        date: str,
+        status: str,
+        confidence: Optional[int] = None,
+        note: Optional[str] = None,
+    ) -> int:
+        cur = self._c.cursor()
+        cur.execute(
+            "SELECT availability_id, status, confidence, note FROM availability WHERE player_id=? AND date=?",
+            (player_id, date),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.execute(
+                "INSERT INTO availability(player_id, date, status, confidence, note) VALUES(?,?,?,?,?)",
+                (player_id, date, status, confidence, note),
+            )
+            return int(cur.lastrowid)
+        aid, existing_status, existing_conf, existing_note = row
+        if existing_status != status or existing_conf != confidence or existing_note != note:
+            cur.execute(
+                "UPDATE availability SET status=?, confidence=?, note=? WHERE availability_id=?",
+                (status, confidence, note, aid),
+            )
+        return int(aid)
+
+    def list_for_player(self, player_id: int) -> Sequence[AvailabilityRow]:
+        cur = self._c.cursor()
+        cur.execute(
+            """
+            SELECT availability_id, player_id, date, status, confidence, note
+            FROM availability WHERE player_id=? ORDER BY date
+            """,
+            (player_id,),
+        )
+        return [AvailabilityRow(*r) for r in cur.fetchall()]
+
+
 __all__ = [
     "DivisionRepository",
     "TeamRepository",
     "PlayerRepository",
+    "MatchRepository",
+    "AvailabilityRepository",
     # Protocols
     "DivisionReadRepository",
     "DivisionWriteRepository",
@@ -198,4 +324,6 @@ __all__ = [
     "DivisionRow",
     "TeamRow",
     "PlayerRow",
+    "MatchRow",
+    "AvailabilityRow",
 ]

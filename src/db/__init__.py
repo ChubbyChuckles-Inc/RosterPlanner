@@ -20,6 +20,8 @@ from .repositories import (  # noqa: F401
     DivisionRepository,
     TeamRepository,
     PlayerRepository,
+    MatchRepository,
+    AvailabilityRepository,
     DivisionReadRepository,
     DivisionWriteRepository,
     TeamReadRepository,
