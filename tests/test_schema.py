@@ -1,7 +1,17 @@
 import sqlite3
 from db.schema import apply_schema, get_existing_tables, SCHEMA_VERSION
 
-CORE_TABLES = {"schema_meta","club","division","team","player","match","availability","planning_scenario","scenario_player"}
+CORE_TABLES = {
+    "schema_meta",
+    "club",
+    "division",
+    "team",
+    "player",
+    "match",
+    "availability",
+    "planning_scenario",
+    "scenario_player",
+}
 
 
 def test_schema_apply_and_tables():
@@ -23,13 +33,19 @@ def test_basic_inserts_and_fk_constraints():
     apply_schema(conn)
     cur = conn.cursor()
     cur.execute("INSERT INTO club(club_id,name) VALUES(1,'Club A')")
-    cur.execute("INSERT INTO division(division_id,name,level,category,season) VALUES(10,'Div A','Bezirksliga','Erwachsene',2025)")
+    cur.execute(
+        "INSERT INTO division(division_id,name,level,category,season) VALUES(10,'Div A','Bezirksliga','Erwachsene',2025)"
+    )
     cur.execute("INSERT INTO team(team_id,club_id,division_id,name) VALUES(100,1,10,'Team A')")
     cur.execute("INSERT INTO player(player_id,team_id,full_name) VALUES(1000,100,'Player One')")
     # Availability unique constraint
-    cur.execute("INSERT INTO availability(player_id,date,status) VALUES(1000,'2025-09-22','available')")
+    cur.execute(
+        "INSERT INTO availability(player_id,date,status) VALUES(1000,'2025-09-22','available')"
+    )
     try:
-        cur.execute("INSERT INTO availability(player_id,date,status) VALUES(1000,'2025-09-22','available')")
+        cur.execute(
+            "INSERT INTO availability(player_id,date,status) VALUES(1000,'2025-09-22','available')"
+        )
         dup_allowed = True
     except Exception:
         dup_allowed = False

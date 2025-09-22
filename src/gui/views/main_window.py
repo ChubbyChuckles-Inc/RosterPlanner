@@ -199,6 +199,7 @@ class MainWindow(QMainWindow):  # Dock-based
         self._layout_service.reset_layout("main")
         # If we have an in-memory pristine snapshot, restore it directly
         from PyQt6.QtCore import QByteArray  # local import
+
         restored_via_snapshot = False
         if getattr(self, "_pristine_geometry", None) and getattr(self, "_pristine_state", None):
             try:

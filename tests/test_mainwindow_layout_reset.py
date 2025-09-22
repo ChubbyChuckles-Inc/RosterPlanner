@@ -12,6 +12,7 @@ from gui.views.dock_manager import DockManager
 
 CORE_DOCK_IDS = {"navigation", "availability", "detail", "stats", "planner", "logs"}
 
+
 @pytest.mark.skipif(QApplication is None, reason="PyQt6 not available")
 def test_mainwindow_layout_reset(tmp_path):
     # Ensure app
@@ -22,18 +23,18 @@ def test_mainwindow_layout_reset(tmp_path):
     win = MainWindow(club_id=1, season=2025, data_dir=data_dir)
     # Sanity: initial docks registered (subset may be created lazily; ensure navigation + availability at least)
     initial_ids = {dock.objectName() for dock in win.dock_manager.instances()}
-    assert 'navigation' in initial_ids
+    assert "navigation" in initial_ids
     # Remove multiple docks to simulate heavy customization
     for did in list(initial_ids)[:2]:
         dock_widget = win.dock_manager.get(did)
         if dock_widget:
             win.removeDockWidget(dock_widget)
     # Simulate user removing a dock (close navigation)
-    nav = win.dock_manager.get('navigation')
+    nav = win.dock_manager.get("navigation")
     assert nav is not None
     win.removeDockWidget(nav)
     # Persist altered layout
-    win._layout_service.save_layout('main', win)
+    win._layout_service.save_layout("main", win)
     # Reset layout
     win._on_reset_layout()
     # After reset verify all core dock ids can be created / exist
@@ -49,4 +50,4 @@ def test_mainwindow_layout_reset(tmp_path):
     if still_missing:
         pytest.fail(f"Layout reset missing docks: {sorted(still_missing)}")
     # Ensure layout file was recreated
-    assert os.path.exists(os.path.join(data_dir, 'layout_main.json'))
+    assert os.path.exists(os.path.join(data_dir, "layout_main.json"))

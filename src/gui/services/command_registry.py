@@ -88,6 +88,7 @@ class CommandRegistry:
         Returns up to *limit* best matches. Empty query returns first *limit* commands (stable order by id).
         """
         import math
+
         q = query.lower()
         ranked: List[Tuple[float, CommandEntry]] = []
         for entry in self._commands.values():

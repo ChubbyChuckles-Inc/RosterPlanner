@@ -12,6 +12,7 @@ Design Principles:
 Future Extensions:
  - Migration manager (Milestone 3.2) will use SCHEMA_VERSION constant.
 """
+
 from __future__ import annotations
 import sqlite3
 from typing import Iterable
@@ -132,7 +133,10 @@ def apply_schema(conn: sqlite3.Connection) -> None:
     for stmt in DDL:
         cur.execute(stmt)
     # Set schema version
-    cur.execute("INSERT OR REPLACE INTO schema_meta(key, value) VALUES ('schema_version', ?)", (str(SCHEMA_VERSION),))
+    cur.execute(
+        "INSERT OR REPLACE INTO schema_meta(key, value) VALUES ('schema_version', ?)",
+        (str(SCHEMA_VERSION),),
+    )
     conn.commit()
 
 

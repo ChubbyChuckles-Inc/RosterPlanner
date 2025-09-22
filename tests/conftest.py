@@ -21,10 +21,13 @@ except Exception:  # pragma: no cover
             pytest.skip("PyQt6 not available")
         app = QApplication.instance() or QApplication(sys.argv)  # type: ignore
         widgets = []
+
         class Bot:
             def addWidget(self, w):  # mimic pytest-qt API subset
                 widgets.append(w)
+
             @contextlib.contextmanager
             def waitSignal(self, *args, **kwargs):  # no-op stub
                 yield
+
         return Bot()
