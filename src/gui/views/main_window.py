@@ -33,6 +33,7 @@ from PyQt6.QtCore import Qt
 
 from gui.views.dock_manager import DockManager
 from gui.views.document_area import DocumentArea
+from gui.views import dock_registry
 from gui.workers import LandingLoadWorker, RosterLoadWorker
 from gui.models import TeamEntry, TeamRosterBundle
 from gui.availability_table import AvailabilityTable
@@ -58,13 +59,22 @@ class MainWindow(QMainWindow):  # Dock-based
 
     # Registration ---------------------------------------------------
     def _register_docks(self):
-        self.dock_manager.register("navigation", "Navigation", self._build_navigation_dock)
-        self.dock_manager.register("availability", "Availability", self._build_availability_dock)
-        # Milestone 2.2 core docks (placeholders)
-        self.dock_manager.register("detail", "Detail", self._build_detail_dock)
-        self.dock_manager.register("stats", "Stats", self._build_stats_dock)
-        self.dock_manager.register("planner", "Planner", self._build_planner_dock)
-        self.dock_manager.register("logs", "Logs", self._build_logs_dock)
+        # Allow plugins to register additional docks beforehand
+        dock_registry.run_plugin_hooks()
+        # Provide core factories mapping for ensure_core_docks_registered
+        factories = {
+            "navigation": self._build_navigation_dock,
+            "availability": self._build_availability_dock,
+            "detail": self._build_detail_dock,
+            "stats": self._build_stats_dock,
+            "planner": self._build_planner_dock,
+            "logs": self._build_logs_dock,
+        }
+        dock_registry.ensure_core_docks_registered(factories)
+        # Register all definitions with local DockManager
+        for definition in dock_registry.iter_definitions():
+            if not self.dock_manager.is_registered(definition.dock_id):
+                self.dock_manager.register(definition.dock_id, definition.title, definition.factory)
 
     # Central area placeholder ---------------------------------------
     def _build_document_area(self):
