@@ -18,3 +18,5 @@ feat(compare): add SplitTeamCompareView and MainWindow integration (Milestone 5.
 feat(tabs): implement tab pinning & color tagging (Milestone 5.8) with TabMetadataPersistenceService, DocumentArea context menu, persistence, ordering, tests, and roadmap update
 feat(data): add DataAuditService (Milestone 5.9.0) to scan scraped HTML assets, compute hashes, map ranking tables & team rosters, unit test, and roadmap update
 
+feat(repos): define repository interface layer (Milestone 5.9.1) with domain dataclasses (Division, Team, Player, Match, Club), Protocol interfaces, in-memory protocol compliance test, and roadmap update
+
