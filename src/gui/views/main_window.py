@@ -48,6 +48,8 @@ from gui.views.shortcut_cheatsheet import ShortcutCheatSheetDialog
 from gui.services.dock_style import DockStyleHelper
 from gui.services.focus_style import install_focus_ring
 from gui.views.command_palette import CommandPaletteDialog
+from db import rebuild_database, ingest_path  # type: ignore
+import sqlite3
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -250,6 +252,27 @@ class MainWindow(QMainWindow):  # Dock-based
             "Reset Layout",
             lambda: self._on_reset_layout(),
             "Restore default dock arrangement",
+        )
+
+        # Manual DB rebuild command (Milestone 3.8)
+        def _rebuild_db():
+            # For now create an in-memory DB and run rebuild using data_dir as HTML root.
+            # Future: integrate shared app-level connection & progress dialog.
+            conn = sqlite3.connect(":memory:")
+            conn.execute("PRAGMA foreign_keys=ON")
+            try:
+                rebuild_database(conn, self.data_dir)
+                QMessageBox.information(
+                    self, "DB Rebuild", "Database rebuild completed (in-memory test)."
+                )
+            except Exception as e:  # pragma: no cover - GUI message path
+                QMessageBox.critical(self, "DB Rebuild Failed", str(e))
+
+        global_command_registry.register(
+            "db.rebuild",
+            "Rebuild Database (In-Memory)",
+            _rebuild_db,
+            "Drop & recreate schema then ingest all HTML (temporary in-memory run)",
         )
 
     # Shortcuts / Help --------------------------------------------

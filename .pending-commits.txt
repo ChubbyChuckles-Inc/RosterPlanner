@@ -27,3 +27,6 @@ test(ingest): incremental_refresh tests for new, unchanged, changed roster scena
 feat(db): migration 0002 add provenance access tracking (Milestone 3.7.1)
 feat(ingest): eviction policy (LRU/age) with access touch integration (Milestone 3.7.1)
 test(ingest): eviction tests for size-based and age-based policies (Milestone 3.7.1)
+feat(db): rebuild_database utility (drop schema, reapply, ingest) (Milestone 3.8)
+feat(gui): register command palette entry for DB rebuild (in-memory prototype) (Milestone 3.8)
+test(db): rebuild_database end-to-end test (Milestone 3.8)

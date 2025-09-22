@@ -131,7 +131,7 @@ Milestone 3: Data Layer & SQLite Integration
 [x] 3.6.1 Add factory fixtures for test data
 [x] 3.7 Add incremental refresh logic (only changed HTML re-parsed; hash-based caching)
 [x] 3.7.1 Eviction policy for stale parsed objects (LRU / time-based)
-[ ] 3.8 Provide manual DB rebuild command (menu + command palette)
+[x] 3.8 Provide manual DB rebuild command (menu + command palette)
 [ ] 3.8.1 Rebuild progress dialog w/ partial rollback on error
 [ ] 3.9 Add query performance logging (slow query threshold)
 [ ] 3.10 Index advisor script (analyze EXPLAIN query plans)
