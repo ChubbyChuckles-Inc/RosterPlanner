@@ -85,7 +85,9 @@ class IngestionCoordinator:
                 # Build map: numeric_team_id -> list[(team_name, info)]
                 grouped: dict[str, list[tuple[str, object]]] = {}
                 for team_name, info in d.team_rosters.items():
-                    numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(team_name)
+                    numeric_id = self._extract_numeric_id_from_path(
+                        info.path
+                    ) or self._derive_team_id(team_name)
                     grouped.setdefault(numeric_id, []).append((team_name, info))
 
                 for numeric_id, entries in grouped.items():
@@ -204,6 +206,7 @@ class IngestionCoordinator:
         norm = [v.strip() for v in variants if v.strip()]
         if not norm:
             return variants[0]
+
         # Prefer one that has at least 2 tokens and a digit at end token (common pattern) and contains a club-like token (capitalized word with Umlaut or mixed case)
         def score(name: str) -> tuple[int, int]:
             tokens = name.split()

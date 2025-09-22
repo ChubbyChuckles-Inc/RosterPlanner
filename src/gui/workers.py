@@ -89,7 +89,9 @@ class LandingLoadWorker(QThread):
                         for t in getattr(d, "teams", []):
                             # We do not yet persist club names in tracking JSON; keep None.
                             teams.append(
-                                TeamEntry(team_id=t.id, name=t.name, division=d.name, club_name=None)
+                                TeamEntry(
+                                    team_id=t.id, name=t.name, division=d.name, club_name=None
+                                )
                             )
                     teams.sort(key=lambda t: (t.division, t.display_name.lower()))
                     self.finished.emit(teams, "")
