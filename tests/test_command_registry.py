@@ -22,6 +22,12 @@ def test_search_basic():
     results = reg.search("open")
     ids = [e.command_id for e in results]
     assert "app.open" in ids and "team.open" in ids
+    # Fuzzy subsequence: 'ps' should match 'player.search'
+    fuzzy = reg.search("ps")
+    fuzzy_ids = [e.command_id for e in fuzzy]
+    assert "player.search" in fuzzy_ids
+    # Non-match returns empty
+    assert reg.search("zzz") == []
     # Query empty returns all limited
     all_results = reg.search("")
     assert len(all_results) == 3

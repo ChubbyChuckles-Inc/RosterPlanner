@@ -63,22 +63,27 @@ class CommandRegistry:
         return list(self._commands.values())
 
     def search(self, query: str, limit: int = 25) -> List[CommandEntry]:
-        """Naive case-insensitive containment search over id + title.
+        """Fuzzy subsequence search over id + title.
 
-        Returns up to *limit* matches; if query empty returns all (limited).
+        Scoring (lower is better):
+         - Non-match => excluded
+         - Base score = first match index * 4 + gaps_penalty + length_penalty
+         - gaps_penalty = (# of gaps between matched chars) * 2
+         - length_penalty = total_hay_length / 200 (small nudge favoring shorter strings)
+        Returns up to *limit* best matches. Empty query returns first *limit* commands (stable order by id).
         """
         if not query:
-            return self.list()[:limit]
+            return sorted(self._commands.values(), key=lambda e: e.command_id)[:limit]
         q = query.lower()
-        matches: List[Tuple[int, CommandEntry]] = []
+        scored: List[Tuple[float, CommandEntry]] = []
         for entry in self._commands.values():
-            hay = f"{entry.command_id} {entry.title}".lower()
-            idx = hay.find(q)
-            if idx != -1:
-                # Basic score: earlier match ranks higher; tie-break by id
-                matches.append((idx, entry))
-        matches.sort(key=lambda t: (t[0], t[1].command_id))
-        return [m[1] for m in matches[:limit]]
+            hay_original = f"{entry.command_id} {entry.title}"
+            hay = hay_original.lower()
+            score = _fuzzy_subsequence_score(q, hay)
+            if score is not None:
+                scored.append((score, entry))
+        scored.sort(key=lambda t: (t[0], t[1].command_id))
+        return [s[1] for s in scored[:limit]]
 
     # Execution ----------------------------------------------------
     def execute(self, command_id: str) -> Tuple[bool, Optional[str]]:
@@ -95,3 +100,38 @@ class CommandRegistry:
 
 # Global default registry instance (can be replaced or wrapped in DI container)
 global_command_registry = CommandRegistry()
+
+
+# --- Fuzzy Scoring Utility (Milestone 2.4.1) ----------------------
+def _fuzzy_subsequence_score(pattern: str, text: str) -> Optional[float]:
+    """Return a float score for matching pattern as subsequence in text.
+
+    Returns None if not a subsequence. Lower scores are better.
+    The algorithm walks *text* trying to match characters of *pattern* in order.
+    It tracks the first match index, number of gaps (non-consecutive advances),
+    and total text length to produce a composite heuristic score.
+    """
+    if not pattern:
+        return 0.0
+    t_len = len(text)
+    p_idx = 0
+    first_match = -1
+    last_match = -1
+    gaps = 0
+    for i, ch in enumerate(text):
+        if ch == pattern[p_idx]:
+            if first_match == -1:
+                first_match = i
+            if last_match != -1 and i - last_match > 1:
+                gaps += 1
+            last_match = i
+            p_idx += 1
+            if p_idx == len(pattern):
+                break
+    if p_idx != len(pattern):
+        return None
+    # Score components
+    gaps_penalty = gaps * 2
+    length_penalty = t_len / 200.0
+    first_component = first_match * 4
+    return first_component + gaps_penalty + length_penalty

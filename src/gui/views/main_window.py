@@ -30,10 +30,9 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QMenuBar,
     QMenu,
-    QAction,
 )
-from PyQt6.QtCore import Qt, QShortcut
-from PyQt6.QtGui import QKeySequence
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 
 from gui.views.dock_manager import DockManager
 from gui.views.document_area import DocumentArea
@@ -112,14 +111,11 @@ class MainWindow(QMainWindow):  # Dock-based
         if view_menu is None:
             view_menu = QMenu("&View", self)
             mb.addMenu(view_menu)
-        reset_action = QAction("Reset Layout", self)
-        reset_action.triggered.connect(self._on_reset_layout)
-        view_menu.addAction(reset_action)
-        # Command Palette action
-        palette_action = QAction("Command Palette...", self)
-        palette_action.setShortcut("Ctrl+P")
-        palette_action.triggered.connect(self._open_command_palette)
-        view_menu.addAction(palette_action)
+        # Add actions via convenience overload (returns QAction object)
+        reset_action = view_menu.addAction("Reset Layout")
+        reset_action.triggered.connect(self._on_reset_layout)  # type: ignore[attr-defined]
+        palette_action = view_menu.addAction("Command Palette...")
+        palette_action.triggered.connect(self._open_command_palette)  # type: ignore[attr-defined]
         # Global shortcut (in addition to menu for clarity)
         QShortcut(QKeySequence("Ctrl+P"), self, activated=self._open_command_palette)
         self._register_core_commands()

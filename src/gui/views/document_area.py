@@ -12,21 +12,16 @@ Future enhancements (later milestones):
 """
 
 from __future__ import annotations
-from typing import Callable, Dict, Optional, Any, TYPE_CHECKING
-
-if TYPE_CHECKING:  # pragma: no cover
-    from PyQt6.QtWidgets import QTabWidget, QWidget
-else:  # runtime fallback without Qt
-    QTabWidget = object  # type: ignore
-    QWidget = object  # type: ignore
+from typing import Callable, Dict, Optional, Any
+from PyQt6.QtWidgets import QTabWidget
 
 __all__ = ["DocumentArea"]
 
 
-class DocumentArea(QTabWidget):  # type: ignore[misc]
+class DocumentArea(QTabWidget):
     # (Could add a Qt signal later if needed; for now simple override)
     def __init__(self):
-        super().__init__()  # type: ignore
+        super().__init__()
         self._doc_index: Dict[str, int] = {}
 
     # Public API -----------------------------------------------------

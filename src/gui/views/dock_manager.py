@@ -12,21 +12,9 @@ instantiated under a running QApplication.
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, TYPE_CHECKING, Any
-
-if TYPE_CHECKING:  # pragma: no cover - for type checkers only
-    from PyQt6.QtWidgets import QDockWidget, QWidget
-    from PyQt6.QtCore import Qt
-else:  # Lightweight fallbacks so module can import without Qt runtime
-    QDockWidget = Any  # type: ignore
-    QWidget = Any  # type: ignore
-
-    class Qt:  # type: ignore
-        class DockWidgetArea:  # dummy flags container
-            LeftDockWidgetArea = 1
-            RightDockWidgetArea = 2
-            TopDockWidgetArea = 4
-            BottomDockWidgetArea = 8
+from typing import Callable, Dict, List, Optional, Union
+from PyQt6.QtWidgets import QDockWidget, QWidget
+from PyQt6.QtCore import Qt
 
 
 __all__ = ["DockDefinition", "DockManager"]
@@ -37,7 +25,7 @@ class DockDefinition:
     dock_id: str
     title: str
     factory: Callable[[], QWidget]
-    allowed_areas: int  # bitmask of Qt.DockWidgetAreas (when Qt available)
+    allowed_areas: Union[int, "Qt.DockWidgetArea"]  # raw flags or int
 
 
 class DockManager:
@@ -57,13 +45,14 @@ class DockManager:
         if dock_id in self._defs:
             raise ValueError(f"Duplicate dock id: {dock_id}")
         if allowed_areas is None and hasattr(Qt, "DockWidgetArea"):
-            # Default: all standard docking areas
-            allowed_areas = int(
+            # Compose flags; in PyQt6 these are Flag enums (bitwise-or returns a new Flag)
+            flags = (
                 Qt.DockWidgetArea.LeftDockWidgetArea
                 | Qt.DockWidgetArea.RightDockWidgetArea
                 | Qt.DockWidgetArea.TopDockWidgetArea
                 | Qt.DockWidgetArea.BottomDockWidgetArea
             )
+            allowed_areas = flags
         self._defs[dock_id] = DockDefinition(
             dock_id=dock_id,
             title=title,
@@ -90,7 +79,11 @@ class DockManager:
         dock_widget.setWidget(widget)
         # allowed areas
         if hasattr(dock_widget, "setAllowedAreas") and definition.allowed_areas:
-            dock_widget.setAllowedAreas(definition.allowed_areas)
+            try:
+                dock_widget.setAllowedAreas(definition.allowed_areas)  # type: ignore[arg-type]
+            except TypeError:
+                # If stored as int but needs enum, skip or attempt simple conversion
+                pass
         self._instances[dock_id] = dock_widget
         return dock_widget
 
