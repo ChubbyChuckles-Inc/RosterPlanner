@@ -55,6 +55,10 @@ from gui.views.shortcut_cheatsheet import ShortcutCheatSheetDialog
 from gui.services.dock_style import DockStyleHelper
 from gui.services.focus_style import install_focus_ring
 from gui.views.command_palette import CommandPaletteDialog
+from gui.services.navigation_filter_persistence import (
+    NavigationFilterPersistenceService,
+    NavigationFilterState,
+)
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
@@ -73,6 +77,9 @@ class MainWindow(QMainWindow):  # Dock-based
 
         # Layout persistence (Milestone 2.3)
         self._layout_service = LayoutPersistenceService(base_dir=self.data_dir)
+        # Navigation filter persistence (Milestone 4.3.1)
+        self._nav_filter_service = NavigationFilterPersistenceService(base_dir=self.data_dir)
+        self._nav_filter_state = self._nav_filter_service.load()
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -404,12 +411,17 @@ class MainWindow(QMainWindow):  # Dock-based
         self.team_tree.setModel(self.team_filter_proxy)
         # Wire search input
         if hasattr(self, "search_input"):
-            self.search_input.textChanged.connect(self.team_filter_proxy.scheduleFilterPattern)  # type: ignore
+            # Restore persisted search text
+            if self._nav_filter_state.search:
+                self.search_input.setText(self._nav_filter_state.search)
+            self.search_input.textChanged.connect(self._on_search_text_changed)  # type: ignore
         # Expand root divisions by default (use proxy's first row)
         root_idx = self.team_filter_proxy.index(0, 0)
         if root_idx.isValid():  # pragma: no cover
             self.team_tree.expand(root_idx)
         self.team_tree.clicked.connect(self._on_tree_item_clicked)  # type: ignore
+        # Apply persisted chip filters after model set
+        self._apply_persisted_filters()
         self._set_status(f"Loaded {len(teams)} teams")
 
     def _on_filter_chips_changed(self):  # pragma: no cover - GUI path
@@ -431,6 +443,41 @@ class MainWindow(QMainWindow):  # Dock-based
         proxy.setDivisionTypes(types)
         proxy.setLevels(levels)
         proxy.setActiveOnly(self.chk_active_only.isChecked())
+        # Persist state
+        self._nav_filter_state.division_types = types
+        self._nav_filter_state.levels = levels
+        self._nav_filter_state.active_only = self.chk_active_only.isChecked()
+        self._nav_filter_service.save(self._nav_filter_state)
+
+    def _on_search_text_changed(self, text: str):  # pragma: no cover - GUI path
+        if hasattr(self, "team_filter_proxy"):
+            self.team_filter_proxy.scheduleFilterPattern(text)
+        self._nav_filter_state.search = text
+        self._nav_filter_service.save(self._nav_filter_state)
+
+    def _apply_persisted_filters(self):  # pragma: no cover - GUI path
+        st = self._nav_filter_state
+        # Set checkbox states without triggering multiple saves: block signals momentarily
+        for chk, label in [
+            (getattr(self, "chk_type_erw", None), "Erwachsene"),
+            (getattr(self, "chk_type_jugend", None), "Jugend"),
+            (getattr(self, "chk_lvl_bez", None), "Bezirksliga"),
+            (getattr(self, "chk_lvl_stadtliga", None), "Stadtliga"),
+            (getattr(self, "chk_lvl_stadtklasse", None), "Stadtklasse"),
+        ]:
+            if chk is None:
+                continue
+            want_checked = (
+                (label in st.division_types)
+                if label in ("Erwachsene", "Jugend")
+                else (label in st.levels)
+            )
+            if chk.isChecked() != want_checked:
+                chk.setChecked(want_checked)
+        if hasattr(self, "chk_active_only") and self.chk_active_only.isChecked() != st.active_only:
+            self.chk_active_only.setChecked(st.active_only)
+        # Trigger filter application explicitly
+        self._on_filter_chips_changed()
 
     # Roster + Players -----------------------------------------------
     def _load_selected_roster(self):

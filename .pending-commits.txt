@@ -47,3 +47,5 @@ feat(gui): debounced navigation search + background index build (Milestone 4.2.1
 test(gui): debounce & index readiness tests (Milestone 4.2.1)
 feat(gui): navigation filter chips (division type, level, active) (Milestone 4.3)
 test(gui): navigation filter chips tests (Milestone 4.3)
+feat(gui): persist navigation filter state (search text, division type/level, active flag) (Milestone 4.3.1)
+test(gui): navigation filter persistence roundtrip & corrupt file backup tests (Milestone 4.3.1)

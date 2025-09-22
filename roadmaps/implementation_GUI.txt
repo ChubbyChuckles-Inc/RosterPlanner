@@ -142,7 +142,7 @@ Milestone 4: Data Navigation UI
 [x] 4.2 Search bar (incremental fuzzy search across teams & players)
 [x] 4.2.1 Debounce + background thread indexing
 [x] 4.3 Filter chips (Division type: Erwachsene / Jugend, Level: Bezirksliga/Stadtklasse, Status: Active)
-[ ] 4.3.1 Persist active filters to settings
+[x] 4.3.1 Persist active filters to settings
 [ ] 4.4 Persist navigation state (expanded nodes, last selection)
 [ ] 4.5 Context menu: Open in new tab (Detail view), Copy ID, Export JSON
 [ ] 4.5.1 Permission model placeholder (future multi-user roles)
