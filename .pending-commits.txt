@@ -6,3 +6,4 @@ feat: implement 2.4.1 fuzzy matcher scoring (subsequence scoring utility, integr
 chore: add run_gui.ps1 launcher (venv activation, dependency check) and fix PyQt6 runtime issues (QAction removal, QShortcut import, real QTabWidget, dock flags)
 feat: implement 2.4.2 recently executed command weighting (recency & frequency boosts in search scoring, usage tracking, tests, roadmap)
 feat: implement 2.5 keyboard shortcuts map & cheat sheet dialog (shortcut registry, categorized listing dialog, integration into MainWindow, tests, roadmap)
+feat: implement 2.5.1 shortcut conflicts detector (registry conflict scan, cheat sheet annotation, tests, roadmap)

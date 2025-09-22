@@ -30,3 +30,22 @@ def test_cheatsheet_populates_and_filters(qtbot):  # requires pytest-qt
     # Filter by 'palette'
     dlg.filter_edit.setText("palette")
     assert dlg.tree.topLevelItemCount() == 1
+
+
+@pytest.mark.skipif(QApplication is None, reason="PyQt6 not available")
+def test_cheatsheet_conflict_annotation(qtbot):  # requires pytest-qt
+    if QApplication.instance() is None:
+        _app = QApplication(sys.argv)  # noqa: F841
+    # Register conflicting shortcuts
+    global_shortcut_registry.register("conflict.one", "Ctrl+Alt+M", "Action One")
+    global_shortcut_registry.register("conflict.two", "Ctrl+Alt+M", "Action Two")
+    dlg = ShortcutCheatSheetDialog()
+    qtbot.addWidget(dlg)  # type: ignore
+    # Find any row with '(conflict)' marker
+    found_conflict = False
+    for i in range(dlg.tree.topLevelItemCount()):
+        txt = dlg.tree.topLevelItem(i).text(0).lower()
+        if "conflict" in txt and "ctrl+alt+m" in txt:
+            found_conflict = True
+            break
+    assert found_conflict

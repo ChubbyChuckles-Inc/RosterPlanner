@@ -14,7 +14,7 @@ Design Notes:
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 __all__ = ["ShortcutEntry", "ShortcutRegistry", "global_shortcut_registry"]
 
@@ -57,6 +57,18 @@ class ShortcutRegistry:
         for lst in buckets.values():
             lst.sort(key=lambda x: x.sequence)
         return buckets
+
+    # Conflict Detection (Milestone 2.5.1) -------------------------
+    def find_conflicts(self) -> Dict[str, List[ShortcutEntry]]:
+        """Return mapping of key sequence -> entries when more than one shortcut shares it.
+
+        Sequences compared in a case-insensitive manner (normalized to upper).
+        """
+        seq_map: Dict[str, List[ShortcutEntry]] = {}
+        for e in self._entries.values():
+            norm = e.sequence.upper()
+            seq_map.setdefault(norm, []).append(e)
+        return {k: v for k, v in seq_map.items() if len(v) > 1}
 
 
 # Global instance

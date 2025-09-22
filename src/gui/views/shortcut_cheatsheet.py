@@ -56,10 +56,17 @@ class ShortcutCheatSheetDialog(QDialog):  # pragma: no cover - GUI interaction t
         self.tree.clear()
         entries: List[ShortcutEntry] = global_shortcut_registry.list()
         entries.sort(key=lambda e: (e.category, e.sequence))
+        conflicts = global_shortcut_registry.find_conflicts()
+        conflict_sequences = {seq for seq in conflicts.keys()}
         for e in entries:
             if query and query not in e.sequence.lower() and query not in e.description.lower():
                 continue
-            item = QTreeWidgetItem([e.sequence, e.description or e.shortcut_id, e.category])  # type: ignore
+            seq_display = e.sequence
+            if e.sequence.upper() in conflict_sequences:
+                seq_display += "  (conflict)"
+            item = QTreeWidgetItem([seq_display, e.description or e.shortcut_id, e.category])  # type: ignore
+            if e.sequence.upper() in conflict_sequences:
+                item.setToolTip(0, "Multiple shortcuts share this key sequence")  # type: ignore
             self.tree.addTopLevelItem(item)  # type: ignore
         self.tree.resizeColumnToContents(0)  # type: ignore
         self.tree.resizeColumnToContents(1)  # type: ignore
