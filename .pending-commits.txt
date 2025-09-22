@@ -45,3 +45,6 @@ chore(ingest): gate placeholder generation behind SettingsService.allow_placehol
  - Update `MainWindow.open_division_table` to consult setting before producing placeholders
  - Add tests for SettingsService; roadmap updated to [~]
 
+docs(roadmap): add Milestone 5.10 Visual Polish & Design Integration leveraging existing design system tokens (color, typography, elevation, motion) with detailed subtasks (5.10.1–5.10.20)
+docs(roadmap): expand Milestone 5.10 with advanced UI polish tasks (5.10.21–5.10.70) covering gradients, glass surfaces, adaptive contrast, motion choreography, accessibility overlays, performance instrumentation, theme experimentation, and visual regression hooks
+

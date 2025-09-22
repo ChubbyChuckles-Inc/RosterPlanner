@@ -201,6 +201,78 @@ Milestone 5.9: Data Integration & Persistence Bridging (Scraped HTML -> SQLite -
 		- Default remains True to avoid breaking existing tests; follow-up to flip default
 			and remove placeholder generator after integration test updates.
 
+Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design System)
+[ ] 5.10.1 Apply design tokens across core views (MainWindow, navigation dock, detail views) replacing any hardcoded colors/spacings
+[ ] 5.10.2 Elevation layering for docks & panels (use elevation tokens + shadow presets)
+[ ] 5.10.3 Typography pass: assign semantic text roles (title, subtitle, body, caption) via token scale
+[ ] 5.10.4 Iconography integration: replace placeholder text buttons with registered SVG icons (navigation + common actions)
+[ ] 5.10.5 Motion polish: add easing curve animations for dock show/hide & tab transitions (reuse easing presets)
+[ ] 5.10.6 Live theme toggle action (light/dark/high-contrast) wiring + status indication
+[ ] 5.10.7 Density mode switch (comfortable ↔ compact) applying spacing scale; persistence
+[ ] 5.10.8 Focus ring audit & unification across interactive widgets (ensure design token colors)
+[ ] 5.10.9 Empty & error state components: replace plain labels with design templates (empty state registry)
+[ ] 5.10.10 Skeleton loaders in Division Table & Team Detail while async data loads (remove instantaneous pop-in)
+[ ] 5.10.11 Toast / notification styling pass (stacking, color roles, motion) using notification guidelines
+[ ] 5.10.12 Update & capture visual regression snapshot baseline (gallery + key views) [T]
+[ ] 5.10.13 Theme hot-reload propagation to already open views (complete 0.8 pending UI propagation)
+[ ] 5.10.14 Dock title bar token styling (active/inactive/hover states) + high contrast adjustments
+[ ] 5.10.15 Color blindness simulation toggle surfacing (View menu) with status indicator
+[ ] 5.10.16 Accessibility contrast check command: run WCAG validator over current palette & log deltas
+[ ] 5.10.17 Performance guard: measure style (re)apply time; warn if >50ms (instrumentation hook) [T]
+[ ] 5.10.18 Plugin style contract sample panel: render a mock plugin widget verifying tokens-only usage
+[ ] 5.10.19 Documentation: Visual integration guide (how tokens map to QSS + component roles) [D]
+[ ] 5.10.20 ADR: Strategy for progressive visual enhancement vs baseline performance (trade-offs) [D]
+[ ] 5.10.21 Gradient & tonal ramp tokens: multi-stop gradient registry + unit tests for token presence
+[ ] 5.10.22 Glass surface variant (blur/translucent panels) with performance capability check & fallback
+[ ] 5.10.23 Dynamic accent extraction from club logo or division banner (color quantization spike) [R]
+[ ] 5.10.24 Adaptive contrast auto-tuning when dynamic accent changes (recompute accessible on/surface pairs)
+[ ] 5.10.25 Variable font integration (weight/opsz axis) + smooth weight transition utility
+[ ] 5.10.26 Motion choreography map (component enter/exit/transform sequencing doc) [D]
+[ ] 5.10.27 Micro-interaction spring physics option (spring curve helper + tests)
+[ ] 5.10.28 Scroll-linked subtle fade/translate animations (perf guarded flag)
+[ ] 5.10.29 Contextual radius adaptation: large surface vs chip vs pill (apply radius scale tokens)
+[ ] 5.10.30 Themed multi-tone icon recoloring pipeline (primary/secondary/disabled states)
+[ ] 5.10.31 Focus ring glow variant (outer halo) + reduced-motion/high-contrast fallback
+[ ] 5.10.32 High-DPI asset scaler audit & auto-regeneration script [T]
+[ ] 5.10.33 Ambient color shift (very low frequency gradient drift) developer flag
+[ ] 5.10.34 Live theme preview diff panel (before/after token snapshot view)
+[ ] 5.10.35 Contrast heatmap overlay (debug tool highlighting low contrast regions)
+[ ] 5.10.36 Color vision deficiency simulation hook applied to active views (full pipeline integration)
+[ ] 5.10.37 Elevation audit & alignment report (map components -> elevation tokens) [D]
+[ ] 5.10.38 Spacing grid overlay toggle (8px baseline visualizer) dev tool
+[ ] 5.10.39 Container size observer utilities (responsive density + typography adjustments)
+[ ] 5.10.40 Keyboard navigation highlight trail animation (recent focus path) with perf opt-out
+[ ] 5.10.41 QSS inline color drift detector test (no hardcoded hex outside token map) [T]
+[ ] 5.10.42 Style recalculation performance instrumentation (log >50ms re-theme) [T]
+[ ] 5.10.43 Plugin visual sandbox harness validating token-only styling (live re-skin)
+[ ] 5.10.44 Enhanced adaptive scrollbars (hover expand + smooth color fade) themed
+[ ] 5.10.45 Animated skeleton shimmer effect (token gradient) + reduced-motion fallback
+[ ] 5.10.46 Adaptive blur intensity for glass surfaces (background luminance sampling)
+[ ] 5.10.47 Neutral ramp delta-E calibration tool (ensure perceptual steps) [R]
+[ ] 5.10.48 Split-view divider grab-handle styling + hover/active affordances
+[ ] 5.10.49 Inline error badge component (severity color roles + scale transitions)
+[ ] 5.10.50 Toast stack cascade animation (staggered spring) + accessibility pause on hover
+[ ] 5.10.51 Command Palette theming: group headers, icon badges, fuzzy score highlight spans
+[ ] 5.10.52 In-app theme JSON editor (live validation, preview, rollback)
+[ ] 5.10.53 Theme snapshot export (tokens + derived palette metadata) [D]
+[ ] 5.10.54 Theme A/B experiment harness (random assignment + logging) [T]
+[ ] 5.10.55 Personalization preview panel (simulate user preference sets: reduced motion, high contrast)
+[ ] 5.10.56 Multi-monitor DPI live recalibration (listen + update scaling tokens)
+[ ] 5.10.57 Custom window chrome/titlebar with integrated tabs (Windows platform feasibility) [R]
+[ ] 5.10.58 Animated tab open/close transitions (opacity + scale) with easing tokens
+[ ] 5.10.59 Status bar rich segments (icon badges, mini sparkline, freshness pill) token-aligned
+[ ] 5.10.60 Developer color picker overlay (sample any on-screen pixel + token suggestion)
+[ ] 5.10.61 Reduced color / monochrome mode fallback styling toggle
+[ ] 5.10.62 Print stylesheet parity test harness (layout + contrast assertions) [T]
+[ ] 5.10.63 Shadow elevation visual regression testing (bitmap hash snapshots) [T]
+[ ] 5.10.64 Layout shift monitor (collect cumulative layout shift metric) [T]
+[ ] 5.10.65 Accessibility focus order visual path map overlay [D]
+[ ] 5.10.66 Modal backdrop auto-darken & subtle zoom animation (reduced-motion fallback)
+[ ] 5.10.67 Animated progress indicators (determinate + indeterminate variants) token-driven
+[ ] 5.10.68 Smooth layout reflow during window resize (debounced transform strategy)
+[ ] 5.10.69 Theme warm-load prefetch (precompute derived palettes in idle)
+[ ] 5.10.70 Virtualized list styling parity test (ensure consistent tokens) [T]
+
 Milestone 6: Advanced Statistics Engine
 [ ] 6.1 Stats service: compute aggregated KPIs (win %, avg LivePZ per lineup, player participation rate)
 [ ] 6.1.1 KPI registry (declarative definitions + metadata)
