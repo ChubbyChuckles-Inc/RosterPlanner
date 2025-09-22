@@ -43,6 +43,8 @@ from gui.availability_table import AvailabilityTable
 from planning import availability_store
 from gui.services.layout_persistence import LayoutPersistenceService
 from gui.services.command_registry import global_command_registry
+from gui.services.shortcut_registry import global_shortcut_registry
+from gui.views.shortcut_cheatsheet import ShortcutCheatSheetDialog
 from gui.views.command_palette import CommandPaletteDialog
 
 
@@ -104,20 +106,35 @@ class MainWindow(QMainWindow):  # Dock-based
     def _build_menus(self):
         mb = self.menuBar() if self.menuBar() else QMenuBar(self)
         view_menu = None
+        help_menu = None
         for a in mb.actions():  # reuse if exists
             if a.text() == "&View":
                 view_menu = a.menu()
+            if a.text() == "&Help":
+                help_menu = a.menu()
                 break
         if view_menu is None:
             view_menu = QMenu("&View", self)
             mb.addMenu(view_menu)
+        if help_menu is None:
+            help_menu = QMenu("&Help", self)
+            mb.addMenu(help_menu)
         # Add actions via convenience overload (returns QAction object)
         reset_action = view_menu.addAction("Reset Layout")
         reset_action.triggered.connect(self._on_reset_layout)  # type: ignore[attr-defined]
         palette_action = view_menu.addAction("Command Palette...")
         palette_action.triggered.connect(self._open_command_palette)  # type: ignore[attr-defined]
+        cheatsheet_action = help_menu.addAction("Keyboard Shortcuts...")
+        cheatsheet_action.triggered.connect(self._open_shortcut_cheatsheet)  # type: ignore[attr-defined]
         # Global shortcut (in addition to menu for clarity)
         QShortcut(QKeySequence("Ctrl+P"), self, activated=self._open_command_palette)
+        # Register shortcut in registry (id stable for future conflict detection)
+        global_shortcut_registry.register(
+            "commandPalette.show", "Ctrl+P", "Open Command Palette", category="Navigation"
+        )
+        global_command_registry.register(
+            "help.shortcuts", "Show Keyboard Shortcuts", self._open_shortcut_cheatsheet
+        )
         self._register_core_commands()
 
     def _on_reset_layout(self):
@@ -159,6 +176,11 @@ class MainWindow(QMainWindow):  # Dock-based
             lambda: self._on_reset_layout(),
             "Restore default dock arrangement",
         )
+
+    # Shortcuts / Help --------------------------------------------
+    def _open_shortcut_cheatsheet(self):
+        dlg = ShortcutCheatSheetDialog(self)
+        dlg.exec()
 
     # Dock factories -------------------------------------------------
     def _build_navigation_dock(self) -> QWidget:
