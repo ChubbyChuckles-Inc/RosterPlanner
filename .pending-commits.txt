@@ -39,3 +39,5 @@ feat(db): index advisor heuristic script (EXPLAIN plan scan detection, equality 
 test(db): index advisor tests (single, composite, existing index skip, dedupe) (Milestone 3.10)
 feat(gui): navigation tree model (Season->Division->Team) with QAbstractItemModel (Milestone 4.1)
 test(gui): navigation tree model hierarchy & leaf lookup tests (Milestone 4.1)
+feat(gui): navigation tree virtualization (lazy division loading) (Milestone 4.1.1)
+test(gui): lazy loading tests for navigation tree divisions (Milestone 4.1.1)

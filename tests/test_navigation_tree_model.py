@@ -13,15 +13,22 @@ def _teams():
     ]
 
 
-def test_navigation_tree_structure(qtbot):  # qtbot fixture assumed available if pytest-qt installed
+def test_navigation_tree_structure_lazy_loading(
+    qtbot,
+):  # qtbot fixture assumed available if pytest-qt installed
     model = NavigationTreeModel(2025, _teams())
-    # Root has divisions
+    # Root has divisions (season root already materialized its division children)
     assert model.rowCount() == 2
     div0 = model.index(0, 0)
     div1 = model.index(1, 0)
     assert model.data(div0, Qt.ItemDataRole.DisplayRole) == "DivA"
-    # DivA has two teams
+    # Division should be unloaded prior to first child access
+    node_div0: NavNode = model.data(div0, Qt.ItemDataRole.UserRole)
+    assert node_div0.kind == "division"
+    assert node_div0._loaded is False  # not yet loaded
+    # Access teams (rowCount triggers load)
     assert model.rowCount(div0) == 2
+    assert node_div0._loaded is True
     team0 = model.index(0, 0, div0)
     node0 = model.data(team0, Qt.ItemDataRole.UserRole)
     assert isinstance(node0, NavNode)
@@ -34,6 +41,23 @@ def test_navigation_tree_structure(qtbot):  # qtbot fixture assumed available if
 def test_team_lookup_leaf(qtbot):
     model = NavigationTreeModel(2025, _teams())
     div0 = model.index(0, 0)
+    # Trigger load via rowCount
+    _ = model.rowCount(div0)
     team1 = model.index(1, 0, div0)
     entry = model.get_team_entry(team1)
     assert entry and entry.name == "Beta"
+
+
+def test_division_node_not_loaded_until_access(qtbot):
+    teams = [
+        TeamEntry(team_id="t1", name="Alpha", division="DivA"),
+        TeamEntry(team_id="t2", name="Beta", division="DivA"),
+    ]
+    model = NavigationTreeModel(2025, teams)
+    div0 = model.index(0, 0)
+    node_div0: NavNode = model.data(div0, Qt.ItemDataRole.UserRole)
+    # Access internal state before asking for rowCount/index children; division should auto-load on first rowCount
+    assert node_div0.kind == "division"
+    # Force load
+    assert model.rowCount(div0) == 2
+    assert node_div0._loaded is True
