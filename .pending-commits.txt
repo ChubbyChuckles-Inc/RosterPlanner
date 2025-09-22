@@ -58,4 +58,5 @@ feat(typography): implement semantic TypographyRole mapping (Milestone 5.10.3), 
 feat(lock): make psutil optional and refine stale PID detection logic
 feat(iconography): add IconRegistry with SVG discovery, refresh icon integration, tests, mark 5.10.4 partial
 feat(iconography): complete Milestone 5.10.4 with additional icons (save, folder-open), button integration, caching & color tint variant, tests, roadmap updated
+feat(motion): complete Milestone 5.10.5 adding animator helpers (dock show/hide, tab crossfade) using motion tokens, roadmap updated, tests added
 

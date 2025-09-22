@@ -205,7 +205,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.2 Elevation layering for docks & panels (use elevation tokens + shadow presets)
 [x] 5.10.3 Typography pass: assign semantic text roles (title, subtitle, body, caption) via token scale
 [x] 5.10.4 Iconography integration: replace placeholder text buttons with registered SVG icons (navigation + common actions) -- registry, refresh/save/load icons, caching & color variant
-[ ] 5.10.5 Motion polish: add easing curve animations for dock show/hide & tab transitions (reuse easing presets)
+[x] 5.10.5 Motion polish: add easing curve animations for dock show/hide & tab transitions (reuse easing presets)
 [ ] 5.10.6 Live theme toggle action (light/dark/high-contrast) wiring + status indication
 [ ] 5.10.7 Density mode switch (comfortable ↔ compact) applying spacing scale; persistence
 [ ] 5.10.8 Focus ring audit & unification across interactive widgets (ensure design token colors)
