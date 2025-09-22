@@ -25,7 +25,8 @@ from PyQt6.QtWidgets import (
     QMenu,
     QAction,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtWidgets import QToolTip
 
 from gui.models import TeamRosterBundle, PlayerEntry, MatchDate
 from gui.services.column_visibility_persistence import (
@@ -96,6 +97,12 @@ class TeamDetailView(QWidget):
         self.roster_table.horizontalHeader().setStretchLastSection(True)
         roster_layout.addWidget(self.roster_table)
         root.addWidget(roster_box)
+        # Enable cell tracking for hover tooltips
+        try:
+            self.roster_table.setMouseTracking(True)
+            self.roster_table.cellEntered.connect(self._on_cell_entered)  # type: ignore
+        except Exception:
+            pass
         # Apply initial visibility if persisted
         self._apply_column_visibility()
 
@@ -179,6 +186,31 @@ class TeamDetailView(QWidget):
         for key in self._column_keys:
             col_index = self._column_keys.index(key)
             self.roster_table.setColumnHidden(col_index, not self._col_state.is_visible(key))
+
+    # Hover card (Milestone 5.1.2) ---------------------------------------
+    def _build_player_hover_text(self, player: PlayerEntry) -> str:
+        parts = [player.name]
+        if player.live_pz is not None:
+            parts.append(f"LivePZ: {player.live_pz}")
+        else:
+            parts.append("LivePZ: —")
+        # Future expansion: add recent form, availability stats, etc.
+        return " | ".join(parts)
+
+    def _on_cell_entered(self, row: int, col: int):  # pragma: no cover - GUI path
+        if not self._bundle:
+            return
+        if row < 0 or row >= len(self._bundle.players):
+            return
+        player = self._bundle.players[row]
+        text = self._build_player_hover_text(player)
+        # Expose last hover text for testing (non-Qt dependency path)
+        self.last_hover_text = text  # type: ignore
+        try:
+            pos = self.mapToGlobal(self.roster_table.viewport().mapFromParent(QPoint(0, 0)))  # type: ignore
+            QToolTip.showText(pos, text, self.roster_table)
+        except Exception:
+            pass
 
     # Accessors for tests -------------------------------------------------
     def bundle(self) -> Optional[TeamRosterBundle]:  # pragma: no cover - trivial
