@@ -544,8 +544,8 @@ class MainWindow(QMainWindow):  # Dock-based
             self._set_status("Roster load issue")
         else:
             self._set_status(f"Roster loaded: {bundle.team.name} ({len(bundle.players)} players)")
-            # Automatically open / focus a team detail tab placeholder
-            self.open_team_detail(bundle.team)
+            # Open or update team detail tab with full bundle
+            self.open_team_detail(bundle.team, bundle)
         self.table.load(bundle.players, bundle.match_dates)
         team_id = bundle.team.team_id
         if team_id in self.av_state.teams:
@@ -571,7 +571,7 @@ class MainWindow(QMainWindow):  # Dock-based
         QMessageBox.information(self, "Saved", "Availability data saved.")
 
     # Team Detail Tabs ----------------------------------------------
-    def open_team_detail(self, team: TeamEntry):
+    def open_team_detail(self, team: TeamEntry, bundle: TeamRosterBundle | None = None):
         doc_id = f"team:{team.team_id}"
         if not hasattr(self, "document_area"):
             return
@@ -592,9 +592,20 @@ class MainWindow(QMainWindow):  # Dock-based
             except Exception:
                 pass
             view.title_label.setText(f"Team: {team.name}")
+            if bundle is not None:
+                try:
+                    view.set_bundle(bundle)
+                except Exception:
+                    pass
             return view
 
-        self.document_area.open_or_focus(doc_id, team.name, factory)
+        existing = self.document_area.open_or_focus(doc_id, team.name, factory)
+        # If already open and we now have a bundle, update it.
+        if bundle is not None and isinstance(existing, TeamDetailView):
+            try:
+                existing.set_bundle(bundle)
+            except Exception:
+                pass
 
     # Tree interaction -------------------------------------------------
     def _on_tree_item_clicked(self, index):  # pragma: no cover - GUI path
