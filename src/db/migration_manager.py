@@ -119,4 +119,79 @@ def apply_pending_migrations(
     return result_meta
 
 
-__all__ = ["apply_pending_migrations", "verify_migration_checksums"]
+def preview_pending_migration_sql(conn: sqlite3.Connection) -> List[Tuple[int, str, List[str]]]:
+    """Return list of (migration_id, description, sql_statements) for pending migrations.
+
+    Implementation detail:
+    - Creates a temporary in-memory connection.
+    - Replays current schema (by attaching baseline schema via apply_schema outside this module)
+      NOT DONE here to avoid circular import; caller must ensure baseline schema already applied
+      to the passed connection; we mirror its structure by using backup API if available.
+    - Monkeypatches `execute` and `executescript` to log SQL statements executed by migration.
+
+    NOTE: This is a best-effort capture; dynamic SQL inside Python loops will appear multiple times.
+    Side effects in Python that depend on real data are not simulated.
+    """
+    from .migrations import discover_migrations  # local import reuse
+
+    current = _get_current_version(conn)
+    migrations = discover_migrations()
+    pending = [(mid, desc, fn) for (mid, desc, fn) in migrations if mid > current]
+    results: List[Tuple[int, str, List[str]]] = []
+    if not pending:
+        return results
+
+    # Build a temp db by copying the original schema (serialize via backup if supported)
+    temp = sqlite3.connect(":memory:")
+    temp.execute("PRAGMA foreign_keys=ON")
+    try:
+        conn.backup(temp)  # copy schema + data so migrations run against realistic state
+    except Exception:
+        # Fallback: ignore if backup unsupported (older pysqlite) -> we proceed with empty temp
+        pass
+
+    def wrap_connection(c: sqlite3.Connection):
+        logged: List[str] = []
+        real_execute = c.execute
+        real_executescript = c.executescript
+
+        def logging_execute(sql, *args):  # type: ignore
+            logged.append(sql.strip())
+            return real_execute(sql, *args)
+
+        def logging_executescript(script):  # type: ignore
+            for stmt in script.split(";"):
+                s = stmt.strip()
+                if s:
+                    logged.append(s)
+            return real_executescript(script)
+
+        c.execute = logging_execute  # type: ignore
+        c.executescript = logging_executescript  # type: ignore
+        return logged
+
+    for mid, desc, fn in pending:
+        # Fresh copy for each migration to isolate SQL capture
+        work = sqlite3.connect(":memory:")
+        work.execute("PRAGMA foreign_keys=ON")
+        try:
+            temp.backup(work)
+        except Exception:
+            pass
+        log = wrap_connection(work)
+        try:
+            fn(work)
+        except Exception:
+            # Capture failure but still record logged SQL up to failure
+            log.append("-- ERROR during preview of migration %d" % mid)
+        results.append((mid, desc, log))
+        work.close()
+    temp.close()
+    return results
+
+
+__all__ = [
+    "apply_pending_migrations",
+    "verify_migration_checksums",
+    "preview_pending_migration_sql",
+]
