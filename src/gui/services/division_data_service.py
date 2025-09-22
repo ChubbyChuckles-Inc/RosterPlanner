@@ -181,4 +181,55 @@ class DivisionDataService:
         for idx, e in enumerate(entries, start=1):
             e.position = idx  # dataclass not frozen; safe in GUI layer model
 
+        # Fallback: If all points are zero *and* a pre-parsed ranking table exists
+        # (ingestion captured points without match breakdown), prefer that ordering/points.
+        try:
+            if entries and all(e.points == 0 for e in entries):
+                cur = self.conn.execute(
+                    "SELECT position, team_name, points FROM division_ranking WHERE division_id=? ORDER BY position ASC",
+                    (division.id,),  # type: ignore[attr-defined]
+                )
+                rows = cur.fetchall()
+                if rows:
+                    mapped: List[DivisionStandingEntry] = []
+                    # Build quick lookup to preserve any match-derived stats if later we augment
+                    name_index = {e.team_name: e for e in entries}
+                    for pos, team_name, points in rows:
+                        base = name_index.get(team_name)
+                        if base:
+                            mapped.append(
+                                DivisionStandingEntry(
+                                    position=pos,
+                                    team_name=team_name,
+                                    matches_played=base.matches_played,
+                                    wins=base.wins,
+                                    draws=base.draws,
+                                    losses=base.losses,
+                                    goals_for=base.goals_for,
+                                    goals_against=base.goals_against,
+                                    points=points or 0,
+                                    recent_form=base.recent_form,
+                                )
+                            )
+                        else:
+                            mapped.append(
+                                DivisionStandingEntry(
+                                    position=pos,
+                                    team_name=team_name,
+                                    matches_played=0,
+                                    wins=0,
+                                    draws=0,
+                                    losses=0,
+                                    goals_for=0,
+                                    goals_against=0,
+                                    points=points or 0,
+                                    recent_form=None,
+                                )
+                            )
+                    # Only replace if we mapped at least one row (safety)
+                    if mapped:
+                        entries = mapped
+        except Exception:
+            # Non-fatal; keep computed entries
+            pass
         return entries

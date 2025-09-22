@@ -124,16 +124,24 @@ class SqliteDivisionRepository(_BaseRepo, DivisionRepository):  # type: ignore[m
 
 class SqliteClubRepository(_BaseRepo, ClubRepository):  # type: ignore[misc]
     def list_clubs(self):  # Sequence[Club]
-        return [
-            _row_to_club(r)
-            for r in self._fetch_all("SELECT club_id AS id, name FROM club ORDER BY name")
-        ]
+        try:
+            rows = self._fetch_all("SELECT club_id AS id, name FROM club ORDER BY name")
+        except Exception:
+            # Legacy plural fallback
+            rows = self._fetch_all("SELECT id AS id, name FROM clubs ORDER BY name")
+        return [_row_to_club(r) for r in rows]
 
     def get_club(self, club_id: str):  # Club | None
-        row = self._fetch_one(
-            "SELECT club_id AS id, name FROM club WHERE club_id=?",
-            club_id,
-        )
+        try:
+            row = self._fetch_one(
+                "SELECT club_id AS id, name FROM club WHERE club_id=?",
+                club_id,
+            )
+        except Exception:
+            row = self._fetch_one(
+                "SELECT id AS id, name FROM clubs WHERE id=?",
+                club_id,
+            )
         return _row_to_club(row) if row else None
 
 

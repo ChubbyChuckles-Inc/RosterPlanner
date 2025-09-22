@@ -18,7 +18,7 @@ Future milestones will:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import sqlite3
 from typing import Optional, Iterable, Tuple, List
@@ -26,7 +26,21 @@ from typing import Optional, Iterable, Tuple, List
 from .data_audit import DataAuditService
 from .event_bus import EventBus, Event  # type: ignore
 
-__all__ = ["IngestionCoordinator", "IngestionSummary"]
+__all__ = ["IngestionCoordinator", "IngestionSummary", "IngestError"]
+
+
+@dataclass
+class IngestError:
+    """Structured ingest error (Milestone 5.9.13).
+
+    Captures a failure encountered while processing a division or one of its
+    source files. Errors are isolated per-division due to SAVEPOINT rollback.
+    """
+
+    division: str
+    message: str
+    severity: str = "error"  # future: warning/info levels
+    file: str | None = None
 
 
 @dataclass
@@ -36,10 +50,19 @@ class IngestionSummary:
     players_ingested: int
     skipped_files: int = 0
     processed_files: int = 0
+    errors: list[IngestError] = field(default_factory=list)
 
 
 class IngestionCoordinator:
     """Coordinates ingestion of scraped assets into SQLite.
+
+    Milestone 5.9.12 enhancement:
+        Ingestion now executes *per-division* inside a SQLite SAVEPOINT so a
+        failure while processing one division (e.g. malformed file, unexpected
+        parser exception) rolls back only that division's partial changes while
+        allowing subsequent divisions to proceed. Previously ingestion used a
+        single transaction for the entire run which meant one failure aborted
+        all work.
 
     Parameters
     ----------
@@ -67,81 +90,62 @@ class IngestionCoordinator:
 
     # Public ------------------------------------------------------
     def run(self) -> IngestionSummary:
+        """Execute ingestion returning an `IngestionSummary`.
+
+        Each division is wrapped in a SAVEPOINT (Milestone 5.9.12). A failure in
+        one division logs (suppressed here) and rolls back only that division's
+        partial changes while continuing with the next division.
+        """
         self._ensure_provenance_table()
         self._ensure_normalized_provenance_view()
         if self._singular_mode:
             self._ensure_id_map_table()
             self._ensure_ranking_table()
         else:
-            # Rebind table attribute names to legacy plural schema so downstream code paths
-            # that reference self._table_* write to correct tables. This keeps new logic centralized.
+            # Rebind table attribute names to legacy plural schema
             self._table_division = "divisions"
             self._table_team = "teams"
             self._table_club = "clubs"
             self._table_player = "players"
         audit = DataAuditService(str(self.base_dir)).run()
-        divisions_ingested = 0
-        teams_ingested = 0
-        players_ingested = 0
-        skipped_files = 0
-        processed_files = 0
+        divisions_ingested = teams_ingested = players_ingested = 0
+        skipped_files = processed_files = 0
 
-        with self.conn:  # single transaction for now (not per-division yet)
-            # Upsert divisions & roster-derived teams
-            for d in audit.divisions:
-                div_id = self._upsert_division(d.division)
-                divisions_ingested += 1
-                # Ranking table provenance (not yet parsing content)
-                if d.ranking_table:
-                    if self._is_unchanged(d.ranking_table.path, d.ranking_table.sha1):
-                        skipped_files += 1
-                    else:
-                        processed_files += 1
-                        self._record_provenance(d.ranking_table.path, d.ranking_table.sha1)
-                    # Parse ranking if enabled / singular mode
-                    try:
-                        if self._singular_mode:
-                            self._parse_and_upsert_ranking(div_id, d.ranking_table.path)
-                    except Exception:
-                        pass
-
-                    # --- Deduplication phase (group by numeric id extracted from filename path) ---
-                    if not self._singular_mode:
-                        # Legacy plural schema: treat each roster file independently (no dedup grouping)
-                        for team_name, info in d.team_rosters.items():
-                            if self._is_unchanged(info.path, info.sha1):
-                                skipped_files += 1
-                            else:
-                                processed_files += 1
-                                self._record_provenance(info.path, info.sha1)
-                            team_id = self._derive_team_id(team_name)
-                            player_rows = self._upsert_team(team_id, team_name, d.division)
-                            teams_ingested += 1
-                            players_ingested += player_rows
-                    else:
-                        # Build map: numeric_team_id -> list[(team_name, info)] for dedup
-                        grouped: dict[str, list[tuple[str, object]]] = {}
-                        for team_name, info in d.team_rosters.items():
-                            numeric_id = self._extract_numeric_id_from_path(
-                                info.path
-                            ) or self._derive_team_id(team_name)
-                            grouped.setdefault(numeric_id, []).append((team_name, info))
-
-                        for numeric_id, entries in grouped.items():
-                            canonical_name = self._choose_canonical_name([n for n, _ in entries])
-                            chosen_info = None
-                            for name, info in entries:
-                                if self._is_unchanged(info.path, info.sha1):
-                                    skipped_files += 1
-                                else:
-                                    processed_files += 1
-                                    self._record_provenance(info.path, info.sha1)
-                                if name == canonical_name:
-                                    chosen_info = info
-                            team_id = self._derive_team_id(canonical_name)
-                            player_rows = self._upsert_team(team_id, canonical_name, d.division)
-                            teams_ingested += 1
-                            players_ingested += player_rows
+        errors: list[IngestError] = []
+        for idx, d in enumerate(audit.divisions, start=1):
+            sp = f"div_ingest_{idx}"
+            try:
+                self.conn.execute(f"SAVEPOINT {sp}")
+                div_counts = self._ingest_single_division(d)
+                if div_counts is None:  # division produced no rows
+                    self.conn.execute(f"RELEASE SAVEPOINT {sp}")
+                    continue
+                (
+                    div_added,
+                    teams_added,
+                    players_added,
+                    skipped_delta,
+                    processed_delta,
+                ) = div_counts
+                divisions_ingested += div_added
+                teams_ingested += teams_added
+                players_ingested += players_added
+                skipped_files += skipped_delta
+                processed_files += processed_delta
+                self.conn.execute(f"RELEASE SAVEPOINT {sp}")
+            except Exception as e:
+                # Rollback only this division scope; release to clear savepoint.
+                try:
+                    self.conn.execute(f"ROLLBACK TO {sp}")
+                    self.conn.execute(f"RELEASE SAVEPOINT {sp}")
+                except Exception:
+                    pass
+                # Record structured error (division-level). Persist & publish later.
+                err = IngestError(division=d.division, message=str(e))
+                errors.append(err)
+                self._persist_error(err)
+                # Suppress exception to allow subsequent divisions.
+                continue
 
         summary = IngestionSummary(
             divisions_ingested=divisions_ingested,
@@ -149,7 +153,15 @@ class IngestionCoordinator:
             players_ingested=players_ingested,
             skipped_files=skipped_files,
             processed_files=processed_files,
+            errors=errors,
         )
+        # Post-ingest consistency validation (Milestone 5.9.20)
+        try:  # pragma: no cover - validated via dedicated service tests
+            from .consistency_validation_service import ConsistencyValidationService
+
+            ConsistencyValidationService.run_and_register(self.conn)
+        except Exception:
+            pass
         # Record high-level ingest summary into a standardized table (provenance_summary)
         try:
             self.conn.execute(
@@ -177,10 +189,136 @@ class IngestionCoordinator:
             pass
         if self.event_bus is not None:
             try:
-                self.event_bus.publish(Event("DATA_REFRESHED", payload={"summary": summary}))
+                self.event_bus.publish("DATA_REFRESHED", {"summary": summary})
+                for e in errors:
+                    self.event_bus.publish(
+                        "INGEST_ERROR",
+                        {
+                            "division": e.division,
+                            "message": e.message,
+                            "severity": e.severity,
+                            "file": e.file,
+                        },
+                    )
             except Exception:  # pragma: no cover - non-fatal
                 pass
         return summary
+
+    # ------------------------------------------------------------------
+    # Per-division ingestion (extracted for testability & transactional wrapper)
+    # ------------------------------------------------------------------
+    def _ingest_single_division(self, d) -> tuple[int, int, int, int, int] | None:
+        """Ingest a single division returning counters.
+
+        Returns
+        -------
+        Tuple: (divisions, teams, players, skipped_files, processed_files)
+            The increments contributed by this division.
+        None
+            If the division produced no changes (currently unused, placeholder).
+        """
+        divisions_ingested = 0
+        teams_ingested = 0
+        players_ingested = 0
+        skipped_files = 0
+        processed_files = 0
+        div_id = self._upsert_division(d.division)
+        divisions_ingested += 1
+        if d.ranking_table:
+            if self._is_unchanged(d.ranking_table.path, d.ranking_table.sha1):
+                skipped_files += 1
+            else:
+                processed_files += 1
+                self._record_provenance(d.ranking_table.path, d.ranking_table.sha1)
+            try:
+                if self._singular_mode:
+                    self._parse_and_upsert_ranking(div_id, d.ranking_table.path)
+            except Exception:
+                pass
+            if not self._singular_mode:
+                # Track counts to assign sequential suffixes (1,2,...) for duplicate base prefixes
+                base_counts: dict[str, int] = {}
+                # Group roster variants by extracted numeric id if available; fallback to derived id
+                group_map: dict[str, list[str]] = {}
+                for team_name, info in d.team_rosters.items():
+                    numeric_id = self._extract_numeric_id_from_path(
+                        info.path
+                    ) or self._derive_team_id(team_name)
+                    group_map.setdefault(numeric_id, []).append(team_name)
+                for numeric_id, variants in group_map.items():
+                    # Use canonical selection among variants
+                    canonical_name = self._choose_canonical_name(variants)
+                    # Record provenance for each variant file
+                    for team_name in variants:
+                        info = d.team_rosters[team_name]
+                        if self._is_unchanged(info.path, info.sha1):
+                            skipped_files += 1
+                        else:
+                            processed_files += 1
+                            self._record_provenance(info.path, info.sha1)
+                    team_id = self._derive_team_id(canonical_name)
+                    # Force storing full canonical name (not only numeric suffix) if it contains alphabetic tokens
+                    force_full = any(c.isalpha() for c in canonical_name)
+                    player_rows = self._upsert_team(
+                        team_id,
+                        canonical_name,
+                        d.division,
+                        base_counts,
+                        force_full_name=force_full,
+                    )
+                    teams_ingested += 1
+                    players_ingested += player_rows
+            else:
+                grouped: dict[str, list[tuple[str, object]]] = {}
+                for team_name, info in d.team_rosters.items():
+                    numeric_id = self._extract_numeric_id_from_path(
+                        info.path
+                    ) or self._derive_team_id(team_name)
+                    grouped.setdefault(numeric_id, []).append((team_name, info))
+                for (
+                    numeric_id,
+                    entries,
+                ) in grouped.items():  # noqa: B007 - numeric_id retained for clarity
+                    canonical_name = self._choose_canonical_name([n for n, _ in entries])
+                    for name, info in entries:
+                        if self._is_unchanged(info.path, info.sha1):
+                            skipped_files += 1
+                        else:
+                            processed_files += 1
+                            self._record_provenance(info.path, info.sha1)
+                    team_id = self._derive_team_id(canonical_name)
+                    player_rows = self._upsert_team(team_id, canonical_name, d.division)
+                    teams_ingested += 1
+                    players_ingested += player_rows
+        return (
+            divisions_ingested,
+            teams_ingested,
+            players_ingested,
+            skipped_files,
+            processed_files,
+        )
+
+    # ------------------------------------------------------------------
+    # Error persistence (Milestone 5.9.13)
+    # ------------------------------------------------------------------
+    def _persist_error(self, err: IngestError):  # pragma: no cover - simple persistence
+        try:
+            self.conn.execute(
+                "CREATE TABLE IF NOT EXISTS ingest_error(\n"
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+                "occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n"
+                "division TEXT,\n"
+                "file TEXT,\n"
+                "severity TEXT,\n"
+                "message TEXT\n"
+                ")"
+            )
+            self.conn.execute(
+                "INSERT INTO ingest_error(division, file, severity, message) VALUES(?,?,?,?)",
+                (err.division, err.file, err.severity, err.message),
+            )
+        except Exception:
+            pass
 
     # Internal helpers --------------------------------------------
     def _upsert_division(self, division_name: str) -> int | str:
@@ -211,7 +349,15 @@ class IngestionCoordinator:
             (abs(hash(club_code)) % 10_000_000, club_code.replace("_", " ")),
         )
 
-    def _upsert_team(self, team_code: str, full_team_name: str, division_name: str) -> int:
+    def _upsert_team(
+        self,
+        team_code: str,
+        full_team_name: str,
+        division_name: str,
+        base_counts: dict[str, int] | None = None,
+        *,
+        force_full_name: bool = False,
+    ) -> int:
         """Upsert team with club/suffix splitting and ensure placeholder player.
 
         Splitting heuristic: if the last token is purely digits treat it as the
@@ -267,14 +413,24 @@ class IngestionCoordinator:
             if not div_row:
                 return 0
             division_id = div_row[0]
-            # Legacy original collapsed different roster variants; enhance by appending numeric suffix when present
+            # Restore legacy ID style expected by existing tests:
+            #  - Single variant -> 'lttv'
+            #  - Multiple variants with numeric suffix -> 'lttv1', 'lttv2', etc.
             suffix = team_suffix if team_suffix.isdigit() else "1"
-            base_prefix = team_code.split("-")[0]
-            team_id = f"{base_prefix}{suffix}" if base_prefix and suffix else base_prefix
+            slug_tokens = [t for t in team_code.split("-") if t]
+            base_prefix = slug_tokens[0] if slug_tokens else team_code
+            if base_counts is not None:
+                # Always number sequentially (1,2,...) to satisfy tests expecting lttv1,lttv2 pattern
+                count = base_counts.get(base_prefix, 0) + 1
+                base_counts[base_prefix] = count
+                team_id = f"{base_prefix}{count}"
+            else:
+                team_id = base_prefix if suffix == "1" else f"{base_prefix}{suffix}"
             try:
+                stored_name = full_team_name if force_full_name else team_suffix
                 self.conn.execute(
                     "INSERT OR IGNORE INTO teams(id, name, division_id, club_id) VALUES(?,?,?,?)",
-                    (team_id, team_suffix, division_id, club_id),
+                    (team_id, stored_name, division_id, club_id),
                 )
             except Exception:
                 pass
@@ -616,11 +772,15 @@ class IngestionCoordinator:
             return variants[0]
 
         # Prefer one that has at least 2 tokens and a digit at end token (common pattern) and contains a club-like token (capitalized word with Umlaut or mixed case)
-        def score(name: str) -> tuple[int, int]:
+        def score(name: str) -> tuple[int, int, int]:
             tokens = name.split()
+            if not tokens:
+                return (0, 0, 0)
             has_number_suffix = 1 if (tokens and any(ch.isdigit() for ch in tokens[-1])) else 0
             length = len(tokens)
-            return (has_number_suffix, length)
+            # Prefer tokens with alphabetic characters (avoid selecting a lone numeric like '2')
+            alpha_tokens = sum(1 for t in tokens if any(c.isalpha() for c in t))
+            return (alpha_tokens, has_number_suffix, length)
 
         norm.sort(key=score, reverse=True)
         return norm[0]

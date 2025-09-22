@@ -282,6 +282,7 @@ The following internal milestones have been implemented to evolve the GUI/servic
 - 1.5: Typed `EventBus` signals (core synchronous pub/sub)
 - 1.5.1: Event tracing (recent event ring buffer)
 - 1.5.2: Auto-ingest fallback for pre-existing scrape assets (startup HTML → DB bridging)
+- 5.9.16: Integration test verifying TeamDetailView shows real roster data (see `tests/test_integration_team_detail_after_ingest.py`)
 
 ### Milestone 1.5.1 – EventBus Tracing
 

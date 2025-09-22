@@ -690,7 +690,16 @@ class MainWindow(QMainWindow):  # Dock-based
         self._apply_persisted_filters()
         # Restore expanded divisions & last selection
         self._restore_navigation_state()
-        self._set_status(f"Loaded {len(teams)} teams")
+        # Enhance status with data freshness (Milestone 5.9.11)
+        freshness_suffix = ""
+        try:
+            from gui.services.data_freshness_service import DataFreshnessService
+
+            freshness = DataFreshnessService(base_dir=self.data_dir).current()
+            freshness_suffix = " | " + freshness.human_summary()
+        except Exception:
+            pass
+        self._set_status(f"Loaded {len(teams)} teams{freshness_suffix}")
 
     def _on_filter_chips_changed(self):  # pragma: no cover - GUI path
         proxy = getattr(self, "team_filter_proxy", None)
@@ -853,11 +862,21 @@ class MainWindow(QMainWindow):  # Dock-based
         if not hasattr(self, "document_area"):
             return
         from gui.views.player_detail_view import PlayerDetailView
+        from gui.services.player_history_service import PlayerHistoryService
 
         # Attempt to find player entry from latest loaded roster (availability table or last bundle not cached yet; synthetic entry fallback)
         player_entry = PlayerEntry(team_id=team.team_id, name=player_name)
-        # Placeholder history generation (will be replaced by real repository fetch later)
-        history = self._generate_placeholder_history(player_entry)
+        # Attempt to enrich with live_pz if roster currently loaded in availability table
+        try:
+            # naive scan of table headers (players)
+            avail_players = [self.table.item(r, 0).text() for r in range(self.table.rowCount())]  # type: ignore
+            if player_name in avail_players:
+                # we do not currently store live_pz in availability table; future hook
+                pass
+        except Exception:
+            pass
+        history_result = PlayerHistoryService().load_player_history(player_entry)
+        history = history_result.entries
 
         def factory():
             view = PlayerDetailView(player_entry)
@@ -1173,11 +1192,40 @@ class MainWindow(QMainWindow):  # Dock-based
         if not hasattr(self, "document_area"):
             return
         from gui.views.club_detail_view import ClubDetailView
+        from gui.services.club_data_service import ClubDataService
 
         def factory():
             view = ClubDetailView()
             try:
                 view.set_teams(self.teams)
+                # Attempt enrichment using repositories if club id discernible
+                club_id = None
+                if self.teams:
+                    first = getattr(self.teams[0], "club_id", None)
+                    if first:
+                        club_id = str(first)
+                if club_id:
+                    try:
+                        stats = ClubDataService().load_club_stats(club_id)
+                        if stats.total_teams:
+                            avg_part = (
+                                f" | Avg LivePZ: {stats.avg_live_pz:.1f}"
+                                if stats.avg_live_pz is not None
+                                else ""
+                            )
+                            view.meta_label.setText(
+                                " | ".join(
+                                    [
+                                        f"Total Teams: {stats.total_teams}",
+                                        f"Erwachsene: {stats.erwachsene_teams}",
+                                        f"Jugend: {stats.jugend_teams}",
+                                        f"Active: {stats.active_teams}",
+                                        f"Inactive: {stats.inactive_teams}" + (avg_part),
+                                    ]
+                                )
+                            )
+                    except Exception:
+                        pass
             except Exception:
                 pass
             return view

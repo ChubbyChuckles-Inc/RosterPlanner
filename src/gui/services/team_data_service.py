@@ -21,6 +21,7 @@ import sqlite3
 
 from gui.models import TeamEntry, PlayerEntry, MatchDate, TeamRosterBundle
 from .service_locator import services
+from .roster_cache_service import RosterCacheService
 from gui.repositories.sqlite_impl import create_sqlite_repositories
 
 
@@ -44,11 +45,31 @@ class TeamDataService:
         return self.conn is not None
 
     def load_team_bundle(self, team: TeamEntry) -> Optional[TeamRosterBundle]:
-        """Load players + matches for a team via repositories.
+        """Load players + matches for a team via repositories with LRU caching.
 
-        Returns None if required repositories/connection not available or
-        team not found.
+        Cache Lookup:
+            Attempts to retrieve an existing `TeamRosterBundle` from the
+            `RosterCacheService` (if registered) before querying repositories.
+
+        Cache Population:
+            On successful repository fetch the bundle is inserted into the
+            cache (if present). Missing repositories / connection or absent
+            team returns None without caching.
         """
+        # Attempt cache hit first
+        cache: RosterCacheService | None = services.try_get("roster_cache")
+        if cache is None:
+            # Auto-register a default cache (lazy) to ensure caching works even if not pre-registered.
+            try:
+                cache = RosterCacheService()
+                services.register("roster_cache", cache, allow_override=False)
+            except Exception:
+                cache = None
+        if cache:
+            cached = cache.get(team.team_id)
+            if cached is not None:
+                return cached
+
         if not self._ensure_conn():  # sqlite not configured
             return None
         repos = create_sqlite_repositories(self.conn)  # lightweight wrapper
@@ -69,7 +90,26 @@ class TeamDataService:
                 continue
             seen.add(iso)
             match_dates.append(MatchDate(iso_date=iso, display=iso, time=None))
-        return TeamRosterBundle(team=team, players=players, match_dates=match_dates)
+        bundle = TeamRosterBundle(team=team, players=players, match_dates=match_dates)
+        if cache is None:
+            # Re-attempt lookup (service may have been registered after initial check in some test setups)
+            cache = services.try_get("roster_cache")
+        if cache:
+            cache.put(team.team_id, bundle)
+        return bundle
+
+    # Invalidation helpers --------------------------------------
+    @staticmethod
+    def invalidate_team_cache(team_id: str) -> None:
+        cache: RosterCacheService | None = services.try_get("roster_cache")
+        if cache:
+            cache.invalidate_team(team_id)
+
+    @staticmethod
+    def clear_cache() -> None:
+        cache: RosterCacheService | None = services.try_get("roster_cache")
+        if cache:
+            cache.clear()
 
 
 __all__ = ["TeamDataService"]
