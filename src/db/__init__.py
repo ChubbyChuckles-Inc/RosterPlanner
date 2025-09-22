@@ -12,4 +12,4 @@ Public API:
 from .schema import apply_schema, get_existing_tables  # noqa: F401
 from .er import generate_er_mermaid  # noqa: F401
 from .naming import validate_naming_conventions  # noqa: F401
-from .migration_manager import apply_pending_migrations  # noqa: F401
+from .migration_manager import apply_pending_migrations, verify_migration_checksums  # noqa: F401

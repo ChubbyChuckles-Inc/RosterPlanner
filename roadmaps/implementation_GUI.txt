@@ -118,7 +118,7 @@ Milestone 3: Data Layer & SQLite Integration
 [x] 3.1.1 Create schema ER diagram doc (auto-generated via script)
 [x] 3.1.2 Define naming conventions (snake_case, singular table names)
 [x] 3.2 Implement migration manager (apply incremental migrations on startup)
-[ ] 3.2.1 Add migration checksum verification
+[x] 3.2.1 Add migration checksum verification
 [ ] 3.2.2 Dry-run mode for migrations (preview SQL)
 [ ] 3.3 Build ingestion pipeline: HTML -> parsed objects -> DB upsert (idempotent)
 [ ] 3.3.1 Hash each raw HTML; skip unchanged ingestion
