@@ -76,6 +76,8 @@ from gui.views.rebuild_progress_dialog import RebuildProgressDialog
 from gui.services.export_service import ExportService, ExportFormat
 from gui.services.export_presets import ExportPresetsService
 from gui.components.theme_aware import ThemeAwareMixin, ThemeAwareProtocol
+from gui.services.color_blind_mode import ColorBlindModeService
+from gui.services.service_locator import services
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -120,6 +122,14 @@ class MainWindow(QMainWindow):  # Dock-based
         # Export + Presets services (Milestones 5.6 / 5.6.1)
         self._export_service = ExportService()
         self._export_presets = ExportPresetsService(self.data_dir)
+        # Color blindness simulation service (Milestone 5.10.15)
+        try:
+            self._cb_mode_service = services.try_get("color_blind_mode")
+            if not self._cb_mode_service:
+                self._cb_mode_service = ColorBlindModeService()
+                services.register("color_blind_mode", self._cb_mode_service, allow_override=True)
+        except Exception:
+            self._cb_mode_service = None
 
         self.dock_manager = DockManager()
         self._register_docks()
@@ -170,6 +180,7 @@ class MainWindow(QMainWindow):  # Dock-based
         try:  # pragma: no cover - subscription wiring
             from gui.services.event_bus import GUIEvent
             from gui.services.service_locator import services as _services
+
             bus = _services.try_get("event_bus")
             if bus:
                 bus.subscribe(GUIEvent.THEME_CHANGED, self._on_theme_changed_event)
@@ -323,6 +334,14 @@ class MainWindow(QMainWindow):  # Dock-based
         act_density_compact = density_menu.addAction("Compact")
         act_density_comfort.triggered.connect(lambda: self._set_density_mode("comfortable"))  # type: ignore[attr-defined]
         act_density_compact.triggered.connect(lambda: self._set_density_mode("compact"))  # type: ignore[attr-defined]
+        # Color blindness simulation submenu (Milestone 5.10.15)
+        cb_menu = view_menu.addMenu("Color Blindness Simulation")
+        act_cb_none = cb_menu.addAction("None")
+        act_cb_prot = cb_menu.addAction("Protanopia")
+        act_cb_deut = cb_menu.addAction("Deuteranopia")
+        act_cb_none.triggered.connect(lambda: self._set_color_blind_mode(None))  # type: ignore[attr-defined]
+        act_cb_prot.triggered.connect(lambda: self._set_color_blind_mode("protanopia"))  # type: ignore[attr-defined]
+        act_cb_deut.triggered.connect(lambda: self._set_color_blind_mode("deuteranopia"))  # type: ignore[attr-defined]
         # Add actions via convenience overload (returns QAction object)
         reset_action = view_menu.addAction("Reset Layout")
         reset_action.triggered.connect(self._on_reset_layout)  # type: ignore[attr-defined]
@@ -486,15 +505,16 @@ class MainWindow(QMainWindow):  # Dock-based
         # evt.payload contains summary: {'changed': [...], 'count': N}
         changed_keys = []
         try:
-            payload = getattr(evt, 'payload', {}) or {}
-            changed_keys = list(payload.get('changed', []))
+            payload = getattr(evt, "payload", {}) or {}
+            changed_keys = list(payload.get("changed", []))
         except Exception:
             changed_keys = []
         # Retrieve theme service once
         try:
             from gui.services.service_locator import services as _services
             from gui.services.theme_service import ThemeService as _TS
-            theme_svc = _services.try_get('theme_service')
+
+            theme_svc = _services.try_get("theme_service")
         except Exception:
             theme_svc = None
         if not theme_svc:
@@ -538,6 +558,43 @@ class MainWindow(QMainWindow):  # Dock-based
             self._apply_density_spacing()
             if diff and not getattr(diff, "no_changes", False):  # type: ignore
                 self._set_status(f"Density set to {mode}")
+        except Exception:
+            pass
+
+    def _set_color_blind_mode(self, mode: str | None):  # pragma: no cover - GUI path
+        svc = None
+        try:
+            from gui.services.service_locator import services as _services
+
+            svc = _services.try_get("color_blind_mode")
+        except Exception:
+            svc = None
+        if not svc:
+            return
+        try:
+            svc.set_mode(mode)  # type: ignore[attr-defined]
+            self._apply_color_blind_overlay()
+            self._set_status(f"Color blindness simulation: {mode or 'none'}")
+        except Exception:
+            pass
+
+    def _apply_color_blind_overlay(self):  # pragma: no cover - GUI path
+        # Apply a lightweight palette/property flag; deeper pixel transforms left for future.
+        try:
+            from gui.services.service_locator import services as _services
+
+            svc = _services.try_get("color_blind_mode")
+        except Exception:
+            return
+        if not svc:
+            return
+        mode = getattr(svc, "mode", None)
+        # Set an object property on the main window; QSS could react if extended later.
+        try:
+            self.setProperty("colorBlindMode", mode or "none")
+            # Re-polish to allow future QSS variant selectors
+            self.style().unpolish(self)
+            self.style().polish(self)
         except Exception:
             pass
 
