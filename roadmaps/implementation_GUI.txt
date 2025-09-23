@@ -228,7 +228,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.25 Variable font integration (weight/opsz axis) + smooth weight transition utility
 [x] 5.10.26 Motion choreography map (component enter/exit/transform sequencing doc) [D]
 [x] 5.10.27 Micro-interaction spring physics option (spring curve helper + tests)
-[ ] 5.10.28 Scroll-linked subtle fade/translate animations (perf guarded flag)
+[x] 5.10.28 Scroll-linked subtle fade/translate animations (perf guarded flag)
 [ ] 5.10.29 Contextual radius adaptation: large surface vs chip vs pill (apply radius scale tokens)
 [ ] 5.10.30 Themed multi-tone icon recoloring pipeline (primary/secondary/disabled states)
 [ ] 5.10.31 Focus ring glow variant (outer halo) + reduced-motion/high-contrast fallback

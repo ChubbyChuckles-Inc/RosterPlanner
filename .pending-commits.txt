@@ -87,4 +87,5 @@ feat(typography): add variable font integration helper with weight interpolation
 fix(ui): ensure Plugin Style Contract Panel opens via document area (added _open_or_focus_document helper)
 docs(motion): add motion choreography map documentation & presence test (Milestone 5.10.26)
 feat(motion): add spring physics helper (Milestone 5.10.27) with samples generator & tests
+feat(scroll): add scroll-linked fade/translate helper with perf guard & tests (Milestone 5.10.28)
 
