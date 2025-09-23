@@ -220,22 +220,20 @@ class IngestionCoordinator:
                 teams_ingested += 1
                 players_ingested += player_rows
         else:
-            grouped: dict[str, list[tuple[str, object]]] = {}
+            # Singular schema path previously grouped roster files by a derived numeric id.
+            # This collapsed multiple similarly-patterned team names into one team and aggregated
+            # all their players. Refactored to ingest each roster independently.
             for team_name, info in d.team_rosters.items():
-                numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(
-                    team_name
-                )
-                grouped.setdefault(numeric_id, []).append((team_name, info))
-            for numeric_id, entries in grouped.items():  # noqa: B007
-                canonical_name = self._choose_canonical_name([n for n, _ in entries])
-                for name, info in entries:
-                    if self._is_unchanged(info.path, info.sha1):
-                        skipped_files += 1
-                    else:
-                        processed_files += 1
-                        self._record_provenance(info.path, info.sha1)
+                if self._is_unchanged(info.path, info.sha1):
+                    skipped_files += 1
+                else:
+                    processed_files += 1
+                    self._record_provenance(info.path, info.sha1)
                 player_rows = self._upsert_team(
-                    self._derive_team_id(canonical_name), canonical_name, d.division
+                    self._derive_team_id(team_name),
+                    team_name,
+                    d.division,
+                    roster_paths=[Path(info.path)],
                 )
                 teams_ingested += 1
                 players_ingested += player_rows
@@ -293,6 +291,7 @@ class IngestionCoordinator:
         base_counts: dict[str, int] | None = None,
         *,
         force_full_name: bool = False,
+        roster_paths: list[Path] | None = None,
     ) -> int:
         club_full_name, team_suffix = self._split_club_and_suffix(full_team_name)
         readable_division = division_name.replace("_", " ")
@@ -313,7 +312,9 @@ class IngestionCoordinator:
                 f"INSERT OR REPLACE INTO {self._table_team}(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
                 (team_id_assigned, club_id, division_id, team_suffix),
             )
-            added_players = self._parse_and_upsert_players(team_id_assigned, full_team_name)
+            added_players = self._parse_and_upsert_players(
+                team_id_assigned, full_team_name, roster_paths=roster_paths
+            )
             if added_players == 0:
                 placeholder_id = self._assign_id("player", f"{team_id_assigned}:Placeholder Player")
                 try:
@@ -356,20 +357,31 @@ class IngestionCoordinator:
             pass
         return 0
 
-    def _parse_and_upsert_players(self, team_numeric_id: int, full_team_name: str) -> int:
+    def _parse_and_upsert_players(
+        self,
+        team_numeric_id: int,
+        full_team_name: str,
+        *,
+        roster_paths: list[Path] | None = None,
+    ) -> int:
         try:
             from bs4 import BeautifulSoup  # type: ignore
         except Exception:
             return 0
+        # Limit roster file search strictly to provided paths (exact team association)
+        # falling back to heuristic content search only if explicit paths omitted.
         roster_files: list[Path] = []
-        lower_name = full_team_name.lower().replace("_", " ")
-        for p in self.base_dir.rglob("team_roster_*.html"):
-            try:
-                txt = self._read_html(p)
-            except Exception:
-                continue
-            if lower_name in txt.lower():
-                roster_files.append(p)
+        if roster_paths:
+            roster_files = [p for p in roster_paths if p.exists()]
+        if not roster_files:
+            lower_name = full_team_name.lower().replace("_", " ")
+            for p in self.base_dir.rglob("team_roster_*.html"):
+                try:
+                    txt = self._read_html(p)
+                except Exception:
+                    continue
+                if lower_name in txt.lower():
+                    roster_files.append(p)
         if not roster_files:
             return 0
         inserted = 0
@@ -546,6 +558,7 @@ class IngestionCoordinator:
             ).fetchone()[0]
         )
 
+    # Schema detection (restored)
     def _detect_schema(self):
         try:
             tables = {
