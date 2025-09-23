@@ -577,13 +577,26 @@ class MainWindow(QMainWindow):  # Dock-based
             from gui.views.plugin_style_contract_panel import PluginStyleContractPanel
         except Exception:
             return
-        panel = PluginStyleContractPanel()
+        # Lazy create or focus existing document tab
         try:
-            self._add_document(
-                panel, title="Plugin Style Contract", reuse_key="plugin_style_contract"
+            self._open_or_focus_document(
+                doc_id="plugin_style_contract",
+                title="Plugin Style Contract",
+                factory=lambda: PluginStyleContractPanel(),
             )
         except Exception:
             pass
+
+    # Document helpers ---------------------------------------------------
+    def _open_or_focus_document(
+        self, doc_id: str, title: str, factory
+    ):  # pragma: no cover - GUI path
+        try:
+            if not hasattr(self, "document_area"):
+                return None
+            return self.document_area.open_or_focus(doc_id, title, factory)  # type: ignore[attr-defined]
+        except Exception:
+            return None
 
     # Theme change propagation (Milestone 5.10.13) -------------------------------
     def _on_theme_changed_event(self, evt):  # pragma: no cover - GUI propagation path

@@ -84,4 +84,7 @@ feat(glass): integrate glass surface styling into AvailabilityPanel with dynamic
 feat(accent): add dynamic accent extraction (median-cut spike) with tests (Milestone 5.10.23)
 feat(theme): adaptive accent on-color auto-tuning (Milestone 5.10.24) with helper + tests and ThemeService integration
 feat(typography): add variable font integration helper with weight interpolation + tests (Milestone 5.10.25)
+fix(ui): ensure Plugin Style Contract Panel opens via document area (added _open_or_focus_document helper)
+docs(motion): add motion choreography map documentation & presence test (Milestone 5.10.26)
+feat(motion): add spring physics helper (Milestone 5.10.27) with samples generator & tests
 
