@@ -220,7 +220,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.17 Performance guard: measure style (re)apply time; warn if >50ms (instrumentation hook) [T]
 [x] 5.10.18 Plugin style contract sample panel: render a mock plugin widget verifying tokens-only usage
 [x] 5.10.19 Documentation: Visual integration guide (how tokens map to QSS + component roles) [D]
-[ ] 5.10.20 ADR: Strategy for progressive visual enhancement vs baseline performance (trade-offs) [D]
+[x] 5.10.20 ADR: Strategy for progressive visual enhancement vs baseline performance (trade-offs) [D]
 [ ] 5.10.21 Gradient & tonal ramp tokens: multi-stop gradient registry + unit tests for token presence
 [ ] 5.10.22 Glass surface variant (blur/translucent panels) with performance capability check & fallback
 [ ] 5.10.23 Dynamic accent extraction from club logo or division banner (color quantization spike) [R]
