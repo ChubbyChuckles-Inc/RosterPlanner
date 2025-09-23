@@ -29,6 +29,7 @@ __all__ = [
     "GlassCapability",
     "get_glass_capability",
     "build_glass_qss",
+    "adaptive_intensity",
 ]
 
 
@@ -82,6 +83,8 @@ def build_glass_qss(
     border_color: str,
     *,
     intensity: int = 25,
+    adaptive: bool = False,
+    luminance: float | None = None,
     capability: Optional[GlassCapability] = None,
 ) -> str:
     """Return a QSS snippet for a translucent glass-like surface.
@@ -103,6 +106,11 @@ def build_glass_qss(
 
     if capability is None:
         capability = get_glass_capability()
+    if adaptive:
+        try:
+            intensity = adaptive_intensity(intensity, background_color, luminance=luminance)
+        except Exception:
+            pass
     # Clamp intensity
     if intensity < 5:
         intensity = 5
@@ -136,3 +144,55 @@ def build_glass_qss(
         f"  /* glass disabled: {capability.reason} */\n"
         f"}}"
     )
+
+
+def _relative_luminance_from_rgb(r: int, g: int, b: int) -> float:
+    def _chan(c: float) -> float:
+        c = c / 255.0
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    r_l = _chan(r)
+    g_l = _chan(g)
+    b_l = _chan(b)
+    return 0.2126 * r_l + 0.7152 * g_l + 0.0722 * b_l
+
+
+def adaptive_intensity(
+    base_intensity: int,
+    background_color: str,
+    *,
+    luminance: float | None = None,
+) -> int:
+    """Compute an adjusted intensity based on background luminance.
+
+    If luminance is not supplied it is derived from the provided hex background color.
+    Dark backgrounds (luminance < 0.25) receive a slightly higher translucency ( +8 )
+    to appear more glassy; bright backgrounds (> 0.75) reduce translucency ( -8 )
+    to preserve contrast. Mid-range remains near the base but nudged by a
+    smooth curve.
+    """
+
+    if not background_color.startswith("#") or len(background_color) < 7:
+        return base_intensity
+    try:
+        r = int(background_color[1:3], 16)
+        g = int(background_color[3:5], 16)
+        b = int(background_color[5:7], 16)
+    except Exception:
+        return base_intensity
+    lum = luminance if luminance is not None else _relative_luminance_from_rgb(r, g, b)
+    # Map luminance band to adjustment
+    if lum < 0.25:
+        adj = 8
+    elif lum > 0.75:
+        adj = -8
+    else:
+        # Mid-range: subtle S-curve centered at 0.5
+        delta = lum - 0.5
+        adj = int(-12 * delta)  # negative if brighter, positive if darker
+    new_intensity = base_intensity + adj
+    if new_intensity < 5:
+        new_intensity = 5
+    if new_intensity > 95:
+        new_intensity = 95
+    return new_intensity

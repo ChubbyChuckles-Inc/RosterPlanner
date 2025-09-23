@@ -245,8 +245,8 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.42 Style recalculation performance instrumentation (log >50ms re-theme) [T]
 [x] 5.10.43 Plugin visual sandbox harness validating token-only styling (live re-skin)
 [x] 5.10.44 Enhanced adaptive scrollbars (hover expand + smooth color fade) themed
-[~] 5.10.45 Animated skeleton shimmer effect (token gradient) + reduced-motion fallback
-[ ] 5.10.46 Adaptive blur intensity for glass surfaces (background luminance sampling)
+[x] 5.10.45 Animated skeleton shimmer effect (token gradient) + reduced-motion fallback
+[x] 5.10.46 Adaptive blur intensity for glass surfaces (background luminance sampling)
 [ ] 5.10.47 Neutral ramp delta-E calibration tool (ensure perceptual steps) [R]
 [ ] 5.10.48 Split-view divider grab-handle styling + hover/active affordances
 [ ] 5.10.49 Inline error badge component (severity color roles + scale transitions)

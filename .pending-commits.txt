@@ -104,4 +104,6 @@ feat(theme): implement live theme preview diff panel (Milestone 5.10.34)
 feat(accessibility): add contrast heatmap analyzer core logic & tests (Milestone 5.10.35)
 feat(accessibility): integrate color vision deficiency simulation pipeline (Milestone 5.10.36)
 docs(elevation): add elevation alignment report & doc presence test (Milestone 5.10.37)
+feat(skeleton): complete shimmer animation with reduced-motion fallback, polish property refresh, add reduced-motion test, mark 5.10.45 complete
+feat(glass): add adaptive intensity helper adjusting translucency based on background luminance with tests; mark 5.10.46 complete
 

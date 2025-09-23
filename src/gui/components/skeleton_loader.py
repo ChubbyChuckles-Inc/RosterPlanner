@@ -25,6 +25,7 @@ from __future__ import annotations
 from typing import List, Optional
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSizePolicy
 from PyQt6.QtCore import Qt, QTimer
+from gui.design.reduced_motion import is_reduced_motion
 
 from gui.design.skeletons import get_skeleton_variant, SkeletonVariant
 
@@ -57,7 +58,8 @@ class SkeletonLoaderWidget(QWidget):
         self._variant: SkeletonVariant = get_skeleton_variant(variant_name)
         self._active = False
         self.setObjectName("skeletonLoader")
-        self._shimmer_enabled = shimmer
+        # Honor global reduced motion preference: force disable shimmer animation.
+        self._shimmer_enabled = shimmer and not is_reduced_motion()
         self._shimmer_interval = max(60, min(shimmer_interval_ms, 1000))
         self._shimmer_phase = False
         self._shimmer_timer: Optional[QTimer] = None
@@ -121,9 +123,31 @@ class SkeletonLoaderWidget(QWidget):
     def is_active(self) -> bool:
         return self._active
 
+    def shimmer_enabled(self) -> bool:
+        """Return True if shimmer animation is active (not globally disabled)."""
+        return self._shimmer_enabled
+
     # Shimmer ------------------------------------------------------------
     def _on_shimmer_tick(self):  # pragma: no cover - timing based
+        if not self._shimmer_enabled:
+            # Defensive: stop timer if motion setting flipped at runtime
+            if self._shimmer_timer:
+                try:
+                    self._shimmer_timer.stop()
+                except Exception:
+                    pass
+                self._shimmer_timer = None
+            return
         self._shimmer_phase = not self._shimmer_phase
         # Toggle a dynamic property to allow QSS gradient animation via styles
         self.setProperty("shimmerPhase", "a" if self._shimmer_phase else "b")
-        self.setStyleSheet(self.styleSheet())  # force style refresh minimally
+        # Trigger a cheap polish pass; avoid full styleSheet reset if not necessary
+        try:
+            self.style().unpolish(self)
+            self.style().polish(self)
+        except Exception:
+            # Fallback to previous approach if polish unsupported
+            try:
+                self.setStyleSheet(self.styleSheet())
+            except Exception:
+                pass
