@@ -82,4 +82,5 @@ feat(gradients): add gradient & tonal ramp registry with defaults and tests (Mil
 feat(glass): implement glass surface helper with capability detection & QSS builder, tests, mark 5.10.22 complete
 feat(glass): integrate glass surface styling into AvailabilityPanel with dynamic theme reapplication hooks
 feat(accent): add dynamic accent extraction (median-cut spike) with tests (Milestone 5.10.23)
+feat(theme): adaptive accent on-color auto-tuning (Milestone 5.10.24) with helper + tests and ThemeService integration
 

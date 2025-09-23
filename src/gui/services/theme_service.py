@@ -20,6 +20,7 @@ from typing import Mapping, Iterable, List
 from gui.design import ThemeManager, ThemeDiff, load_tokens
 from gui.design.contrast import contrast_ratio
 from gui.design.theme_presets import get_overlay, available_variant_overlays
+from gui.design.adaptive_contrast import ensure_accent_on_color
 from .custom_theme import load_custom_theme, CustomThemeError
 from .event_bus import EventBus, GUIEvent
 from .service_locator import services
@@ -94,6 +95,7 @@ class ThemeService:
             if ov:
                 base_map.update(ov)
         cls._normalize_contrast(base_map)
+        ensure_accent_on_color(base_map)
         return cls(manager=mgr, _cached_map=base_map)
 
     # Accessors ---------------------------------------------------------
@@ -115,6 +117,7 @@ class ThemeService:
             self._cached_map.update(overlay)
             # Contrast normalization post overlay
             self._normalize_contrast(self._cached_map)
+            ensure_accent_on_color(self._cached_map)
             diff = self._build_diff(old, self._cached_map)
             if not diff.no_changes:
                 self._publish_theme_changed(diff)
@@ -126,6 +129,7 @@ class ThemeService:
             self._cached_map = dict(self.manager.active_map())
             self._augment_semantics(self._cached_map)
             self._normalize_contrast(self._cached_map)
+            ensure_accent_on_color(self._cached_map)
             self._publish_theme_changed(diff)
             self._persist_variant(variant)
         return diff
@@ -136,6 +140,7 @@ class ThemeService:
             self._cached_map = dict(self.manager.active_map())
             self._augment_semantics(self._cached_map)
             self._normalize_contrast(self._cached_map)
+            ensure_accent_on_color(self._cached_map)
             self._publish_theme_changed(diff)
         return diff
 
