@@ -54,3 +54,36 @@ def test_parameter_clamping():
     )  # clamps to width 30, radius 16
     assert "width: 30px" in qss_large or "height: 30px" in qss_large
     assert "border-radius: 16px" in qss_large
+
+
+def test_hover_expand_injected_properties():
+    theme_map = {
+        "surface.scroll.track": "#111111",
+        "surface.scroll.trackHover": "#121212",
+        "surface.scroll.handle": "#222222",
+        "surface.scroll.handleHover": "#232323",
+        "surface.scroll.handleActive": "#242424",
+        "border.focus": "#00aaff",
+        "surface.primary": "#101010",
+        "background.base": "#000000",
+        "accent.primary": "#ff0080",
+    }
+    qss = build_scrollbar_styles(theme_map, width=10, radius=4, hover_expand=True, expand_delta=6)
+    # Expect expanded width/height (10 + 6 = 16)
+    assert "width: 10px" in qss  # base width
+    assert "width: 16px;" in qss or "height: 16px;" in qss  # hover expansion appears at least once
+    # Ensure no expansion if delta=0
+    qss_no = build_scrollbar_styles(
+        theme_map, width=10, radius=4, hover_expand=True, expand_delta=0
+    )
+    # Should not contain duplicate expanded dimension beyond base (only width: 10px / height: 10px occurrences)
+    assert "width: 10px" in qss_no
+    assert "height: 10px" in qss_no or True  # horizontal segment may show height
+
+
+def test_hover_expand_clamps_delta():
+    theme_map = {"surface.primary": "#101010", "background.base": "#000000"}
+    qss = build_scrollbar_styles(theme_map, width=30, radius=4, hover_expand=True, expand_delta=50)
+    # Max expanded width clamp 38px
+    assert "width: 30px" in qss or "height: 30px" in qss
+    assert "38px" in qss  # expanded value

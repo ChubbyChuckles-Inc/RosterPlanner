@@ -375,6 +375,13 @@ class MainWindow(QMainWindow):  # Dock-based
             act.triggered.connect(lambda _checked=False, name=v: self._set_theme_variant(name))  # type: ignore[attr-defined]
         act_plugin_style = view_menu.addAction("Plugin Style Contract Panel")
         act_plugin_style.triggered.connect(self._open_plugin_style_panel)  # type: ignore[attr-defined]
+        act_theme_diff = view_menu.addAction("Theme Preview Diff Panel")
+        act_theme_diff.triggered.connect(self._open_theme_preview_diff_panel)  # type: ignore[attr-defined]
+        self._act_spacing_grid = view_menu.addAction("Toggle Spacing Grid Overlay")
+        self._act_spacing_grid.setCheckable(True)
+        self._act_spacing_grid.triggered.connect(self._toggle_spacing_grid_overlay)  # type: ignore[attr-defined]
+        act_plugin_sandbox = view_menu.addAction("Plugin Visual Sandbox Panel")
+        act_plugin_sandbox.triggered.connect(self._open_plugin_visual_sandbox_panel)  # type: ignore[attr-defined]
         # Density toggle submenu (Milestone 5.10.7)
         density_menu = view_menu.addMenu("Density Mode")
         act_density_comfort = density_menu.addAction("Comfortable")
@@ -453,7 +460,11 @@ class MainWindow(QMainWindow):  # Dock-based
             self._layout_service.save_layout("main", self)
         except Exception:
             pass
-        QMessageBox.information(self, "Layout Reset", "Layout restored to defaults.")
+        # Avoid blocking modal dialog during automated tests / headless runs
+        import os
+
+        if not os.environ.get("RP_TEST_MODE"):
+            QMessageBox.information(self, "Layout Reset", "Layout restored to defaults.")
 
     # Command Palette ----------------------------------------------
     def _open_command_palette(self):
@@ -499,6 +510,16 @@ class MainWindow(QMainWindow):  # Dock-based
             lambda: self._set_theme_variant("high-contrast"),
             "Switch active theme to High Contrast variant",
         )
+        # Live theme preview diff panel (Milestone 5.10.34)
+        try:
+            global_command_registry.register(
+                "view.openThemePreviewDiff",
+                "Open Theme Preview Diff Panel",
+                lambda: self._open_theme_preview_diff_panel(),
+                "Open panel to simulate theme variant or accent changes",
+            )
+        except Exception:
+            pass
         # Accessibility contrast check command (Milestone 5.10.16)
         global_command_registry.register(
             "accessibility.contrastCheck",
@@ -586,6 +607,73 @@ class MainWindow(QMainWindow):  # Dock-based
             )
         except Exception:
             pass
+
+    def _open_theme_preview_diff_panel(self):  # pragma: no cover - GUI path
+        try:
+            from gui.views.theme_preview_diff_panel import ThemePreviewDiffPanel
+        except Exception:
+            return
+        try:
+            self._open_or_focus_document(
+                doc_id="theme_preview_diff",
+                title="Theme Preview Diff",
+                factory=lambda: ThemePreviewDiffPanel(),
+            )
+        except Exception:
+            pass
+
+    def _open_plugin_visual_sandbox_panel(self):  # pragma: no cover - GUI path
+        try:
+            from gui.views.plugin_visual_sandbox_panel import PluginVisualSandboxPanel
+        except Exception:
+            return
+        try:
+            self._open_or_focus_document(
+                doc_id="plugin_visual_sandbox",
+                title="Plugin Visual Sandbox",
+                factory=lambda: PluginVisualSandboxPanel(),
+            )
+        except Exception:
+            pass
+
+    def _ensure_spacing_grid_overlay(self):  # pragma: no cover - GUI path
+        if getattr(self, "_spacing_grid_overlay", None) is None:
+            try:
+                from gui.views.spacing_grid_overlay import SpacingGridOverlay
+
+                self._spacing_grid_overlay = SpacingGridOverlay(self)
+                self._spacing_grid_overlay.set_spacing(8)
+            except Exception:
+                self._spacing_grid_overlay = None
+        return getattr(self, "_spacing_grid_overlay", None)
+
+    def _toggle_spacing_grid_overlay(self):  # pragma: no cover - GUI path
+        checked = False
+        try:
+            checked = self._act_spacing_grid.isChecked()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        ov = self._ensure_spacing_grid_overlay()
+        if ov is None:
+            return
+        if checked:
+            try:
+                ov.setGeometry(self.rect())
+            except Exception:
+                pass
+            ov.show()
+        else:
+            ov.hide()
+
+    # Ensure overlay tracks window size changes (prevents stale black region artifacts on some platforms)
+    def resizeEvent(self, event):  # type: ignore
+        try:
+            ov = getattr(self, "_spacing_grid_overlay", None)
+            if ov and ov.isVisible():
+                ov.setGeometry(self.rect())
+        except Exception:
+            pass
+        super().resizeEvent(event)  # type: ignore
 
     # Document helpers ---------------------------------------------------
     def _open_or_focus_document(

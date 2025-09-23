@@ -63,8 +63,17 @@ class IconRegistry:
         else:
             self._defs[name] = IconDefinition(name=name, path=path)
 
-    def get_icon(self, name: str, *, size: int = 16, color: str | None = None) -> Optional[QIcon]:
-        key: Tuple[str, int, str | None] = (name, size, color)
+    def get_icon(
+        self,
+        name: str,
+        *,
+        size: int = 16,
+        color: str | None = None,
+        multi_tone: bool = False,
+        tone_colors: dict[str, str] | None = None,
+        state: str = "normal",
+    ) -> Optional[QIcon]:
+        key: Tuple[str, int, str | None, bool, str] = (name, size, color, multi_tone, state)
         if key in self._loaded:
             return self._loaded[key]
         definition = self._defs.get(name)
@@ -75,6 +84,16 @@ class IconRegistry:
                 data = f.read()
         except OSError:
             return None
+        if multi_tone:
+            try:
+                from .icon_recolor import recolor_svg
+
+                svg_text = data.decode("utf-8", errors="ignore")
+                if tone_colors:
+                    svg_text = recolor_svg(svg_text, tone_colors, state=state)
+                    data = svg_text.encode("utf-8")
+            except Exception:  # pragma: no cover - safe fallback to original
+                pass
         renderer = QSvgRenderer(QByteArray(data))
         pm = QPixmap(size, size)
         pm.fill(Qt.GlobalColor.transparent)  # type: ignore
@@ -99,8 +118,18 @@ class IconRegistry:
         return icon
 
 
-def get_icon(name: str, *, size: int = 16, color: str | None = None) -> Optional[QIcon]:
-    return IconRegistry.instance().get_icon(name, size=size, color=color)
+def get_icon(
+    name: str,
+    *,
+    size: int = 16,
+    color: str | None = None,
+    multi_tone: bool = False,
+    tone_colors: dict[str, str] | None = None,
+    state: str = "normal",
+) -> Optional[QIcon]:
+    return IconRegistry.instance().get_icon(
+        name, size=size, color=color, multi_tone=multi_tone, tone_colors=tone_colors, state=state
+    )
 
 
 __all__ = ["IconRegistry", "get_icon", "IconDefinition"]

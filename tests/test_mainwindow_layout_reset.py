@@ -15,6 +15,7 @@ CORE_DOCK_IDS = {"navigation", "availability", "detail", "stats", "planner", "lo
 
 @pytest.mark.skipif(QApplication is None, reason="PyQt6 not available")
 def test_mainwindow_layout_reset(tmp_path):
+    os.environ["RP_TEST_MODE"] = "1"
     # Ensure app
     if QApplication.instance() is None:
         _app = QApplication(sys.argv)  # noqa: F841

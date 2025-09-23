@@ -1,4 +1,11 @@
 feat: implement density mode switch (comfortable/compact) with persistence (Milestone 5.10.7)
+feat: add container size observer utilities (responsive density & typography hints) (Milestone 5.10.39)
+feat: implement focus trail service (keyboard navigation recent path data) (Milestone 5.10.40)
+test: add QSS inline color drift detector with transitional whitelist (Milestone 5.10.41)
+feat: instrument theme style recalculation timing with slow-event logging (Milestone 5.10.42)
+feat: add plugin visual sandbox panel with token-only style scan (Milestone 5.10.43)
+feat: enhance adaptive scrollbars with optional hover expansion (Milestone 5.10.44)
+feat: add skeleton loader shimmer timer + property toggle (Milestone 5.10.45 partial)
 feat: apply runtime theme QSS on variant change (fix menu theme toggle not updating UI)
 feat: persist theme variant and expand QSS coverage (menus, tabs, lists, scrollbars)
 fix: add semantic color aliases & proper QSS application so theme switching updates UI
@@ -88,4 +95,13 @@ fix(ui): ensure Plugin Style Contract Panel opens via document area (added _open
 docs(motion): add motion choreography map documentation & presence test (Milestone 5.10.26)
 feat(motion): add spring physics helper (Milestone 5.10.27) with samples generator & tests
 feat(scroll): add scroll-linked fade/translate helper with perf guard & tests (Milestone 5.10.28)
+feat(radius): add contextual radius role mapping with tests (Milestone 5.10.29)
+feat(icon): add multi-tone SVG recoloring pipeline with tone attributes + registry integration (Milestone 5.10.30)
+feat(accessibility): add focus ring glow variant builder with reduced-motion & high-contrast fallback (Milestone 5.10.31)
+test(icons): add high-DPI icon scaler audit script & tests (Milestone 5.10.32)
+feat(visual): add ambient color shift developer feature with hue oscillation (Milestone 5.10.33)
+feat(theme): implement live theme preview diff panel (Milestone 5.10.34)
+feat(accessibility): add contrast heatmap analyzer core logic & tests (Milestone 5.10.35)
+feat(accessibility): integrate color vision deficiency simulation pipeline (Milestone 5.10.36)
+docs(elevation): add elevation alignment report & doc presence test (Milestone 5.10.37)
 

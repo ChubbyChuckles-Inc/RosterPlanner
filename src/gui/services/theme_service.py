@@ -21,9 +21,15 @@ from gui.design import ThemeManager, ThemeDiff, load_tokens
 from gui.design.contrast import contrast_ratio
 from gui.design.theme_presets import get_overlay, available_variant_overlays
 from gui.design.adaptive_contrast import ensure_accent_on_color
+from gui.design.color_vision_simulation import apply_color_vision_filter_if_active
 from .custom_theme import load_custom_theme, CustomThemeError
 from .event_bus import EventBus, GUIEvent
 from .service_locator import services
+from time import perf_counter
+import logging
+
+_logger = logging.getLogger(__name__)
+STYLE_RECALC_WARN_THRESHOLD_MS = 50.0  # Threshold for slow style recalculation logging
 
 __all__ = [
     "ThemeService",
@@ -96,6 +102,16 @@ class ThemeService:
                 base_map.update(ov)
         cls._normalize_contrast(base_map)
         ensure_accent_on_color(base_map)
+        # Apply color vision simulation if service registered already
+        try:
+            from gui.services.service_locator import services as _services
+
+            cb = _services.try_get("color_blind_mode")
+            mode = getattr(cb, "mode", None)
+            if mode:
+                apply_color_vision_filter_if_active(base_map, mode)
+        except Exception:
+            pass
         return cls(manager=mgr, _cached_map=base_map)
 
     # Accessors ---------------------------------------------------------
@@ -104,6 +120,7 @@ class ThemeService:
 
     # Mutations ---------------------------------------------------------
     def set_variant(self, variant: str) -> ThemeDiff:
+        start_t = perf_counter()
         overlay = get_overlay(variant)
         if overlay:
             # Treat as extension of default (or high-contrast? keep default for consistency)
@@ -122,6 +139,8 @@ class ThemeService:
             if not diff.no_changes:
                 self._publish_theme_changed(diff)
                 self._persist_variant(variant)
+            elapsed_ms = (perf_counter() - start_t) * 1000.0
+            self._maybe_log_slow("variant", variant, elapsed_ms, diff)
             return diff
         # Base variant path
         diff = self.manager.set_variant(variant)  # type: ignore[arg-type]
@@ -130,18 +149,36 @@ class ThemeService:
             self._augment_semantics(self._cached_map)
             self._normalize_contrast(self._cached_map)
             ensure_accent_on_color(self._cached_map)
+            # Re-apply simulation if active
+            try:
+                cb = services.try_get("color_blind_mode")
+                if cb and getattr(cb, "mode", None):
+                    apply_color_vision_filter_if_active(self._cached_map, cb.mode)
+            except Exception:
+                pass
             self._publish_theme_changed(diff)
             self._persist_variant(variant)
+        elapsed_ms = (perf_counter() - start_t) * 1000.0
+        self._maybe_log_slow("variant", variant, elapsed_ms, diff)
         return diff
 
     def set_accent(self, base_hex: str) -> ThemeDiff:
+        start_t = perf_counter()
         diff = self.manager.set_accent_base(base_hex)
         if not diff.no_changes:
             self._cached_map = dict(self.manager.active_map())
             self._augment_semantics(self._cached_map)
             self._normalize_contrast(self._cached_map)
             ensure_accent_on_color(self._cached_map)
+            try:
+                cb = services.try_get("color_blind_mode")
+                if cb and getattr(cb, "mode", None):
+                    apply_color_vision_filter_if_active(self._cached_map, cb.mode)
+            except Exception:
+                pass
             self._publish_theme_changed(diff)
+        elapsed_ms = (perf_counter() - start_t) * 1000.0
+        self._maybe_log_slow("accent", base_hex, elapsed_ms, diff)
         return diff
 
     # QSS Generation ---------------------------------------------------
@@ -283,8 +320,55 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
                     if old.get(k) != self._cached_map.get(k)
                 }
             )
+            try:
+                cb = services.try_get("color_blind_mode")
+                if cb and getattr(cb, "mode", None):
+                    apply_color_vision_filter_if_active(self._cached_map, cb.mode)
+            except Exception:
+                pass
             self._publish_theme_changed(diff)
         return changed
+
+    # Instrumentation -------------------------------------------------
+    def _maybe_log_slow(self, kind: str, value: str, elapsed_ms: float, diff: ThemeDiff) -> None:
+        """Log and emit event if a style recalculation exceeded threshold.
+
+        Always emits a debug log entry; warns and publishes 'style_recalc_slow' when
+        elapsed_ms >= STYLE_RECALC_WARN_THRESHOLD_MS and diff contains changes.
+        """
+        try:
+            changed_count = len(diff.changed)
+            if elapsed_ms >= STYLE_RECALC_WARN_THRESHOLD_MS and not diff.no_changes:
+                _logger.warning(
+                    "style recalculation slow: kind=%s value=%s time=%.2fms changed=%d",
+                    kind,
+                    value,
+                    elapsed_ms,
+                    changed_count,
+                )
+                try:
+                    bus = services.get_typed("event_bus", EventBus)
+                    bus.publish(
+                        "style_recalc_slow",
+                        {
+                            "kind": kind,
+                            "value": value,
+                            "elapsed_ms": elapsed_ms,
+                            "changed": list(diff.changed.keys()),
+                        },
+                    )
+                except Exception:
+                    pass
+            else:
+                _logger.debug(
+                    "style recalculation: kind=%s value=%s time=%.2fms changes=%d",
+                    kind,
+                    value,
+                    elapsed_ms,
+                    changed_count,
+                )
+        except Exception:
+            pass
 
     # Internal helpers -------------------------------------------------
     @staticmethod

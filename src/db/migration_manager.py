@@ -150,24 +150,24 @@ def preview_pending_migration_sql(conn: sqlite3.Connection) -> List[Tuple[int, s
         # Fallback: ignore if backup unsupported (older pysqlite) -> we proceed with empty temp
         pass
 
-    def wrap_connection(c: sqlite3.Connection):
+    def capture_sql(c: sqlite3.Connection) -> List[str]:
+        """Capture SQL executed on the connection using trace callback.
+
+        Uses sqlite3's set_trace_callback to collect each executed statement.
+        We strip and filter out BEGIN/COMMIT noise for clarity.
+        """
         logged: List[str] = []
-        real_execute = c.execute
-        real_executescript = c.executescript
 
-        def logging_execute(sql, *args):  # type: ignore
-            logged.append(sql.strip())
-            return real_execute(sql, *args)
+        def tracer(stmt: str):  # pragma: no cover - simple callback
+            s = stmt.strip()
+            if not s:
+                return
+            upper = s.upper()
+            if upper.startswith("BEGIN") or upper.startswith("COMMIT"):
+                return
+            logged.append(s)
 
-        def logging_executescript(script):  # type: ignore
-            for stmt in script.split(";"):
-                s = stmt.strip()
-                if s:
-                    logged.append(s)
-            return real_executescript(script)
-
-        c.execute = logging_execute  # type: ignore
-        c.executescript = logging_executescript  # type: ignore
+        c.set_trace_callback(tracer)
         return logged
 
     for mid, desc, fn in pending:
@@ -178,7 +178,7 @@ def preview_pending_migration_sql(conn: sqlite3.Connection) -> List[Tuple[int, s
             temp.backup(work)
         except Exception:
             pass
-        log = wrap_connection(work)
+        log = capture_sql(work)
         try:
             fn(work)
         except Exception:

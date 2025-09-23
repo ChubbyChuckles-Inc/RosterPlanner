@@ -36,7 +36,26 @@ except Exception:  # pragma: no cover
             def waitSignal(self, *args, **kwargs):  # no-op stub
                 yield
 
+            def wait(self, ms: int):  # simple event processing loop
+                from PyQt6.QtCore import QCoreApplication, QTimer
+
+                done = {"v": False}
+
+                def stop():
+                    done["v"] = True
+
+                QTimer.singleShot(ms, stop)  # type: ignore
+                while not done["v"]:
+                    QCoreApplication.processEvents()  # type: ignore
+
         return Bot()
+
+
+# Global test mode flag (avoid blocking modal dialogs like QMessageBox)
+@pytest.fixture(autouse=True)
+def _rp_test_mode_env(monkeypatch):
+    monkeypatch.setenv("RP_TEST_MODE", "1")
+    yield
 
 
 # Global Qt exec() failsafe: ensure any Q(Core)Application.exec() call during tests

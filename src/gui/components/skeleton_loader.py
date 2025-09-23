@@ -24,7 +24,7 @@ Integration Plan (5.10.10):
 from __future__ import annotations
 from typing import List, Optional
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSizePolicy
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 from gui.design.skeletons import get_skeleton_variant, SkeletonVariant
 
@@ -42,13 +42,25 @@ class SkeletonLoaderWidget(QWidget):
         Number of repeated variant rows to render.
     """
 
-    def __init__(self, variant_name: str, rows: int = 3, parent: Optional[QWidget] = None):
+    def __init__(
+        self,
+        variant_name: str,
+        rows: int = 3,
+        parent: Optional[QWidget] = None,
+        *,
+        shimmer: bool = False,
+        shimmer_interval_ms: int = 140,
+    ):
         super().__init__(parent)
         self._variant_name = variant_name
         self._rows = max(1, rows)
         self._variant: SkeletonVariant = get_skeleton_variant(variant_name)
         self._active = False
         self.setObjectName("skeletonLoader")
+        self._shimmer_enabled = shimmer
+        self._shimmer_interval = max(60, min(shimmer_interval_ms, 1000))
+        self._shimmer_phase = False
+        self._shimmer_timer: Optional[QTimer] = None
         self._build_ui()
 
     # UI -----------------------------------------------------------------
@@ -87,10 +99,20 @@ class SkeletonLoaderWidget(QWidget):
     def start(self):
         self.show()
         self._active = True
+        if self._shimmer_enabled and self._shimmer_timer is None:
+            self._shimmer_timer = QTimer(self)
+            self._shimmer_timer.timeout.connect(self._on_shimmer_tick)  # type: ignore[attr-defined]
+            self._shimmer_timer.start(self._shimmer_interval)
 
     def stop(self):
         self.hide()
         self._active = False
+        if self._shimmer_timer:
+            try:
+                self._shimmer_timer.stop()
+            except Exception:
+                pass
+            self._shimmer_timer = None
 
     # Accessors -----------------------------------------------------------
     def variant_name(self) -> str:
@@ -98,3 +120,10 @@ class SkeletonLoaderWidget(QWidget):
 
     def is_active(self) -> bool:
         return self._active
+
+    # Shimmer ------------------------------------------------------------
+    def _on_shimmer_tick(self):  # pragma: no cover - timing based
+        self._shimmer_phase = not self._shimmer_phase
+        # Toggle a dynamic property to allow QSS gradient animation via styles
+        self.setProperty("shimmerPhase", "a" if self._shimmer_phase else "b")
+        self.setStyleSheet(self.styleSheet())  # force style refresh minimally

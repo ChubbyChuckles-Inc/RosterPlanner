@@ -229,23 +229,23 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.26 Motion choreography map (component enter/exit/transform sequencing doc) [D]
 [x] 5.10.27 Micro-interaction spring physics option (spring curve helper + tests)
 [x] 5.10.28 Scroll-linked subtle fade/translate animations (perf guarded flag)
-[ ] 5.10.29 Contextual radius adaptation: large surface vs chip vs pill (apply radius scale tokens)
-[ ] 5.10.30 Themed multi-tone icon recoloring pipeline (primary/secondary/disabled states)
-[ ] 5.10.31 Focus ring glow variant (outer halo) + reduced-motion/high-contrast fallback
-[ ] 5.10.32 High-DPI asset scaler audit & auto-regeneration script [T]
-[ ] 5.10.33 Ambient color shift (very low frequency gradient drift) developer flag
-[ ] 5.10.34 Live theme preview diff panel (before/after token snapshot view)
-[ ] 5.10.35 Contrast heatmap overlay (debug tool highlighting low contrast regions)
-[ ] 5.10.36 Color vision deficiency simulation hook applied to active views (full pipeline integration)
-[ ] 5.10.37 Elevation audit & alignment report (map components -> elevation tokens) [D]
-[ ] 5.10.38 Spacing grid overlay toggle (8px baseline visualizer) dev tool
-[ ] 5.10.39 Container size observer utilities (responsive density + typography adjustments)
-[ ] 5.10.40 Keyboard navigation highlight trail animation (recent focus path) with perf opt-out
-[ ] 5.10.41 QSS inline color drift detector test (no hardcoded hex outside token map) [T]
-[ ] 5.10.42 Style recalculation performance instrumentation (log >50ms re-theme) [T]
-[ ] 5.10.43 Plugin visual sandbox harness validating token-only styling (live re-skin)
-[ ] 5.10.44 Enhanced adaptive scrollbars (hover expand + smooth color fade) themed
-[ ] 5.10.45 Animated skeleton shimmer effect (token gradient) + reduced-motion fallback
+[x] 5.10.29 Contextual radius adaptation: large surface vs chip vs pill (apply radius scale tokens)
+[x] 5.10.30 Themed multi-tone icon recoloring pipeline (primary/secondary/disabled states)
+[x] 5.10.31 Focus ring glow variant (outer halo) + reduced-motion/high-contrast fallback
+[x] 5.10.32 High-DPI asset scaler audit & auto-regeneration script [T]
+[x] 5.10.33 Ambient color shift (very low frequency gradient drift) developer flag
+[x] 5.10.34 Live theme preview diff panel (before/after token snapshot view)
+[x] 5.10.35 Contrast heatmap overlay (debug tool highlighting low contrast regions)
+[x] 5.10.36 Color vision deficiency simulation hook applied to active views (full pipeline integration)
+[x] 5.10.37 Elevation audit & alignment report (map components -> elevation tokens) [D]
+[x] 5.10.38 Spacing grid overlay toggle (8px baseline visualizer) dev tool
+[x] 5.10.39 Container size observer utilities (responsive density + typography adjustments)
+[x] 5.10.40 Keyboard navigation highlight trail animation (recent focus path) with perf opt-out
+[x] 5.10.41 QSS inline color drift detector test (no hardcoded hex outside token map) [T]
+[x] 5.10.42 Style recalculation performance instrumentation (log >50ms re-theme) [T]
+[x] 5.10.43 Plugin visual sandbox harness validating token-only styling (live re-skin)
+[x] 5.10.44 Enhanced adaptive scrollbars (hover expand + smooth color fade) themed
+[~] 5.10.45 Animated skeleton shimmer effect (token gradient) + reduced-motion fallback
 [ ] 5.10.46 Adaptive blur intensity for glass surfaces (background luminance sampling)
 [ ] 5.10.47 Neutral ramp delta-E calibration tool (ensure perceptual steps) [R]
 [ ] 5.10.48 Split-view divider grab-handle styling + hover/active affordances

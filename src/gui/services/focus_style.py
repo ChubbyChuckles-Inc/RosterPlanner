@@ -71,17 +71,31 @@ class FocusRingManager(QObject):  # pragma: no cover (most behavior is GUI runti
 def install_focus_ring(app_or_window):  # pragma: no cover
     if not isinstance(app_or_window, (QApplication, QWidget)):  # type: ignore
         return None
-    mgr = FocusRingManager(app_or_window)
-    # Install on application to catch all widgets
-    if isinstance(app_or_window, QApplication):  # type: ignore
-        app_or_window.installEventFilter(mgr)  # type: ignore
-    else:
-        app_or_window.installEventFilter(mgr)  # type: ignore
+    # If a widget is provided, prefer installing on its QApplication to ensure
+    # focus events for all widgets are captured (fixes test_focus_ring_runtime).
+    target = app_or_window
+    if not isinstance(app_or_window, QApplication):  # type: ignore
+        try:  # pragma: no cover
+            app = QApplication.instance()
+            if app is not None:
+                target = app
+        except Exception:
+            pass
+    mgr = FocusRingManager(target)
+    target.installEventFilter(mgr)  # type: ignore
     # Append stylesheet (avoid duplicates naive check)
     try:
-        current = app_or_window.styleSheet()
+        current = target.styleSheet()
         if "a11yFocused" not in current:
-            app_or_window.setStyleSheet(current + ("\n" if current else "") + FOCUS_QSS)
+            target.setStyleSheet(current + ("\n" if current else "") + FOCUS_QSS)
+    except Exception:
+        pass
+    # If a widget was provided and already focused, mark it now so tests can assert immediately.
+    try:
+        from PyQt6.QtWidgets import QWidget as _QW  # type: ignore
+
+        if isinstance(app_or_window, _QW) and app_or_window.hasFocus():  # type: ignore
+            mgr._mark(app_or_window, True)  # type: ignore
     except Exception:
         pass
     return mgr

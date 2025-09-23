@@ -73,7 +73,12 @@ def _resolve(theme_map: Mapping[str, str], key: str) -> str:
 
 
 def build_scrollbar_styles(
-    theme_map: Mapping[str, str], *, width: int = 10, radius: int = 4
+    theme_map: Mapping[str, str],
+    *,
+    width: int = 10,
+    radius: int = 4,
+    hover_expand: bool = False,
+    expand_delta: int = 4,
 ) -> str:
     """Build QSS for adaptive scrollbars.
 
@@ -82,12 +87,18 @@ def build_scrollbar_styles(
     theme_map: Mapping[str, str]
         Flat mapping of theme token names to hex colors (e.g., from ThemeManager.active_map)
     width: int
-        Thickness of scrollbar track in px.
+        Thickness of scrollbar track in px (resting state).
     radius: int
         Corner radius for handle (thumb) and track.
+    hover_expand: bool
+        If True, expand track thickness on hover (Milestone 5.10.44 enhanced adaptive scrollbars).
+    expand_delta: int
+        Additional pixels to add to width/height on hover when hover_expand is enabled.
     """
 
     w = max(4, min(width, 30))  # clamp to sane bounds
+    delta = max(0, min(expand_delta, 12))
+    expanded_w = min(38, w + delta)
     r = max(0, min(radius, 16))
     track = _resolve(theme_map, "surface.scroll.track")
     track_hover = _resolve(theme_map, "surface.scroll.trackHover")
@@ -108,6 +119,7 @@ QScrollBar:vertical {{
 }}
 QScrollBar:vertical:hover {{
     background: {track_hover};
+    {'width: ' + str(expanded_w) + 'px;' if hover_expand and expanded_w != w else ''}
 }}
 QScrollBar::handle:vertical {{
     background: {handle};
@@ -137,6 +149,7 @@ QScrollBar:horizontal {{
 }}
 QScrollBar:horizontal:hover {{
     background: {track_hover};
+    {'height: ' + str(expanded_w) + 'px;' if hover_expand and expanded_w != w else ''}
 }}
 QScrollBar::handle:horizontal {{
     background: {handle};

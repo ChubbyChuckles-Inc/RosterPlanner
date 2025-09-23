@@ -15,10 +15,17 @@ def test_focus_ring_runtime_property(qtbot):  # requires pytest-qt
         _app = QApplication(sys.argv)  # noqa: F841
     btn = QPushButton("Focusable")
     qtbot.addWidget(btn)  # type: ignore
+    btn.show()
     install_focus_ring(btn)
     btn.setFocus()
-    qtbot.wait(30)
+    from PyQt6.QtCore import QCoreApplication
+
+    for _ in range(5):
+        QCoreApplication.processEvents()
+        qtbot.wait(5)
     assert btn.property("a11yFocused") == "true"
     btn.clearFocus()
-    qtbot.wait(30)
+    for _ in range(5):
+        QCoreApplication.processEvents()
+        qtbot.wait(5)
     assert btn.property("a11yFocused") == "false"

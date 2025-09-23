@@ -21,8 +21,10 @@ def upgrade(conn: sqlite3.Connection) -> None:
     cur.execute("PRAGMA table_info(ingest_provenance)")
     existing_cols = {r[1] for r in cur.fetchall()}
     if "last_accessed_at" not in existing_cols:
+        # SQLite ALTER TABLE requires constant default; use NULL then backfill.
+        conn.execute("ALTER TABLE ingest_provenance ADD COLUMN last_accessed_at TEXT DEFAULT NULL")
         conn.execute(
-            "ALTER TABLE ingest_provenance ADD COLUMN last_accessed_at TEXT DEFAULT CURRENT_TIMESTAMP"
+            "UPDATE ingest_provenance SET last_accessed_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE last_accessed_at IS NULL"
         )
     if "access_count" not in existing_cols:
         conn.execute("ALTER TABLE ingest_provenance ADD COLUMN access_count INTEGER DEFAULT 0")
