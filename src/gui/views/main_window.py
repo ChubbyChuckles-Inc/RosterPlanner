@@ -233,6 +233,7 @@ class MainWindow(QMainWindow):  # Dock-based
             "planner": self._build_planner_dock,
             "logs": self._build_logs_dock,
             "recent": self._build_recent_dock,
+            "themeeditor": self._build_theme_editor_dock,
         }
         dock_registry.ensure_core_docks_registered(factories)
         # Register all definitions with local DockManager
@@ -253,8 +254,16 @@ class MainWindow(QMainWindow):  # Dock-based
         avail_dock = self.dock_manager.create("availability")
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, avail_dock)
         # Secondary docks created lazily on demand; proactively instantiate to apply elevation roles
-        secondary_ids = ["detail", "stats", "planner", "logs", "recent"]
-    # Add personalization dock lazily (not auto-created to reduce visual noise)
+        secondary_ids = [
+            "detail",
+            "stats",
+            "planner",
+            "logs",
+            "recent",
+            "themeeditor",
+            "personalization",
+        ]
+        # Add personalization & theme editor docks lazily (not auto-created originally)
         secondary_docks = []
         for did in secondary_ids:
             try:
@@ -1216,6 +1225,30 @@ class MainWindow(QMainWindow):  # Dock-based
             lay.addWidget(QLabel("Personalization unavailable"))
             return box
         return PersonalizationPanel()
+
+    def _build_theme_editor_dock(self) -> QWidget:
+        # Wrap the ThemeJsonEditorDialog in a simple container so it docks nicely.
+        from PyQt6.QtWidgets import QVBoxLayout, QPushButton
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lbl = QLabel("Theme JSON Editor")
+        lbl.setObjectName("viewTitleLabel")
+        lay.addWidget(lbl)
+        btn = QPushButton("Open Editor Dialog")
+        lay.addWidget(btn)
+
+        def _open():  # pragma: no cover - UI path
+            try:
+                from gui.views.theme_json_editor import ThemeJsonEditorDialog
+
+                dlg = ThemeJsonEditorDialog(self)
+                dlg.show()
+            except Exception:
+                pass
+
+        btn.clicked.connect(_open)  # type: ignore
+        lay.addStretch(1)
+        return w
 
     def _build_planner_dock(self) -> QWidget:
         w = QWidget()

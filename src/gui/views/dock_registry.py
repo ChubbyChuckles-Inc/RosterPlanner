@@ -71,6 +71,8 @@ _CORE_IDS = [
     "stats",
     "planner",
     "logs",
+    "personalization",
+    "themeeditor",
 ]
 
 
