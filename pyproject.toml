@@ -81,4 +81,5 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
     "integration: marks tests that require GUI components or longer setup",
+    "gui: marks tests that require a QApplication / GUI context",
 ]
