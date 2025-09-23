@@ -250,7 +250,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.47 Neutral ramp delta-E calibration tool (ensure perceptual steps) [R]
 [x] 5.10.48 Split-view divider grab-handle styling + hover/active affordances
 [x] 5.10.49 Inline error badge component (severity color roles + scale transitions)
-[ ] 5.10.50 Toast stack cascade animation (staggered spring) + accessibility pause on hover
+[x] 5.10.50 Toast stack cascade animation (staggered spring) + accessibility pause on hover
 [ ] 5.10.51 Command Palette theming: group headers, icon badges, fuzzy score highlight spans
 [ ] 5.10.52 In-app theme JSON editor (live validation, preview, rollback)
 [ ] 5.10.53 Theme snapshot export (tokens + derived palette metadata) [D]

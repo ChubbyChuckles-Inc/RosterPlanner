@@ -27,7 +27,7 @@ only logical stacking & dismissal (no animations).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -35,14 +35,17 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QPushButton,
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRect, QPoint
 
 from gui.design.notifications import get_notification_style, list_notification_styles
 
-try:  # Theme service optional for tests
+if TYPE_CHECKING:  # pragma: no cover
     from gui.services.theme_service import ThemeService
-except Exception:  # pragma: no cover
-    ThemeService = object  # type: ignore
+else:  # runtime placeholder
+
+    class ThemeService:  # type: ignore
+        pass
+
 
 __all__ = ["ToastHost", "NotificationManager", "NotificationData"]
 
@@ -57,6 +60,24 @@ class NotificationData:
     timeout_ms: int
     widget: QWidget
     timer: Optional[QTimer]
+    remaining_ms: int = 0
+    paused: bool = False
+
+
+class ToastItem(QWidget):
+    """Toast widget wrapper that notifies manager about hover state."""
+
+    def __init__(self, manager: "NotificationManager", parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._manager = manager
+
+    def enterEvent(self, event):  # type: ignore[override]
+        self._manager._on_toast_hover(self)
+        return super().enterEvent(event)
+
+    def leaveEvent(self, event):  # type: ignore[override]
+        self._manager._on_toast_unhover(self)
+        return super().leaveEvent(event)
 
 
 class ToastHost(QWidget):
@@ -116,15 +137,18 @@ class NotificationManager:
         theme_service: Optional[ThemeService] = None,
         *,
         disable_timers: bool = False,
+        enable_animations: bool = True,
     ) -> None:
         self._host = host
         self._theme = theme_service
         self._disable_timers = disable_timers
+        self._enable_animations = enable_animations
         self._notifications: Dict[int, NotificationData] = {}
         # Pre-cache style priority for ordering decisions
         self._style_priority: Dict[str, int] = {
             s.id: s.stacking_priority for s in list_notification_styles()
         }
+        self._stagger_base_ms = 40  # cascade per item
 
     # Public API --------------------------------------------------
     def show_notification(
@@ -160,6 +184,7 @@ class NotificationManager:
             timer.timeout.connect(lambda nid=notif_id: self.dismiss(nid))  # type: ignore
             data.timer = timer
             timer.start()
+            data.remaining_ms = timeout_ms
         self._notifications[notif_id] = data
         return notif_id
 
@@ -189,7 +214,7 @@ class NotificationManager:
         return nid
 
     def _build_toast_widget(self, style_id: str, message: str) -> QWidget:
-        w = QWidget(self._host)
+        w = ToastItem(self, self._host)
         w.setObjectName("toastWidget")
         w.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         hl = QHBoxLayout(w)
@@ -226,3 +251,58 @@ class NotificationManager:
             if existing_pri <= priority:
                 index += 1
         self._host.add_toast_widget(data.widget, index)
+        # Apply cascade animation (slide + fade) unless disabled
+        if self._enable_animations and not self._disable_timers:
+            self._animate_appearance(data.widget, index)
+
+    # Animation helpers -------------------------------------------
+    def _animate_appearance(self, widget: QWidget, index: int) -> None:  # pragma: no cover - timing
+        try:
+            start_geo: QRect = widget.geometry()
+            # Start slightly lower and transparent
+            offset = QPoint(0, 12)
+            widget.setWindowOpacity(0.0)
+            widget.move(start_geo.topLeft() + offset)
+            dur = 180 + min(index, 5) * 10
+            # Fade
+            fade = QPropertyAnimation(widget, b"windowOpacity", widget)
+            fade.setDuration(dur)
+            fade.setStartValue(0.0)
+            fade.setEndValue(1.0)
+            fade.setEasingCurve(QEasingCurve.Type.OutCubic)
+            # Slide
+            slide = QPropertyAnimation(widget, b"pos", widget)
+            slide.setDuration(dur)
+            slide.setStartValue(widget.pos())
+            slide.setEndValue(start_geo.topLeft())
+            slide.setEasingCurve(QEasingCurve.Type.OutCubic)
+            # Stagger start
+            delay = index * self._stagger_base_ms
+            QTimer.singleShot(delay, fade.start)
+            QTimer.singleShot(delay, slide.start)
+        except Exception:
+            pass
+
+    # Hover pause / resume --------------------------------------
+    def _on_toast_hover(self, widget: QWidget) -> None:
+        for data in self._notifications.values():
+            if data.widget is widget and data.timer and not data.paused:
+                remaining = data.timer.remainingTime()
+                if remaining > 0:
+                    data.remaining_ms = remaining
+                    data.paused = True
+                    data.timer.stop()
+                break
+
+    def _on_toast_unhover(self, widget: QWidget) -> None:
+        for nid, data in self._notifications.items():
+            if data.widget is widget and data.paused and data.remaining_ms > 0:
+                if data.timer is None:
+                    t = QTimer(widget)
+                    t.setSingleShot(True)
+                    t.timeout.connect(lambda nid=nid: self.dismiss(nid))  # type: ignore
+                    data.timer = t
+                data.timer.setInterval(max(50, data.remaining_ms))
+                data.paused = False
+                data.timer.start()
+                break
