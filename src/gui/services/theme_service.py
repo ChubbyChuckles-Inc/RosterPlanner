@@ -143,9 +143,7 @@ class ThemeService:
 
         colors_map = self._cached_map.copy()
         # Provide stable ordering.
-        ordered = [
-            {"key": k, "value": colors_map[k]} for k in sorted(colors_map.keys())
-        ]
+        ordered = [{"key": k, "value": colors_map[k]} for k in sorted(colors_map.keys())]
         missing = validate_theme_keys(colors_map)
         return {
             "variant": self.manager.variant,
