@@ -61,7 +61,7 @@ def _force_reingest() -> None:
         print("[ingest.force_reingest] Missing data_dir or sqlite_conn; skipping")
         return
     coordinator = IngestionCoordinator(base_dir=data_dir, conn=conn, event_bus=services.try_get("event_bus"))  # type: ignore[arg-type]
-    summary: IngestionSummary = coordinator.run()
+    summary: IngestionSummary = coordinator.run(force=True)
     try:
         services.register("last_ingest_summary", summary, allow_override=True)
     except Exception:  # pragma: no cover - defensive

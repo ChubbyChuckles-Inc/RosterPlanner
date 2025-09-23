@@ -417,6 +417,12 @@ class MainWindow(QMainWindow):  # Dock-based
         # Scrape action in Data menu
         self._act_scrape = data_menu.addAction("Run Full Scrape")
         self._act_scrape.triggered.connect(self._trigger_full_scrape)  # type: ignore[attr-defined]
+        # Force Re-Ingest (bypass provenance, reuse existing HTML assets)
+        self._act_force_reingest = data_menu.addAction("Force Re-Ingest (HTML Assets)")
+        self._act_force_reingest.triggered.connect(self._trigger_force_reingest)  # type: ignore[attr-defined]
+        # Diagnostics: Compare team counts (files vs ingested)
+        self._act_diag_teamcounts = data_menu.addAction("Diagnostics: Compare Team Counts")
+        self._act_diag_teamcounts.triggered.connect(self._run_team_count_diagnostics)  # type: ignore[attr-defined]
         # Club overview (Milestone 5.4)
         self._act_club_overview = data_menu.addAction("Open Club Overview")
         self._act_club_overview.triggered.connect(self._open_club_overview)  # type: ignore[attr-defined]
@@ -1229,6 +1235,7 @@ class MainWindow(QMainWindow):  # Dock-based
     def _build_theme_editor_dock(self) -> QWidget:
         # Wrap the ThemeJsonEditorDialog in a simple container so it docks nicely.
         from PyQt6.QtWidgets import QVBoxLayout, QPushButton
+
         w = QWidget()
         lay = QVBoxLayout(w)
         lbl = QLabel("Theme JSON Editor")
@@ -1296,6 +1303,87 @@ class MainWindow(QMainWindow):  # Dock-based
         if confirm != QMessageBox.StandardButton.Yes:  # type: ignore
             return
         self._scrape_runner.start(self.club_id, self.season, self.data_dir)
+
+    def _trigger_force_reingest(self):  # pragma: no cover - GUI event
+        """Force re-run ingestion on existing HTML assets bypassing provenance skips.
+
+        This does NOT perform any network scraping. It re-parses ranking tables and
+        roster files currently present under the configured data directory and
+        repopulates the database (adding any missing teams / players discovered in
+        ranking navigation that were previously skipped). Use when new HTML files
+        were added manually or ingestion logic changed.
+        """
+        try:
+            from gui.services.service_locator import services as _services
+            from gui.services.ingestion_coordinator import IngestionCoordinator
+        except Exception as e:  # pragma: no cover
+            QMessageBox.warning(self, "Force Re-Ingest", f"Services unavailable: {e}")
+            return
+        conn = _services.try_get("sqlite_conn")
+        data_dir = _services.try_get("data_dir") or self.data_dir
+        if conn is None or not data_dir:
+            QMessageBox.warning(
+                self, "Force Re-Ingest", "Missing sqlite connection or data directory service."
+            )
+            return
+        # Disable action while running (simple guard - ingestion currently synchronous)
+        try:
+            self._act_force_reingest.setEnabled(False)  # type: ignore
+        except Exception:
+            pass
+        self._set_status("Force re-ingesting...")
+        try:
+            coordinator = IngestionCoordinator(base_dir=data_dir, conn=conn, event_bus=_services.try_get("event_bus"))  # type: ignore[arg-type]
+            summary = coordinator.run(force=True)
+            # Store summary for later inspection (mirrors command palette behavior)
+            try:
+                _services.register("last_ingest_summary", summary, allow_override=True)
+            except Exception:
+                pass
+            self._set_status(
+                f"Re-ingest complete: {summary.teams_ingested} teams / {summary.players_ingested} players (processed {summary.processed_files}, skipped {summary.skipped_files})"
+            )
+            # Reload landing to reflect any new teams
+            self._load_landing()
+        except Exception as e:
+            QMessageBox.critical(self, "Force Re-Ingest", f"Failed: {e}")
+            self._set_status("Force re-ingest failed")
+        finally:
+            try:
+                self._act_force_reingest.setEnabled(True)  # type: ignore
+            except Exception:
+                pass
+
+    def _run_team_count_diagnostics(self):  # pragma: no cover - GUI event
+        try:
+            from gui.services.service_locator import services as _services
+            from gui.services.team_count_diagnostics import compare_team_counts
+        except Exception as e:
+            QMessageBox.warning(self, "Diagnostics", f"Missing services: {e}")
+            return
+        conn = _services.try_get("sqlite_conn")
+        data_dir = _services.try_get("data_dir") or self.data_dir
+        if conn is None or not data_dir:
+            QMessageBox.warning(self, "Diagnostics", "Missing sqlite connection or data directory.")
+            return
+        results = compare_team_counts(data_dir, conn, write_json=True)
+        if not results:
+            QMessageBox.information(
+                self, "Diagnostics", "No division folders with roster files found."
+            )
+            return
+        # Build concise summary string
+        problems = [d for d in results if d.deficit > 0 or d.surplus > 0]
+        lines = []
+        lines.append(f"Analyzed {len(results)} divisions. Problems: {len(problems)}")
+        for d in problems[:12]:
+            lines.append(
+                f"- {d.division_name}: ingested={d.ingested_count} expected={d.expected_count} files={d.roster_file_count} uniqueIds={d.unique_roster_ids} (deficit={d.deficit}, surplus={d.surplus})"
+            )
+        msg = "\n".join(lines)
+        # Tell user where JSON was written
+        msg += f"\n\nDetailed JSON: {data_dir}\\diagnostics\\team_count_comparison.json"
+        QMessageBox.information(self, "Team Count Diagnostics", msg)
 
     def _on_scrape_started(self):  # pragma: no cover
         self._set_status("Scrape running...")

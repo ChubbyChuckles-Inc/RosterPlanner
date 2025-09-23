@@ -53,7 +53,7 @@ class IngestionCoordinator:
         self._table_ranking = "division_ranking"
         self._detect_schema()
 
-    def run(self) -> IngestionSummary:
+    def run(self, *, force: bool = False) -> IngestionSummary:
         self._ensure_provenance_table()
         self._ensure_normalized_provenance_view()
         if self._singular_mode:
@@ -85,7 +85,7 @@ class IngestionCoordinator:
                 self.conn.execute(f"SAVEPOINT {sp}")
                 if logger:
                     logger.emit("division.start", {"division": d.division, "index": idx})
-                result = self._ingest_single_division(d)
+                result = self._ingest_single_division(d, force=force)
                 if result is None:
                     self.conn.execute(f"RELEASE SAVEPOINT {sp}")
                     if logger:
@@ -174,14 +174,16 @@ class IngestionCoordinator:
         return summary
 
     # ---- Ingestion inner phases -------------------------------------------------
-    def _ingest_single_division(self, d) -> tuple[int, int, int, int, int] | None:
+    def _ingest_single_division(
+        self, d, *, force: bool = False
+    ) -> tuple[int, int, int, int, int] | None:
         divisions_ingested = teams_ingested = players_ingested = 0
         skipped_files = processed_files = 0
         div_id = self._upsert_division(d.division)
         divisions_ingested += 1
         # Ranking table (optional)
         if d.ranking_table:
-            if self._is_unchanged(d.ranking_table.path, d.ranking_table.sha1):
+            if not force and self._is_unchanged(d.ranking_table.path, d.ranking_table.sha1):
                 skipped_files += 1
             else:
                 processed_files += 1
@@ -204,7 +206,7 @@ class IngestionCoordinator:
                 canonical_name = self._choose_canonical_name(variants)
                 for team_name in variants:
                     info = d.team_rosters[team_name]
-                    if self._is_unchanged(info.path, info.sha1):
+                    if (not force) and self._is_unchanged(info.path, info.sha1):
                         skipped_files += 1
                     else:
                         processed_files += 1
@@ -220,23 +222,111 @@ class IngestionCoordinator:
                 teams_ingested += 1
                 players_ingested += player_rows
         else:
-            # Singular schema path previously grouped roster files by a derived numeric id.
-            # This collapsed multiple similarly-patterned team names into one team and aggregated
-            # all their players. Refactored to ingest each roster independently.
+            # Singular schema: enumerate teams from BOTH roster filename heuristics AND (if available)
+            # the ranking table navigation (authoritative). This addresses cases where some roster
+            # files are missing or filename heuristics fail, leading to incomplete division teams.
+            ranking_teams: list[dict] = []
+            ranking_roster_map: dict[str, Path] = {}  # team_name(lower) -> roster path (if matched)
+            try:
+                if d.ranking_table and Path(d.ranking_table.path).exists():
+                    # Late import to avoid circulars
+                    from parsing.ranking_parser import parse_ranking_table  # type: ignore
+
+                    html = Path(d.ranking_table.path).read_text(encoding="utf-8", errors="ignore")
+                    _div_name_from_html, nav_entries = parse_ranking_table(
+                        html, source_hint=Path(d.ranking_table.path).name
+                    )
+                    ranking_teams = nav_entries
+            except Exception:
+                ranking_teams = []
+
+            # Build index of roster files by trailing numeric id (L3P) and by normalized name
+            id_index: dict[str, Path] = {}
+            name_index: dict[str, Path] = {}
             for team_name, info in d.team_rosters.items():
-                if self._is_unchanged(info.path, info.sha1):
-                    skipped_files += 1
+                p = Path(info.path)
+                numeric_id = self._extract_numeric_id_from_path(p.name)
+                if numeric_id:
+                    id_index.setdefault(numeric_id, p)
+                name_index.setdefault(team_name.lower(), p)
+
+            processed_team_names: set[str] = set()
+
+            def ingest_team(team_name: str, roster_path: Path | None):
+                nonlocal teams_ingested, players_ingested, skipped_files, processed_files
+                if team_name in processed_team_names:
+                    return
+                processed_team_names.add(team_name)
+                roster_paths: list[Path] | None = None
+                if roster_path and roster_path.exists():
+                    # Provenance handling per roster file
+                    info = d.team_rosters.get(team_name)
+                    # If we have an AuditFileInfo entry use its hash; otherwise hash lazily
+                    if info:
+                        if (not force) and self._is_unchanged(info.path, info.sha1):
+                            skipped_files += 1
+                        else:
+                            processed_files += 1
+                            self._record_provenance(info.path, info.sha1)
+                    else:
+                        try:
+                            content = roster_path.read_bytes()
+                        except Exception:
+                            content = b""
+                        import hashlib
+
+                        sha1 = hashlib.sha1(content).hexdigest()
+                        if (not force) and self._is_unchanged(str(roster_path), sha1):
+                            skipped_files += 1
+                        else:
+                            processed_files += 1
+                            self._record_provenance(str(roster_path), sha1)
+                    roster_paths = [roster_path]
+                # Upsert (players parsed only if roster_paths provided) with resilience
+                try:
+                    player_rows = self._upsert_team(
+                        self._derive_team_id(team_name),
+                        team_name,
+                        d.division,
+                        roster_paths=roster_paths,
+                    )
+                    teams_ingested += 1
+                    players_ingested += player_rows
+                except Exception as te:  # noqa: BLE001
+                    # Record error but continue with other teams
+                    try:
+                        self._persist_error(
+                            IngestError(
+                                division=d.division,
+                                message=f"team_ingest_failed:{team_name}:{te}",
+                                severity="warn",
+                            )
+                        )
+                    except Exception:
+                        pass
+
+            # 1. Ingest teams from ranking navigation first (authoritative ordering)
+            for entry in ranking_teams:
+                tname = entry.get("team_name")
+                if not tname:
+                    continue
+                roster_path: Path | None = None
+                # Match by team id (L3P) if provided
+                tid = entry.get("team_id")
+                if tid and tid in id_index:
+                    roster_path = id_index[tid]
                 else:
-                    processed_files += 1
-                    self._record_provenance(info.path, info.sha1)
-                player_rows = self._upsert_team(
-                    self._derive_team_id(team_name),
-                    team_name,
-                    d.division,
-                    roster_paths=[Path(info.path)],
-                )
-                teams_ingested += 1
-                players_ingested += player_rows
+                    # Name-based fallback (case-insensitive)
+                    roster_path = name_index.get(tname.lower())
+                ingest_team(tname, roster_path)
+
+            # 2. Ingest any remaining roster-derived teams not present in ranking nav (edge cases).
+            # Duplicates are avoided via processed_team_names. This ensures that if the ranking
+            # table parser missed a valid team (HTML variant) we still surface it from the roster set.
+            for team_name, info in d.team_rosters.items():
+                if team_name in processed_team_names:
+                    continue
+                ingest_team(team_name, Path(info.path))
         return (
             divisions_ingested,
             teams_ingested,
