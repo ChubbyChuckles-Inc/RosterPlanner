@@ -243,12 +243,25 @@ class IngestionCoordinator:
             # Build index of roster files by trailing numeric id (L3P) and by normalized name
             id_index: dict[str, Path] = {}
             name_index: dict[str, Path] = {}
+
+            def _norm_name(s: str) -> str:
+                import unicodedata, re as _re
+
+                s2 = unicodedata.normalize("NFKD", s)
+                s2 = "".join(c for c in s2 if not unicodedata.combining(c))
+                s2 = s2.lower()
+                # Replace common separators with space, drop punctuation, collapse whitespace
+                s2 = s2.replace("-", " ").replace("_", " ")
+                s2 = _re.sub(r"[^a-z0-9 ]+", " ", s2)
+                s2 = _re.sub(r"\s+", " ", s2).strip()
+                return s2
+
             for team_name, info in d.team_rosters.items():
                 p = Path(info.path)
                 numeric_id = self._extract_numeric_id_from_path(p.name)
                 if numeric_id:
                     id_index.setdefault(numeric_id, p)
-                name_index.setdefault(team_name.lower(), p)
+                name_index.setdefault(_norm_name(team_name), p)
 
             processed_team_names: set[str] = set()
 
@@ -316,8 +329,9 @@ class IngestionCoordinator:
                 if tid and tid in id_index:
                     roster_path = id_index[tid]
                 else:
-                    # Name-based fallback (case-insensitive)
-                    roster_path = name_index.get(tname.lower())
+                    # Name-based fallback with normalization (case/diacritics/punct-insensitive)
+                    roster_path = name_index.get(_norm_name(tname))
+                # Even if no roster_path matched, ingest the team (will add placeholder player)
                 ingest_team(tname, roster_path)
 
             # 2. Ingest any remaining roster-derived teams not present in ranking nav (edge cases).
@@ -398,9 +412,11 @@ class IngestionCoordinator:
                 return 0
             division_id = div_row[0]
             team_id_assigned = self._assign_id("team", full_team_name)
+            # Store full team name to ensure (division_id, name) uniqueness across clubs
+            stored_team_name = full_team_name
             self.conn.execute(
                 f"INSERT OR REPLACE INTO {self._table_team}(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
-                (team_id_assigned, club_id, division_id, team_suffix),
+                (team_id_assigned, club_id, division_id, stored_team_name),
             )
             added_players = self._parse_and_upsert_players(
                 team_id_assigned, full_team_name, roster_paths=roster_paths

@@ -84,15 +84,27 @@ def collect_team_file_stats(base_dir: str) -> Dict[str, Dict[str, Any]]:
         for rf in roster_files:
             m = ROSTER_FILE_RE.match(rf.name)
             if m:
+                # Filter out generic files with purely numeric pseudo-team names like '1_Erwachsene'
+                rest = m.group("rest")
+                # Heuristic: skip if rest starts with a number followed by '_' (e.g., '1_Erwachsene')
+                if re.match(r"^\d+_", rest):
+                    continue
                 unique_ids.add(m.group("id"))
             else:  # fallback: use filename minus prefix & suffix
                 stem = rf.stem.replace("team_roster_", "")
                 unique_ids.add(stem)
         stats[folder_key] = {
             "division_name": _folder_to_division_name(folder_key),
-            "roster_files": [r.name for r in roster_files],
+            "roster_files": [
+                r.name
+                for r in roster_files
+                if not (
+                    ROSTER_FILE_RE.match(r.name)
+                    and re.match(r"^\d+_", ROSTER_FILE_RE.match(r.name).group("rest"))
+                )
+            ],
             "unique_ids": unique_ids,
-            "raw_count": len(roster_files),
+            "raw_count": len(unique_ids),
         }
     return stats
 
