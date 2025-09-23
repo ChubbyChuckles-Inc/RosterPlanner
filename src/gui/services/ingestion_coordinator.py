@@ -179,64 +179,62 @@ class IngestionCoordinator:
         skipped_files = processed_files = 0
         div_id = self._upsert_division(d.division)
         divisions_ingested += 1
+        # Ranking table (optional)
         if d.ranking_table:
             if self._is_unchanged(d.ranking_table.path, d.ranking_table.sha1):
                 skipped_files += 1
             else:
                 processed_files += 1
                 self._record_provenance(d.ranking_table.path, d.ranking_table.sha1)
-            try:
-                if self._singular_mode:
+            if self._singular_mode:
+                try:
                     self._parse_and_upsert_ranking(div_id, d.ranking_table.path)
-            except Exception:
-                pass
-            if not self._singular_mode:
-                base_counts: dict[str, int] = {}
-                group_map: dict[str, list[str]] = {}
-                for team_name, info in d.team_rosters.items():
-                    numeric_id = self._extract_numeric_id_from_path(
-                        info.path
-                    ) or self._derive_team_id(team_name)
-                    group_map.setdefault(numeric_id, []).append(team_name)
-                for numeric_id, variants in group_map.items():  # noqa: B007
-                    canonical_name = self._choose_canonical_name(variants)
-                    for team_name in variants:
-                        info = d.team_rosters[team_name]
-                        if self._is_unchanged(info.path, info.sha1):
-                            skipped_files += 1
-                        else:
-                            processed_files += 1
-                            self._record_provenance(info.path, info.sha1)
-                    force_full = any(c.isalpha() for c in canonical_name)
-                    player_rows = self._upsert_team(
-                        self._derive_team_id(canonical_name),
-                        canonical_name,
-                        d.division,
-                        base_counts,
-                        force_full_name=force_full,
-                    )
-                    teams_ingested += 1
-                    players_ingested += player_rows
-            else:
-                grouped: dict[str, list[tuple[str, object]]] = {}
-                for team_name, info in d.team_rosters.items():
-                    numeric_id = self._extract_numeric_id_from_path(
-                        info.path
-                    ) or self._derive_team_id(team_name)
-                    grouped.setdefault(numeric_id, []).append((team_name, info))
-                for numeric_id, entries in grouped.items():  # noqa: B007
-                    canonical_name = self._choose_canonical_name([n for n, _ in entries])
-                    for name, info in entries:
-                        if self._is_unchanged(info.path, info.sha1):
-                            skipped_files += 1
-                        else:
-                            processed_files += 1
-                            self._record_provenance(info.path, info.sha1)
-                    player_rows = self._upsert_team(
-                        self._derive_team_id(canonical_name), canonical_name, d.division
-                    )
-                    teams_ingested += 1
-                    players_ingested += player_rows
+                except Exception:
+                    pass
+        # Team rosters (always attempt even if ranking table missing)
+        if not self._singular_mode:
+            base_counts: dict[str, int] = {}
+            group_map: dict[str, list[str]] = {}
+            for team_name, info in d.team_rosters.items():
+                numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(team_name)
+                group_map.setdefault(numeric_id, []).append(team_name)
+            for numeric_id, variants in group_map.items():  # noqa: B007
+                canonical_name = self._choose_canonical_name(variants)
+                for team_name in variants:
+                    info = d.team_rosters[team_name]
+                    if self._is_unchanged(info.path, info.sha1):
+                        skipped_files += 1
+                    else:
+                        processed_files += 1
+                        self._record_provenance(info.path, info.sha1)
+                force_full = any(c.isalpha() for c in canonical_name)
+                player_rows = self._upsert_team(
+                    self._derive_team_id(canonical_name),
+                    canonical_name,
+                    d.division,
+                    base_counts,
+                    force_full_name=force_full,
+                )
+                teams_ingested += 1
+                players_ingested += player_rows
+        else:
+            grouped: dict[str, list[tuple[str, object]]] = {}
+            for team_name, info in d.team_rosters.items():
+                numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(team_name)
+                grouped.setdefault(numeric_id, []).append((team_name, info))
+            for numeric_id, entries in grouped.items():  # noqa: B007
+                canonical_name = self._choose_canonical_name([n for n, _ in entries])
+                for name, info in entries:
+                    if self._is_unchanged(info.path, info.sha1):
+                        skipped_files += 1
+                    else:
+                        processed_files += 1
+                        self._record_provenance(info.path, info.sha1)
+                player_rows = self._upsert_team(
+                    self._derive_team_id(canonical_name), canonical_name, d.division
+                )
+                teams_ingested += 1
+                players_ingested += player_rows
         return (
             divisions_ingested,
             teams_ingested,

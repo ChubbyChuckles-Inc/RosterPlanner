@@ -38,6 +38,7 @@ __all__ = [
     "ThemeValidationError",
     "load_custom_theme",
     "CustomThemeError",
+    "export_theme_snapshot",
 ]
 
 
@@ -117,6 +118,65 @@ class ThemeService:
     # Accessors ---------------------------------------------------------
     def colors(self) -> Mapping[str, str]:
         return self._cached_map
+
+    # Snapshot / Export -------------------------------------------------
+    def snapshot(self) -> dict[str, object]:
+        """Return a structured snapshot of the current theme state.
+
+        The snapshot is intentionally deterministic (sorted keys) so that
+        successive exports can be diffed cleanly in version control or
+        design review tooling.
+
+        Returns
+        -------
+        dict[str, object]
+            A mapping with keys:
+              - variant: active variant string (may include overlay id)
+              - accent_base: current accent seed color
+              - color_count: number of color keys exported
+              - colors: ordered list of {'key','value'} pairs (preserves
+                         stable ordering for diff friendliness)
+              - missing_required: list of any missing REQUIRED_COLOR_KEYS
+              - metadata: auxiliary info (exported_at epoch seconds)
+        """
+        import time
+
+        colors_map = self._cached_map.copy()
+        # Provide stable ordering.
+        ordered = [
+            {"key": k, "value": colors_map[k]} for k in sorted(colors_map.keys())
+        ]
+        missing = validate_theme_keys(colors_map)
+        return {
+            "variant": self.manager.variant,
+            "accent_base": self.manager.accent_base,
+            "color_count": len(colors_map),
+            "colors": ordered,
+            "missing_required": missing,
+            "metadata": {"exported_at": time.time()},
+        }
+
+    def export_snapshot_to_file(self, path: str) -> str:
+        """Serialize current snapshot to JSON file.
+
+        Parameters
+        ----------
+        path : str
+            Destination filesystem path (will overwrite if exists).
+
+        Returns
+        -------
+        str
+            The path written (for chaining / logging convenience).
+        """
+        import json, os
+
+        snap = self.snapshot()
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(snap, f, indent=2, sort_keys=False)
+        return path
 
     # Mutations ---------------------------------------------------------
     def set_variant(self, variant: str) -> ThemeDiff:
@@ -474,3 +534,15 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
 
 def get_theme_service() -> ThemeService:
     return services.get_typed("theme_service", ThemeService)
+
+
+def export_theme_snapshot(path: str) -> str:
+    """Convenience function to export active ThemeService snapshot.
+
+    Looks up the registered ThemeService and writes a snapshot to the
+    requested path. Raises a RuntimeError if ThemeService is not registered.
+    """
+    svc = services.try_get("theme_service")
+    if not isinstance(svc, ThemeService):  # pragma: no cover - defensive
+        raise RuntimeError("ThemeService not registered")
+    return svc.export_snapshot_to_file(path)
