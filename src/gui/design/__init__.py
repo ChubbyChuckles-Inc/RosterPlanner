@@ -229,6 +229,14 @@ from .design_debt import (  # noqa: F401
     summarize_design_debt,
     clear_design_debt,
 )
+from .gradients import (  # noqa: F401
+    GradientStop,
+    GradientDef,
+    register_gradient,
+    get_gradient,
+    list_gradients,
+    clear_gradients,
+)
 
 __all__ = [
     "load_tokens",
@@ -407,4 +415,10 @@ __all__ = [
     "close_design_debt",
     "summarize_design_debt",
     "clear_design_debt",
+    "GradientStop",
+    "GradientDef",
+    "register_gradient",
+    "get_gradient",
+    "list_gradients",
+    "clear_gradients",
 ]
