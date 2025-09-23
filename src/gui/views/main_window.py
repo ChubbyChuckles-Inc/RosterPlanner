@@ -526,6 +526,12 @@ class MainWindow(QMainWindow):  # Dock-based
             theme_svc = None
         if not theme_svc:
             return
+        # Re-apply theme stylesheet immediately (ensures visible change)
+        try:
+            if hasattr(theme_svc, 'generate_qss'):
+                self._apply_theme_stylesheet(theme_svc.generate_qss())
+        except Exception:
+            pass
         # Walk child widgets breadth-first to limit recursion depth issues
         try:
             queue = [self]
