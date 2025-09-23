@@ -212,7 +212,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.9 Empty & error state components: replace plain labels with design templates (empty state registry) -- integrated into PlayerDetailView, DivisionTableView, ClubDetailView, HtmlSourceView; division empty state test added
 [~] 5.10.10 Skeleton loaders in Division Table & Team Detail while async data loads (remove instantaneous pop-in) -- component + basic integration added; pending shimmer animation & async hookup
 [x] 5.10.11 Toast / notification styling pass (stacking, color roles, motion) using notification guidelines -- toast host + manager, basic QSS; motion animations deferred
-[ ] 5.10.12 Update & capture visual regression snapshot baseline (gallery + key views) [T]
+[x] 5.10.12 Update & capture visual regression snapshot baseline (gallery + key views) [T]
 [ ] 5.10.13 Theme hot-reload propagation to already open views (complete 0.8 pending UI propagation)
 [ ] 5.10.14 Dock title bar token styling (active/inactive/hover states) + high contrast adjustments
 [ ] 5.10.15 Color blindness simulation toggle surfacing (View menu) with status indicator
