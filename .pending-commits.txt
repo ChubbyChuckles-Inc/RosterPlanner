@@ -76,4 +76,5 @@ feat(theme): add extended overlay theme variants (midnight, dim, ocean, forest, 
 feat(theme): contrast normalization for text.primary & text.muted (auto fallback) and available_variants API
 feat(theme): stylesheet application performance guard utility + unit test (Milestone 5.10.17) and roadmap update
 feat(plugin-style): add PluginStyleContractPanel with validator service & test (Milestone 5.10.18)
+docs(design): add visual integration guide and presence test (Milestone 5.10.19)
 
