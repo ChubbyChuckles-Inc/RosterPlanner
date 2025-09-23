@@ -12,10 +12,16 @@ Future Enhancements (2.4.x roadmap):
 """
 
 from __future__ import annotations
-from typing import List
+from typing import List, Tuple
 
 try:  # Optional PyQt6 (tests may skip if not installed)
-    from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLineEdit, QListWidget, QListWidgetItem
+    from PyQt6.QtWidgets import (
+        QDialog,
+        QVBoxLayout,
+        QLineEdit,
+        QListWidget,
+        QListWidgetItem,
+    )
     from PyQt6.QtCore import Qt
 except Exception:  # pragma: no cover
     QDialog = object  # type: ignore
@@ -26,7 +32,13 @@ __all__ = ["CommandPaletteDialog"]
 
 
 class CommandPaletteDialog(QDialog):  # type: ignore[misc]
-    """Simple palette UI listing commands matching user query."""
+    """Command palette with basic theming enhancements.
+
+    Enhancements for Milestone 5.10.51:
+    - Group headers (category separators derived from CommandEntry.category when available)
+    - Icon badge placeholder (using entry.icon if attribute exists)
+    - Highlight substrings matching the current query (case-insensitive) via <span data-role="hl"> wraps.
+    """
 
     def __init__(self, parent=None):  # pragma: no cover - UI wiring mostly
         super().__init__(parent)
@@ -55,12 +67,49 @@ class CommandPaletteDialog(QDialog):  # type: ignore[misc]
     def _refresh_list(self, query: str):  # pragma: no cover trivial
         self.list_widget.clear()
         entries: List[CommandEntry] = global_command_registry.search(query)
-        for entry in entries:
-            item = QListWidgetItem(f"{entry.title}    ({entry.command_id})")
-            item.setData(Qt.ItemDataRole.UserRole, entry.command_id)  # type: ignore[attr-defined]
-            self.list_widget.addItem(item)
-        if self.list_widget.count() > 0:
-            self.list_widget.setCurrentRow(0)
+        # Group by category attribute if present; fallback to 'Other'
+        grouped: List[Tuple[str, List[CommandEntry]]] = []
+        bucket = {}
+        for e in entries:
+            cat = getattr(e, "category", None) or "Other"
+            bucket.setdefault(cat, []).append(e)
+        for cat in sorted(bucket.keys()):
+            grouped.append((cat, bucket[cat]))
+        for cat, group_entries in grouped:
+            header = QListWidgetItem(cat.upper())
+            header.setFlags(Qt.ItemFlag.NoItemFlags)  # type: ignore[attr-defined]
+            header.setData(Qt.ItemDataRole.UserRole, None)  # type: ignore[attr-defined]
+            self.list_widget.addItem(header)
+            for entry in group_entries:
+                display = self._format_entry_text(entry, query)
+                item = QListWidgetItem(display)
+                item.setData(Qt.ItemDataRole.UserRole, entry.command_id)  # type: ignore[attr-defined]
+                icon_key = getattr(entry, "icon", None)
+                if icon_key:
+                    item.setData(Qt.ItemDataRole.DecorationRole, icon_key)  # type: ignore[attr-defined]
+                self.list_widget.addItem(item)
+        # Move selection to first selectable
+        for i in range(self.list_widget.count()):
+            it = self.list_widget.item(i)
+            if it.flags() & Qt.ItemFlag.ItemIsEnabled:  # type: ignore[attr-defined]
+                self.list_widget.setCurrentRow(i)
+                break
+
+    def _format_entry_text(self, entry: CommandEntry, query: str) -> str:
+        title = entry.title
+        if not query:
+            return f"{title}  ({entry.command_id})"
+        lower_title = title.lower()
+        lower_q = query.lower()
+        start = lower_title.find(lower_q)
+        if start == -1:
+            return f"{title}  ({entry.command_id})"
+        end = start + len(query)
+        # Wrap match with span for QSS styling (e.g., set color/bold)
+        highlighted = (
+            title[:start] + f"<span data-role='hl'>" + title[start:end] + "</span>" + title[end:]
+        )
+        return f"{highlighted}  ({entry.command_id})"
 
     def _activate_selected(self):  # pragma: no cover trivial
         item = self.list_widget.currentItem()
