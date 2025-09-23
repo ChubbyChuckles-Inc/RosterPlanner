@@ -18,7 +18,14 @@ import sys
 import time
 import os
 import tempfile
-import psutil  # type: ignore  # Optional runtime dep; if missing we degrade gracefully
+
+try:  # Optional runtime dep; degrade gracefully if missing
+    import psutil  # type: ignore
+
+    _PSUTIL_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - environment without psutil
+    psutil = None  # type: ignore
+    _PSUTIL_AVAILABLE = False
 from contextlib import contextmanager
 from typing import Optional, Any, Iterator, Callable
 

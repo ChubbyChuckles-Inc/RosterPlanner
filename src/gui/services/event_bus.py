@@ -37,6 +37,7 @@ __all__ = [
 class GUIEvent(str, Enum):  # Using str subclass for easier JSON/UI usage
     STARTUP_COMPLETE = "startup_complete"
     THEME_CHANGED = "theme_changed"
+    DPI_SCALE_CHANGED = "dpi_scale_changed"
     DATA_REFRESH_REQUESTED = "data_refresh_requested"
     DATA_REFRESH_COMPLETED = "data_refresh_completed"
     ERROR_OCCURRED = "error_occurred"

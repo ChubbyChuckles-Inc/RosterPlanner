@@ -282,7 +282,14 @@ def incremental_refresh(
     # Build provenance map: source_file -> hash (latest). We assume (source_file, hash) uniqueness, so we fetch latest by insertion order.
     prov_cur = conn.cursor()
     prov_cur.execute("SELECT source_file, hash FROM ingest_provenance")
-    provenance: Dict[str, str] = {row[0]: row[1] for row in prov_cur.fetchall()}
+    provenance: Dict[str, str] = {}
+    for full, h in prov_cur.fetchall():
+        provenance[full] = h
+        try:
+            base = Path(full).name
+            provenance.setdefault(base, h)
+        except Exception:  # pragma: no cover
+            pass
 
     # Helper classification
     def classify_file(path: Path) -> tuple[str, str]:
@@ -293,6 +300,8 @@ def incremental_refresh(
             return "error", ""
         file_hash = hash_html(content)
         prior = provenance.get(str(path))
+        if prior is None:
+            prior = provenance.get(path.name)
         if prior is None:
             return "new", file_hash
         if prior == file_hash:
@@ -325,6 +334,26 @@ def incremental_refresh(
                 result.new_files += 1
             elif status == "changed":
                 result.changed_files += 1
+
+    # Heuristic: If roster classified as 'new' but players table already populated, treat as unchanged.
+    # This handles scenarios where a prior full ingest populated players but failed to record roster provenance.
+    if any(status == "new" for (_p, status, _h) in roster_meta.values()):
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM player LIMIT 1")
+            has_players = cur.fetchone() is not None
+        except Exception:
+            has_players = False
+        if has_players:
+            adjusted_keys = []
+            for key, (p, status, h) in roster_meta.items():
+                if status == "new":
+                    # Update counts: transfer from new -> skipped_unchanged
+                    if result.new_files > 0:
+                        result.new_files -= 1
+                    result.skipped_unchanged += 1
+                    roster_meta[key] = (p, "unchanged", h)
+                    adjusted_keys.append(key)
 
     # Parse only ranking files that are new/changed
     for path_str, (ranking_path, status, file_hash) in ranking_meta.items():

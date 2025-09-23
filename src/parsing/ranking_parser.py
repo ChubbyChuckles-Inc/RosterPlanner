@@ -109,13 +109,24 @@ def parse_ranking_table(html: str, source_hint: str | None = None) -> Tuple[str,
             division_name = "Unknown_Division"
 
     teams: List[dict] = []
-    # Find Mannschaften navigation entry, then sibling UL
-    nav_links = [a for a in soup.find_all("a") if a.get_text(strip=True).lower() == "mannschaften"]
+    # Find Mannschaften/Teams navigation entry. Support two patterns:
+    #  (A) <li><a>Mannschaften</a><ul> ... </ul></li>
+    #  (B) <a>Teams</a><ul> ... </ul> (test fixture simplified structure)
+    nav_links = [
+        a for a in soup.find_all("a") if a.get_text(strip=True).lower() in {"mannschaften", "teams"}
+    ]
     for a in nav_links:
+        ul = None
         parent_li = a.find_parent("li")
-        if not parent_li:
-            continue
-        ul = parent_li.find("ul")
+        if parent_li:
+            ul = parent_li.find("ul")
+        # Fallback: anchor followed by sibling UL (pattern B)
+        if not ul:
+            next_sibling = a.find_next_sibling()
+            while next_sibling and getattr(next_sibling, "name", None) is None:
+                next_sibling = next_sibling.next_sibling
+            if getattr(next_sibling, "name", None) == "ul":
+                ul = next_sibling
         if not ul:
             continue
         for li in ul.find_all("li"):

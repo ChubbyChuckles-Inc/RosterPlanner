@@ -71,9 +71,10 @@ _CORE_IDS = [
     "stats",
     "planner",
     "logs",
-    "personalization",
-    "themeeditor",
 ]
+
+# Optional extended docks (registered when factory supplied)
+_OPTIONAL_CORE_IDS = ["personalization", "themeeditor"]
 
 
 def ensure_core_docks_registered(factories: Dict[str, Callable[[], QWidget]]) -> None:
@@ -85,8 +86,13 @@ def ensure_core_docks_registered(factories: Dict[str, Callable[[], QWidget]]) ->
     for dock_id in _CORE_IDS:
         if dock_id not in factories:
             raise KeyError(f"Missing factory for required core dock id: {dock_id}")
+    # Register required
     for dock_id in _CORE_IDS:
         if not is_registered(dock_id):
+            register_dock(dock_id, dock_id.capitalize(), factories[dock_id])
+    # Register optional if provided
+    for dock_id in _OPTIONAL_CORE_IDS:
+        if dock_id in factories and not is_registered(dock_id):
             register_dock(dock_id, dock_id.capitalize(), factories[dock_id])
 
 

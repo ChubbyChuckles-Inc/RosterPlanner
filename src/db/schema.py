@@ -48,11 +48,13 @@ DDL: list[str] = [
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
     """.strip(),
+    # Add supporting unique index for division natural key (name, season)
+    "CREATE UNIQUE INDEX IF NOT EXISTS ux_division_name_season ON division(name, season)",
     # Team
     """
     CREATE TABLE IF NOT EXISTS team (
         team_id INTEGER PRIMARY KEY,
-        club_id INTEGER NOT NULL REFERENCES club(club_id) ON DELETE CASCADE,
+        club_id INTEGER REFERENCES club(club_id) ON DELETE CASCADE, -- nullable until club ingestion implemented
         division_id INTEGER NOT NULL REFERENCES division(division_id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         code TEXT,

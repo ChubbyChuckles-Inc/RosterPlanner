@@ -1,5 +1,5 @@
 {
-  "last_scrape": "2025-09-22T22:46:08.173086",
+  "last_scrape": "2025-09-23T22:18:43.250335",
   "divisions": {
     "1. Bezirksliga Erwachsene": {
       "name": "1. Bezirksliga Erwachsene",
@@ -3338,18 +3338,6 @@
     },
     {
       "team_id": "128858",
-      "match_number": "115",
-      "date": "22.09.25",
-      "time": "19:30",
-      "weekday": "Mo",
-      "home_team": "Leutzscher Füchse 6",
-      "guest_team": "SV Eintracht Leipzig 3",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "128858",
       "match_number": "124",
       "date": "24.10.25",
       "time": "19:15",
@@ -3512,18 +3500,6 @@
       "weekday": "Do",
       "home_team": "TTV Marienb.-Leipzig 2",
       "guest_team": "SG C. Zetkin Leipzig 4",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "134216",
-      "match_number": "116",
-      "date": "23.09.25",
-      "time": "19:15",
-      "weekday": "Di",
-      "home_team": "SG Lindenthal/STOV",
-      "guest_team": "SV Rot. Süd Leipzig 6",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -3818,18 +3794,6 @@
     },
     {
       "team_id": "129171",
-      "match_number": "115",
-      "date": "22.09.25",
-      "time": "19:30",
-      "weekday": "Mo",
-      "home_team": "Leutzscher Füchse 6",
-      "guest_team": "SV Eintracht Leipzig 3",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "129171",
       "match_number": "155",
       "date": "01.10.25",
       "time": "19:15",
@@ -3920,18 +3884,6 @@
       "weekday": "Mi",
       "home_team": "SV Eintracht Leipzig 3",
       "guest_team": "TTC Taucha",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "130168",
-      "match_number": "116",
-      "date": "23.09.25",
-      "time": "19:15",
-      "weekday": "Di",
-      "home_team": "SG Lindenthal/STOV",
-      "guest_team": "SV Rot. Süd Leipzig 6",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -4382,18 +4334,6 @@
     },
     {
       "team_id": "128861",
-      "match_number": "217",
-      "date": "25.09.25",
-      "time": "19:15",
-      "weekday": "Do",
-      "home_team": "SV F. Leipzig-Thekla 2",
-      "guest_team": "Leutzscher Füchse 9",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "128861",
       "match_number": "224",
       "date": "24.10.25",
       "time": "19:30",
@@ -4411,6 +4351,18 @@
       "time": "19:15",
       "weekday": "Mi",
       "home_team": "SV Weißblau Allianz",
+      "guest_team": "Leutzscher Füchse 9",
+      "home_score": null,
+      "guest_score": null,
+      "status": "upcoming"
+    },
+    {
+      "team_id": "128861",
+      "match_number": "217",
+      "date": "12.11.25",
+      "time": "19:15",
+      "weekday": "Mi",
+      "home_team": "SV F. Leipzig-Thekla 2",
       "guest_team": "Leutzscher Füchse 9",
       "home_score": null,
       "guest_score": null,
@@ -4826,18 +4778,6 @@
     },
     {
       "team_id": "129186",
-      "match_number": "217",
-      "date": "25.09.25",
-      "time": "19:15",
-      "weekday": "Do",
-      "home_team": "SV F. Leipzig-Thekla 2",
-      "guest_team": "Leutzscher Füchse 9",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "129186",
       "match_number": "223",
       "date": "22.10.25",
       "time": "19:15",
@@ -4868,6 +4808,18 @@
       "weekday": "Mo",
       "home_team": "Leutzscher Füchse 7",
       "guest_team": "SV F. Leipzig-Thekla 2",
+      "home_score": null,
+      "guest_score": null,
+      "status": "upcoming"
+    },
+    {
+      "team_id": "129186",
+      "match_number": "217",
+      "date": "12.11.25",
+      "time": "19:15",
+      "weekday": "Mi",
+      "home_team": "SV F. Leipzig-Thekla 2",
+      "guest_team": "Leutzscher Füchse 9",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -5594,18 +5546,6 @@
     },
     {
       "team_id": "130010",
-      "match_number": "515",
-      "date": "23.09.25",
-      "time": "19:15",
-      "weekday": "Di",
-      "home_team": "TTV Liebertwolkwitz 3",
-      "guest_team": "SV Mölkau 04",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "130010",
       "match_number": "527",
       "date": "07.11.25",
       "time": "19:00",
@@ -5732,18 +5672,6 @@
       "weekday": "Mo",
       "home_team": "TSV Grünau Leipzig 2",
       "guest_team": "SG C. Zetkin Leipzig 7",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "129573",
-      "match_number": "515",
-      "date": "23.09.25",
-      "time": "19:15",
-      "weekday": "Di",
-      "home_team": "TTV Liebertwolkwitz 3",
-      "guest_team": "SV Mölkau 04",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -6171,7 +6099,7 @@
     {
       "team_id": "129958",
       "match_number": "1015",
-      "date": "23.09.25",
+      "date": "14.10.25",
       "time": "19:15",
       "weekday": "Di",
       "home_team": "SV Weißblau Allianz 4",
@@ -6339,7 +6267,7 @@
     {
       "team_id": "129717",
       "match_number": "1015",
-      "date": "23.09.25",
+      "date": "14.10.25",
       "time": "19:15",
       "weekday": "Di",
       "home_team": "SV Weißblau Allianz 4",
@@ -6608,18 +6536,6 @@
       "weekday": "Do",
       "home_team": "ATV Volkmarsdorf 2",
       "guest_team": "SSV Stötteritz 7",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "134392",
-      "match_number": "916",
-      "date": "23.09.25",
-      "time": "19:15",
-      "weekday": "Di",
-      "home_team": "SG Lindenthal/STOV 3",
-      "guest_team": "TTV Marienb.-Leipzig 4",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -7220,18 +7136,6 @@
       "weekday": "Mi",
       "home_team": "SV Weißblau Allianz 3",
       "guest_team": "SV Rot. Süd Leipzig 8",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "129910",
-      "match_number": "916",
-      "date": "23.09.25",
-      "time": "19:15",
-      "weekday": "Di",
-      "home_team": "SG Lindenthal/STOV 3",
-      "guest_team": "TTV Marienb.-Leipzig 4",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
