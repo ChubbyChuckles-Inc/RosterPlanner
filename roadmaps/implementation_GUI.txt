@@ -252,7 +252,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.49 Inline error badge component (severity color roles + scale transitions)
 [x] 5.10.50 Toast stack cascade animation (staggered spring) + accessibility pause on hover
 [x] 5.10.51 Command Palette theming: group headers, icon badges, fuzzy score highlight spans
-[ ] 5.10.52 In-app theme JSON editor (live validation, preview, rollback)
+[x] 5.10.52 In-app theme JSON editor (live validation, preview, rollback)
 [ ] 5.10.53 Theme snapshot export (tokens + derived palette metadata) [D]
 [ ] 5.10.54 Theme A/B experiment harness (random assignment + logging) [T]
 [ ] 5.10.55 Personalization preview panel (simulate user preference sets: reduced motion, high contrast)
