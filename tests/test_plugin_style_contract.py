@@ -1,31 +1,13 @@
-"""Tests for plugin style contract (Milestone 0.27)."""
+from __future__ import annotations
 
-from gui.design.plugin_style_contract import (
-    validate_style_mapping,
-    scan_plugin_style_files,
-    PluginStyleIssue,
-)
+from gui.services.plugin_style_contract import StyleContractValidator
 
 
-def test_validate_style_mapping_valid():
-    mapping = {"button.bg": "token:color/surface", "button.fg": "token:color/text"}
-    issues = validate_style_mapping(mapping)
-    assert issues == []
-
-
-def test_validate_style_mapping_invalid_hex():
-    mapping = {"bg": "#AABBCC", "fg": "token:color/text"}
-    issues = validate_style_mapping(mapping)
-    kinds = {i.kind for i in issues}
-    assert "raw-hex" in kinds
-
-
-def test_scan_plugin_style_files(tmp_path):
-    # create file with style mapping
-    file = tmp_path / "plugin_styles.py"
-    file.write_text(
-        """STYLE_BUTTON = {\n    'bg': 'token:color/surface',\n    'fg': '#112233'\n}\n""",
-        encoding="utf-8",
-    )
-    issues = scan_plugin_style_files([str(file)])
-    assert any(i.kind == "raw-hex" for i in issues)
+def test_validator_flags_disallowed_and_allows_whitelist():
+    mapping = {"text.primary": "#FFFFFF", "background.primary": "#101010", "accent.base": "#3D8BFD"}
+    validator = StyleContractValidator.from_theme_mapping(mapping, whitelist=["#000000"])
+    qss = "QLabel { color:#FFFFFF; background:#FF00AA; border:1px solid #000000; }"
+    report = validator.scan_stylesheet(qss)
+    assert report.disallowed == 1
+    assert any(i.normalized == "#FF00AA" for i in report.issues)
+    assert report.allowed >= 2

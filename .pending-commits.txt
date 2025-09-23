@@ -72,3 +72,8 @@ chore(roadmap): mark 5.10.8 complete post focus ring QSS audit
 test(view): add DivisionTableView empty state activation test and helper (Milestone 5.10.9)
 feat(empty-state): finalize 5.10.9 – add helper methods, division empty state test, mark roadmap complete
 
+feat(theme): add extended overlay theme variants (midnight, dim, ocean, forest, mono-high, slate-light, solarized-light, high-contrast-light) with contrast normalization & dynamic menu population
+feat(theme): contrast normalization for text.primary & text.muted (auto fallback) and available_variants API
+feat(theme): stylesheet application performance guard utility + unit test (Milestone 5.10.17) and roadmap update
+feat(plugin-style): add PluginStyleContractPanel with validator service & test (Milestone 5.10.18)
+

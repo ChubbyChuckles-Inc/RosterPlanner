@@ -341,6 +341,8 @@ class MainWindow(QMainWindow):  # Dock-based
             label = v.replace("-", " ").title()
             act = theme_menu.addAction(label)
             act.triggered.connect(lambda _checked=False, name=v: self._set_theme_variant(name))  # type: ignore[attr-defined]
+        act_plugin_style = view_menu.addAction("Plugin Style Contract Panel")
+        act_plugin_style.triggered.connect(self._open_plugin_style_panel)  # type: ignore[attr-defined]
         # Density toggle submenu (Milestone 5.10.7)
         density_menu = view_menu.addMenu("Density Mode")
         act_density_comfort = density_menu.addAction("Comfortable")
@@ -517,6 +519,19 @@ class MainWindow(QMainWindow):  # Dock-based
                 except Exception:
                     pass
             self._set_status(f"Theme set to {variant}")
+        except Exception:
+            pass
+
+    def _open_plugin_style_panel(self):  # pragma: no cover - GUI path
+        try:
+            from gui.views.plugin_style_contract_panel import PluginStyleContractPanel
+        except Exception:
+            return
+        panel = PluginStyleContractPanel()
+        try:
+            self._add_document(
+                panel, title="Plugin Style Contract", reuse_key="plugin_style_contract"
+            )
         except Exception:
             pass
 
