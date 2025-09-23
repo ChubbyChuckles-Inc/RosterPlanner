@@ -320,14 +320,27 @@ class MainWindow(QMainWindow):  # Dock-based
         if data_menu is None:
             data_menu = QMenu("&Data", self)
             mb.addMenu(data_menu)
-        # Theme toggle submenu (Milestone 5.10.6)
+        # Theme toggle submenu (Milestone 5.10.6 + extended variants)
         theme_menu = view_menu.addMenu("Theme Variant")
-        act_theme_default = theme_menu.addAction("Default")
-        act_theme_brand = theme_menu.addAction("Brand Neutral")
-        act_theme_high = theme_menu.addAction("High Contrast")
-        act_theme_default.triggered.connect(lambda: self._set_theme_variant("default"))  # type: ignore[attr-defined]
-        act_theme_brand.triggered.connect(lambda: self._set_theme_variant("brand-neutral"))  # type: ignore[attr-defined]
-        act_theme_high.triggered.connect(lambda: self._set_theme_variant("high-contrast"))  # type: ignore[attr-defined]
+        try:
+            from gui.services.service_locator import services as _services
+
+            theme_svc = _services.try_get("theme_service")
+            variants = (
+                theme_svc.available_variants()  # type: ignore[attr-defined]
+                if theme_svc and hasattr(theme_svc, "available_variants")
+                else ["default", "brand-neutral", "high-contrast"]
+            )
+        except Exception:  # pragma: no cover - defensive
+            variants = ["default", "brand-neutral", "high-contrast"]
+        # Keep ordering: core first, then others sorted alphabetically
+        core = ["default", "brand-neutral", "high-contrast"]
+        extra = [v for v in variants if v not in core]
+        ordered = core + sorted(extra)
+        for v in ordered:
+            label = v.replace("-", " ").title()
+            act = theme_menu.addAction(label)
+            act.triggered.connect(lambda _checked=False, name=v: self._set_theme_variant(name))  # type: ignore[attr-defined]
         # Density toggle submenu (Milestone 5.10.7)
         density_menu = view_menu.addMenu("Density Mode")
         act_density_comfort = density_menu.addAction("Comfortable")

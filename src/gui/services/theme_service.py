@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from typing import Mapping, Iterable, List
 
 from gui.design import ThemeManager, ThemeDiff, load_tokens
+from gui.design.contrast import contrast_ratio
+from gui.design.theme_presets import get_overlay, available_variant_overlays
 from .custom_theme import load_custom_theme, CustomThemeError
 from .event_bus import EventBus, GUIEvent
 from .service_locator import services
@@ -78,15 +80,20 @@ class ThemeService:
 
         cfg = _services.try_get("app_config")
         initial_variant = "default"
-        if cfg and getattr(cfg, "theme_variant", None) in (
-            "default",
-            "brand-neutral",
-            "high-contrast",
-        ):
-            initial_variant = getattr(cfg, "theme_variant")  # type: ignore
+        persisted = getattr(cfg, "theme_variant", None) if cfg else None
+        base_variants = {"default", "brand-neutral", "high-contrast"}
+        overlay_variants = set(available_variant_overlays())
+        if persisted in base_variants | overlay_variants:
+            initial_variant = persisted  # type: ignore
         mgr = ThemeManager(tokens, variant=initial_variant)  # type: ignore[arg-type]
         base_map = dict(mgr.active_map())
         cls._augment_semantics(base_map)
+        # Apply overlay if persisted is an overlay variant
+        if initial_variant in overlay_variants:
+            ov = get_overlay(initial_variant)
+            if ov:
+                base_map.update(ov)
+        cls._normalize_contrast(base_map)
         return cls(manager=mgr, _cached_map=base_map)
 
     # Accessors ---------------------------------------------------------
@@ -95,21 +102,32 @@ class ThemeService:
 
     # Mutations ---------------------------------------------------------
     def set_variant(self, variant: str) -> ThemeDiff:
+        overlay = get_overlay(variant)
+        if overlay:
+            # Treat as extension of default (or high-contrast? keep default for consistency)
+            old = self._cached_map.copy()
+            # Set underlying manager variant to the literal overlay string so that
+            # subsequent accent mutations retain chosen variant identity.
+            self.manager.set_variant(variant)  # will resolve base 'default' token map
+            self._cached_map = dict(self.manager.active_map())
+            self._augment_semantics(self._cached_map)
+            # Apply overlay
+            self._cached_map.update(overlay)
+            # Contrast normalization post overlay
+            self._normalize_contrast(self._cached_map)
+            diff = self._build_diff(old, self._cached_map)
+            if not diff.no_changes:
+                self._publish_theme_changed(diff)
+                self._persist_variant(variant)
+            return diff
+        # Base variant path
         diff = self.manager.set_variant(variant)  # type: ignore[arg-type]
         if not diff.no_changes:
             self._cached_map = dict(self.manager.active_map())
             self._augment_semantics(self._cached_map)
+            self._normalize_contrast(self._cached_map)
             self._publish_theme_changed(diff)
-            # Persist variant if config available
-            try:
-                cfg = services.try_get("app_config")
-                if cfg and getattr(cfg, "theme_variant", None) != variant:
-                    cfg.theme_variant = variant  # type: ignore[attr-defined]
-                    from gui.app.config_store import save_config
-
-                    save_config(cfg)
-            except Exception:  # pragma: no cover
-                pass
+            self._persist_variant(variant)
         return diff
 
     def set_accent(self, base_hex: str) -> ThemeDiff:
@@ -117,6 +135,7 @@ class ThemeService:
         if not diff.no_changes:
             self._cached_map = dict(self.manager.active_map())
             self._augment_semantics(self._cached_map)
+            self._normalize_contrast(self._cached_map)
             self._publish_theme_changed(diff)
         return diff
 
@@ -285,6 +304,63 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
             mapping["accent.hover"] = mapping["accent.primaryHover"]
         if "accent.primaryActive" in mapping and "accent.active" not in mapping:
             mapping["accent.active"] = mapping["accent.primaryActive"]
+        # Derive a default border.medium if accent present but border missing
+        if "border.medium" not in mapping and "accent.base" in mapping:
+            mapping["border.medium"] = mapping["accent.base"]
+
+    # Contrast normalization ------------------------------------------
+    @staticmethod
+    def _normalize_contrast(mapping: dict[str, str]) -> None:
+        bg = mapping.get("background.primary") or mapping.get("background.base")
+        if not bg:
+            return
+        txt = mapping.get("text.primary")
+        if txt:
+            if contrast_ratio(txt, bg) < 4.5:
+                # Choose fallback (white or black) with better contrast
+                white_c = contrast_ratio("#FFFFFF", bg)
+                black_c = contrast_ratio("#000000", bg)
+                mapping["text.primary"] = "#FFFFFF" if white_c >= black_c else "#000000"
+        muted = mapping.get("text.muted")
+        if muted:
+            if contrast_ratio(muted, bg) < 3.0:
+                # Slightly blend towards primary or pick fallback
+                primary = mapping.get("text.primary", "#FFFFFF")
+                if contrast_ratio(primary, bg) >= 4.5:
+                    mapping["text.muted"] = primary
+                else:
+                    mapping["text.muted"] = "#FFFFFF"
+
+    # Variant enumeration ---------------------------------------------
+    def available_variants(self) -> List[str]:
+        base = ["default", "brand-neutral", "high-contrast"]
+        overlays = available_variant_overlays()
+        return base + overlays
+
+    # Diff helper -----------------------------------------------------
+    @staticmethod
+    def _build_diff(old: Mapping[str, str], new: Mapping[str, str]) -> ThemeDiff:
+        changed: dict[str, tuple[str | None, str | None]] = {}
+        keys = set(old.keys()) | set(new.keys())
+        for k in keys:
+            ov = old.get(k)
+            nv = new.get(k)
+            if ov != nv:
+                changed[k] = (ov, nv)
+        return ThemeDiff(changed)
+
+    # Persistence helper ----------------------------------------------
+    @staticmethod
+    def _persist_variant(variant: str) -> None:
+        try:
+            cfg = services.try_get("app_config")
+            if cfg and getattr(cfg, "theme_variant", None) != variant:
+                cfg.theme_variant = variant  # type: ignore[attr-defined]
+                from gui.app.config_store import save_config
+
+                save_config(cfg)
+        except Exception:  # pragma: no cover
+            pass
 
     # Validation --------------------------------------------------------
     def validate(self, *, raise_on_error: bool = False) -> List[str]:
