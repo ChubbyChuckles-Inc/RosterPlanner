@@ -122,7 +122,9 @@ class DivisionTableView(QWidget):
         # Simple toggle single-column sort for now; shift-click multi-column support
         modifiers = QApplication.keyboardModifiers()
         shift = modifiers & Qt.KeyboardModifier.ShiftModifier
-        existing = next((i for i, (c, _) in enumerate(self._sort_priority) if c == logical_index), None)
+        existing = next(
+            (i for i, (c, _) in enumerate(self._sort_priority) if c == logical_index), None
+        )
         if not shift:
             # Replace priority with this column ascending (or toggle if already first)
             if existing == 0:

@@ -137,9 +137,9 @@ class EmptyStateWidget(QWidget):
     def __init__(
         self,
         template_key: str,
-    parent: Optional[QWidget] = None,
-    *_,
-    override: Optional[Callable[[EmptyStateTemplate], EmptyStateTemplate]] = None,
+        parent: Optional[QWidget] = None,
+        *_,
+        override: Optional[Callable[[EmptyStateTemplate], EmptyStateTemplate]] = None,
     ):
         super().__init__(parent)
         self._template_key = template_key

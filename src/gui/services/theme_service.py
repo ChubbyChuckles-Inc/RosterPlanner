@@ -177,7 +177,38 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  QLabel#emptyStateDesc {{ color:{txt_muted}; font-size:12px; }}
  QPushButton#emptyStateAction {{ background:{accent}; color:{bg}; border:1px solid {accent}; padding:4px 10px; }}
  QPushButton#emptyStateAction:hover {{ background:{c.get('accent.hover', accent)}; }}
+ /* Toast / Notification Widgets */
+ QWidget#toastHost {{ background:transparent; }}
+ QWidget#toastHost > QWidget#toastWidget {{
+     border:1px solid {border};
+     border-radius:6px;
+     background:{surf};
+     color:{txt};
+ }}
+ QPushButton#toastCloseButton {{
+     border:none; background:transparent; color:{txt_muted};
+ }}
+ QPushButton#toastCloseButton:hover {{ color:{txt}; }}
+ QLabel#toastMessage {{ color:{txt}; }}
+{self._notification_dynamic_qss(c)}
         """.strip()
+
+    # Dynamic segment for notification color roles -----------------
+    def _notification_dynamic_qss(self, colors: Mapping[str, str]) -> str:
+        try:
+            from gui.design.notifications import list_notification_styles
+        except Exception:
+            return ""  # pragma: no cover
+        lines: List[str] = []
+        for style in list_notification_styles():  # type: ignore
+            role = style.color_role
+            bg = colors.get(role, colors.get("accent.base", "#3D8BFD"))
+            # Use text.primary for readability; could derive contrast in future
+            fg = colors.get("text.primary", "#FFFFFF")
+            lines.append(
+                f"QWidget#toastHost > QWidget#toastWidget[style_id='{style.id}'] {{ background:{bg}; color:{fg}; }}"
+            )
+        return "\n" + "\n".join(lines) if lines else ""
 
     def apply_custom(self, mapping: Mapping[str, str]) -> int:
         """Overlay a flattened color mapping onto current theme.
