@@ -1,6 +1,6 @@
 import os
 import json
-from PyQt6.QtCore import QCoreApplication
+from PyQt6.QtCore import QCoreApplication, QTimer
 
 from gui.workers import LandingLoadWorker
 from config import settings
@@ -8,6 +8,7 @@ from config import settings
 
 def run_worker(worker_cls, *args, **kwargs):
     app = QCoreApplication.instance() or QCoreApplication([])
+    QTimer.singleShot(9000, app.quit)
     result_container = {}
     w = worker_cls(*args, **kwargs)
 

@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from PyQt6.QtCore import QCoreApplication
+from PyQt6.QtCore import QCoreApplication, QTimer
 
 from gui.services.service_locator import services
 from gui.workers import LandingLoadWorker
@@ -11,6 +11,8 @@ from config import settings
 
 def run_worker(worker_cls, *args, **kwargs):
     app = QCoreApplication.instance() or QCoreApplication([])
+    # Safety timeout to avoid indefinite hang if worker never finishes
+    QTimer.singleShot(9000, app.quit)
     result_container = {}
     w = worker_cls(*args, **kwargs)
 

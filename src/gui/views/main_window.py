@@ -611,21 +611,44 @@ class MainWindow(QMainWindow):  # Dock-based
         except Exception:
             pass
 
-    def _run_contrast_check(self):  # pragma: no cover - GUI path
+    def _run_contrast_check(self, *, headless: bool | None = None):  # pragma: no cover - GUI path
         """Run WCAG contrast validation across representative token pairs.
+
+        Parameters
+        ----------
+        headless: bool | None
+            Force headless (no modal dialogs) mode. If ``None`` a best-effort
+            auto detection is performed (e.g. when running under pytest or
+            without an active QApplication event loop exec()). In headless
+            mode the result is only printed to stdout for test assertions and
+            the status bar is updated, but no QMessageBox dialogs are shown.
 
         Presents a dialog summarizing failures (if any) and updates the status bar.
         """
+        # Auto-detect headless test context if not explicitly provided.
+        if headless is None:
+            try:
+                import os
+
+                headless = bool(
+                    os.environ.get("PYTEST_CURRENT_TEST")
+                    or os.environ.get("CI")
+                    or os.environ.get("GITHUB_ACTIONS")
+                )
+            except Exception:  # noqa: BLE001
+                headless = False
         try:
             from gui.design.loader import load_tokens
             from gui.design.contrast import validate_contrast
         except Exception:
-            QMessageBox.warning(self, "Contrast Check", "Contrast utilities unavailable.")
+            if not headless:
+                QMessageBox.warning(self, "Contrast Check", "Contrast utilities unavailable.")
             return
         try:
             tokens = load_tokens()
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Contrast Check", f"Could not load tokens: {exc}")
+            if not headless:
+                QMessageBox.critical(self, "Contrast Check", f"Could not load tokens: {exc}")
             return
         pairs = [
             ("text.primary", "background.primary", "Primary text on background"),
@@ -637,17 +660,30 @@ class MainWindow(QMainWindow):  # Dock-based
         try:
             failures = validate_contrast(tokens, pairs, threshold=4.5)
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Contrast Check", f"Validation failed: {exc}")
+            if not headless:
+                QMessageBox.critical(self, "Contrast Check", f"Validation failed: {exc}")
             return
-        if not failures:
-            QMessageBox.information(
-                self, "Contrast Check", "All checked pairs meet contrast requirements."
-            )
-        else:
-            summary = "\n".join(failures[:25])
-            QMessageBox.warning(
-                self, "Contrast Issues", f"{len(failures)} failures detected:\n\n{summary}"
-            )
+        # Emit a plain-text log to stdout for tests / headless validation
+        try:
+            report_lines: list[str] = ["[contrast-check] start"]
+            if failures:
+                for line in failures:
+                    report_lines.append(f"[contrast-failure] {line}")
+            else:
+                report_lines.append("[contrast-success] all pairs pass")
+            print("\n".join(report_lines))  # noqa: T201
+        except Exception:
+            pass
+        if not headless:
+            if not failures:
+                QMessageBox.information(
+                    self, "Contrast Check", "All checked pairs meet contrast requirements."
+                )
+            else:
+                summary = "\n".join(failures[:25])
+                QMessageBox.warning(
+                    self, "Contrast Issues", f"{len(failures)} failures detected:\n\n{summary}"
+                )
         self._set_status("Contrast check completed")
 
     def _apply_density_spacing(self):  # pragma: no cover - GUI relayout path
@@ -700,20 +736,22 @@ class MainWindow(QMainWindow):  # Dock-based
         Ensures we don't duplicate large blocks; replaces prior theme block if detected.
         """
         try:
-            current = self.styleSheet()
+            from gui.services.service_locator import (
+                services as _services,
+            )  # local import to avoid cycles
+
+            evt_bus = _services.try_get("event_bus")
         except Exception:
-            current = ""
-        marker = "/* THEME (auto-generated runtime) */"
-        if marker in current:
-            # Replace existing block: split and keep content before marker
-            pre = current.split(marker)[0].rstrip()
-            new_sheet = (pre + "\n" + qss) if pre else qss
-        else:
-            new_sheet = (current + "\n" + qss) if current else qss
+            evt_bus = None
         try:
-            self.setStyleSheet(new_sheet)
-        except Exception:
-            pass
+            from gui.utils.theme_style_perf import apply_theme_qss
+
+            apply_theme_qss(self, qss, event_bus=evt_bus)
+        except Exception:  # pragma: no cover - fallback to legacy inline path
+            try:
+                self.setStyleSheet(qss)
+            except Exception:
+                pass
 
     # Export helpers -------------------------------------------------
     def _current_document_widget(self):  # pragma: no cover - simple helper
