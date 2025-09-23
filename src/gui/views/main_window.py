@@ -75,6 +75,7 @@ import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
 from gui.services.export_service import ExportService, ExportFormat
 from gui.services.export_presets import ExportPresetsService
+from gui.components.theme_aware import ThemeAwareMixin, ThemeAwareProtocol
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -163,6 +164,15 @@ class MainWindow(QMainWindow):  # Dock-based
             theme_svc = _services.try_get("theme_service")
             if theme_svc and hasattr(theme_svc, "generate_qss"):
                 self._apply_theme_stylesheet(theme_svc.generate_qss())
+        except Exception:
+            pass
+        # Subscribe to theme changed event for propagation (Milestone 5.10.13)
+        try:  # pragma: no cover - subscription wiring
+            from gui.services.event_bus import GUIEvent
+            from gui.services.service_locator import services as _services
+            bus = _services.try_get("event_bus")
+            if bus:
+                bus.subscribe(GUIEvent.THEME_CHANGED, self._on_theme_changed_event)
         except Exception:
             pass
 
@@ -468,6 +478,50 @@ class MainWindow(QMainWindow):  # Dock-based
                 except Exception:
                     pass
             self._set_status(f"Theme set to {variant}")
+        except Exception:
+            pass
+
+    # Theme change propagation (Milestone 5.10.13) -------------------------------
+    def _on_theme_changed_event(self, evt):  # pragma: no cover - GUI propagation path
+        # evt.payload contains summary: {'changed': [...], 'count': N}
+        changed_keys = []
+        try:
+            payload = getattr(evt, 'payload', {}) or {}
+            changed_keys = list(payload.get('changed', []))
+        except Exception:
+            changed_keys = []
+        # Retrieve theme service once
+        try:
+            from gui.services.service_locator import services as _services
+            from gui.services.theme_service import ThemeService as _TS
+            theme_svc = _services.try_get('theme_service')
+        except Exception:
+            theme_svc = None
+        if not theme_svc:
+            return
+        # Walk child widgets breadth-first to limit recursion depth issues
+        try:
+            queue = [self]
+            visited = set()
+            while queue:
+                w = queue.pop(0)
+                if id(w) in visited:
+                    continue
+                visited.add(id(w))
+                # Invoke hook if widget is theme-aware
+                if isinstance(w, ThemeAwareMixin):
+                    try:
+                        w.on_theme_changed(theme_svc, changed_keys)  # type: ignore[arg-type]
+                    except Exception:
+                        pass
+                # Enqueue children
+                try:
+                    children = w.findChildren(QWidget)  # type: ignore
+                    for c in children:
+                        if id(c) not in visited:
+                            queue.append(c)
+                except Exception:
+                    pass
         except Exception:
             pass
 
