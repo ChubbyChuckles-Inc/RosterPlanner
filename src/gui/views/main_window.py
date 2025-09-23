@@ -1301,6 +1301,7 @@ class MainWindow(QMainWindow):  # Dock-based
             try:
                 from PyQt6.QtWidgets import QTreeView, QCheckBox
                 from PyQt6.QtCore import Qt
+
                 self.team_tree = QTreeView()  # type: ignore[attr-defined]
                 self.team_tree.setHeaderHidden(True)
                 self.team_tree.setObjectName("__auto_team_tree_fallback")

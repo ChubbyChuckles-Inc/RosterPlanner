@@ -196,7 +196,9 @@ class IngestionCoordinator:
             base_counts: dict[str, int] = {}
             group_map: dict[str, list[str]] = {}
             for team_name, info in d.team_rosters.items():
-                numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(team_name)
+                numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(
+                    team_name
+                )
                 group_map.setdefault(numeric_id, []).append(team_name)
             for numeric_id, variants in group_map.items():  # noqa: B007
                 canonical_name = self._choose_canonical_name(variants)
@@ -220,7 +222,9 @@ class IngestionCoordinator:
         else:
             grouped: dict[str, list[tuple[str, object]]] = {}
             for team_name, info in d.team_rosters.items():
-                numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(team_name)
+                numeric_id = self._extract_numeric_id_from_path(info.path) or self._derive_team_id(
+                    team_name
+                )
                 grouped.setdefault(numeric_id, []).append((team_name, info))
             for numeric_id, entries in grouped.items():  # noqa: B007
                 canonical_name = self._choose_canonical_name([n for n, _ in entries])
