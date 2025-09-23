@@ -247,9 +247,9 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.44 Enhanced adaptive scrollbars (hover expand + smooth color fade) themed
 [x] 5.10.45 Animated skeleton shimmer effect (token gradient) + reduced-motion fallback
 [x] 5.10.46 Adaptive blur intensity for glass surfaces (background luminance sampling)
-[ ] 5.10.47 Neutral ramp delta-E calibration tool (ensure perceptual steps) [R]
-[ ] 5.10.48 Split-view divider grab-handle styling + hover/active affordances
-[ ] 5.10.49 Inline error badge component (severity color roles + scale transitions)
+[x] 5.10.47 Neutral ramp delta-E calibration tool (ensure perceptual steps) [R]
+[x] 5.10.48 Split-view divider grab-handle styling + hover/active affordances
+[x] 5.10.49 Inline error badge component (severity color roles + scale transitions)
 [ ] 5.10.50 Toast stack cascade animation (staggered spring) + accessibility pause on hover
 [ ] 5.10.51 Command Palette theming: group headers, icon badges, fuzzy score highlight spans
 [ ] 5.10.52 In-app theme JSON editor (live validation, preview, rollback)

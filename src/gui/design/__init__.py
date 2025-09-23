@@ -237,6 +237,11 @@ from .gradients import (  # noqa: F401
     list_gradients,
     clear_gradients,
 )
+from .neutral_ramp_delta_e import (  # noqa: F401
+    validate_neutral_ramp,
+    NeutralRampReport,
+    NeutralRampIssue,
+)
 
 __all__ = [
     "load_tokens",
@@ -307,6 +312,9 @@ __all__ = [
     "PluginStyleIssue",
     "build_print_stylesheet",
     "PrintStylesheetMeta",
+    "validate_neutral_ramp",
+    "NeutralRampReport",
+    "NeutralRampIssue",
     "compute_image_hash",
     "capture_bytes_placeholder",
     "SnapshotRecord",

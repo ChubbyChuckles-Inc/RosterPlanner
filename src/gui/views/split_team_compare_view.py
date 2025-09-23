@@ -45,7 +45,7 @@ class SplitTeamCompareView(QWidget):
         self.header_label = QLabel("Team Comparison")
         self.header_label.setObjectName("compareHeaderLabel")
         layout.addWidget(self.header_label)
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter = _StyledSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(self.splitter, 1)
 
         # Instantiate empty child views
@@ -113,4 +113,41 @@ class SplitTeamCompareView(QWidget):
         return (
             self._left_team.name if self._left_team else None,
             self._right_team.name if self._right_team else None,
+        )
+
+
+class _StyledSplitter(QSplitter):  # pragma: no cover - visual behavior
+    """QSplitter with custom handle styling + hover/active affordances.
+
+    Uses a narrow grab bar with a centered pill indicator. Hover widens the
+    interactive target slightly; pressed state increases contrast.
+    """
+
+    def __init__(self, orientation: Qt.Orientation, parent=None):
+        super().__init__(orientation, parent)
+        self.setObjectName("compareSplitter")
+        # Apply one-off QSS (could be moved to theme aggregation later)
+        self.setStyleSheet(
+            """
+            QSplitter#compareSplitter::handle { 
+                background: rgba(255,255,255,0.04); 
+                width: 7px; 
+                margin: 0; 
+            }
+            QSplitter#compareSplitter::handle:hover { 
+                background: rgba(255,255,255,0.08); 
+                width: 9px;
+            }
+            QSplitter#compareSplitter::handle:pressed { 
+                background: rgba(255,255,255,0.14);
+            }
+            /* Pill indicator */
+            QSplitter#compareSplitter::handle:horizontal { 
+                image: none; 
+            }
+            QSplitter#compareSplitter::handle:horizontal:!hover { 
+                border-left: 1px solid rgba(255,255,255,0.07);
+                border-right: 1px solid rgba(0,0,0,0.35);
+            }
+            """
         )
