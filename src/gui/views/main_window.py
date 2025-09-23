@@ -452,6 +452,13 @@ class MainWindow(QMainWindow):  # Dock-based
             lambda: self._set_theme_variant("high-contrast"),
             "Switch active theme to High Contrast variant",
         )
+        # Accessibility contrast check command (Milestone 5.10.16)
+        global_command_registry.register(
+            "accessibility.contrastCheck",
+            "Run Contrast Check",
+            self._run_contrast_check,
+            "Validate common foreground/background token pairs against WCAG threshold",
+        )
 
         # Manual DB rebuild command (Milestone 3.8)
         def _rebuild_db():
@@ -598,6 +605,45 @@ class MainWindow(QMainWindow):  # Dock-based
         except Exception:
             pass
 
+    def _run_contrast_check(self):  # pragma: no cover - GUI path
+        """Run WCAG contrast validation across representative token pairs.
+
+        Presents a dialog summarizing failures (if any) and updates the status bar.
+        """
+        try:
+            from gui.design.loader import load_tokens
+            from gui.design.contrast import validate_contrast
+        except Exception:
+            QMessageBox.warning(self, "Contrast Check", "Contrast utilities unavailable.")
+            return
+        try:
+            tokens = load_tokens()
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Contrast Check", f"Could not load tokens: {exc}")
+            return
+        pairs = [
+            ("text.primary", "background.primary", "Primary text on background"),
+            ("text.muted", "background.primary", "Muted text on background"),
+            ("text.primary", "surface.card", "Primary text on card"),
+            ("accent.base", "background.primary", "Accent on background"),
+            ("text.primary", "accent.base", "Text on accent"),
+        ]
+        try:
+            failures = validate_contrast(tokens, pairs, threshold=4.5)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Contrast Check", f"Validation failed: {exc}")
+            return
+        if not failures:
+            QMessageBox.information(
+                self, "Contrast Check", "All checked pairs meet contrast requirements."
+            )
+        else:
+            summary = "\n".join(failures[:25])
+            QMessageBox.warning(
+                self, "Contrast Issues", f"{len(failures)} failures detected:\n\n{summary}"
+            )
+        self._set_status("Contrast check completed")
+
     def _apply_density_spacing(self):  # pragma: no cover - GUI relayout path
         """Apply active density spacing to key widgets.
 
@@ -642,26 +688,26 @@ class MainWindow(QMainWindow):  # Dock-based
                         except Exception:
                             pass
 
-            def _apply_theme_stylesheet(self, qss: str):  # pragma: no cover - GUI path
-                """Apply (merge) generated theme QSS with existing style sheet.
+    def _apply_theme_stylesheet(self, qss: str):  # pragma: no cover - GUI path
+        """Apply (merge) generated theme QSS with existing style sheet.
 
-                Ensures we don't duplicate large blocks; replaces prior theme block if detected.
-                """
-                try:
-                    current = self.styleSheet()
-                except Exception:
-                    current = ""
-                marker = "/* THEME (auto-generated runtime) */"
-                if marker in current:
-                    # Replace existing block: split and keep content before marker
-                    pre = current.split(marker)[0].rstrip()
-                    new_sheet = (pre + "\n" + qss) if pre else qss
-                else:
-                    new_sheet = (current + "\n" + qss) if current else qss
-                try:
-                    self.setStyleSheet(new_sheet)
-                except Exception:
-                    pass
+        Ensures we don't duplicate large blocks; replaces prior theme block if detected.
+        """
+        try:
+            current = self.styleSheet()
+        except Exception:
+            current = ""
+        marker = "/* THEME (auto-generated runtime) */"
+        if marker in current:
+            # Replace existing block: split and keep content before marker
+            pre = current.split(marker)[0].rstrip()
+            new_sheet = (pre + "\n" + qss) if pre else qss
+        else:
+            new_sheet = (current + "\n" + qss) if current else qss
+        try:
+            self.setStyleSheet(new_sheet)
+        except Exception:
+            pass
 
     # Export helpers -------------------------------------------------
     def _current_document_widget(self):  # pragma: no cover - simple helper
