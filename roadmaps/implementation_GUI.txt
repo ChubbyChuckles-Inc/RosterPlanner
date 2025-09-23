@@ -223,7 +223,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.20 ADR: Strategy for progressive visual enhancement vs baseline performance (trade-offs) [D]
 [x] 5.10.21 Gradient & tonal ramp tokens: multi-stop gradient registry + unit tests for token presence
 [x] 5.10.22 Glass surface variant (blur/translucent panels) with performance capability check & fallback
-[ ] 5.10.23 Dynamic accent extraction from club logo or division banner (color quantization spike) [R]
+[x] 5.10.23 Dynamic accent extraction from club logo or division banner (color quantization spike) [R]
 [ ] 5.10.24 Adaptive contrast auto-tuning when dynamic accent changes (recompute accessible on/surface pairs)
 [ ] 5.10.25 Variable font integration (weight/opsz axis) + smooth weight transition utility
 [ ] 5.10.26 Motion choreography map (component enter/exit/transform sequencing doc) [D]

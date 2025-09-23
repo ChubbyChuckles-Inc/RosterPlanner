@@ -157,7 +157,23 @@ class MainWindow(QMainWindow):  # Dock-based
 
             theme_svc = _services.try_get("theme_service")
             if theme_svc and hasattr(theme_svc, "generate_qss"):
-                self._apply_theme_stylesheet(theme_svc.generate_qss())
+                qss = theme_svc.generate_qss()
+                try:  # Append glass surface styling for availability panel
+                    from gui.design.glass_surface import build_glass_qss, get_glass_capability
+
+                    colors = theme_svc.colors() if hasattr(theme_svc, "colors") else {}
+                    bg = colors.get("surface.card", colors.get("background.secondary", "#202830"))
+                    border = colors.get("border.medium", colors.get("accent.base", "#3D8BFD"))
+                    qss += "\n" + build_glass_qss(
+                        "QWidget#AvailabilityPanel",
+                        bg,
+                        border,
+                        intensity=22,
+                        capability=get_glass_capability(),
+                    )
+                except Exception:
+                    pass
+                self._apply_theme_stylesheet(qss)
         except Exception:
             pass
         self._dock_style_helper = DockStyleHelper()
@@ -173,7 +189,23 @@ class MainWindow(QMainWindow):  # Dock-based
 
             theme_svc = _services.try_get("theme_service")
             if theme_svc and hasattr(theme_svc, "generate_qss"):
-                self._apply_theme_stylesheet(theme_svc.generate_qss())
+                qss = theme_svc.generate_qss()
+                try:
+                    from gui.design.glass_surface import build_glass_qss, get_glass_capability
+
+                    colors = theme_svc.colors() if hasattr(theme_svc, "colors") else {}
+                    bg = colors.get("surface.card", colors.get("background.secondary", "#202830"))
+                    border = colors.get("border.medium", colors.get("accent.base", "#3D8BFD"))
+                    qss += "\n" + build_glass_qss(
+                        "QWidget#AvailabilityPanel",
+                        bg,
+                        border,
+                        intensity=22,
+                        capability=get_glass_capability(),
+                    )
+                except Exception:
+                    pass
+                self._apply_theme_stylesheet(qss)
         except Exception:
             pass
         # Subscribe to theme changed event for propagation (Milestone 5.10.13)
@@ -515,7 +547,25 @@ class MainWindow(QMainWindow):  # Dock-based
             svc.set_variant(variant)  # type: ignore[attr-defined]
             if hasattr(svc, "generate_qss"):
                 try:
-                    self._apply_theme_stylesheet(svc.generate_qss())
+                    qss = svc.generate_qss()
+                    try:
+                        from gui.design.glass_surface import build_glass_qss, get_glass_capability
+
+                        colors = svc.colors() if hasattr(svc, "colors") else {}
+                        bg = colors.get(
+                            "surface.card", colors.get("background.secondary", "#202830")
+                        )
+                        border = colors.get("border.medium", colors.get("accent.base", "#3D8BFD"))
+                        qss += "\n" + build_glass_qss(
+                            "QWidget#AvailabilityPanel",
+                            bg,
+                            border,
+                            intensity=22,
+                            capability=get_glass_capability(),
+                        )
+                    except Exception:
+                        pass
+                    self._apply_theme_stylesheet(qss)
                 except Exception:
                     pass
             self._set_status(f"Theme set to {variant}")
@@ -557,7 +607,23 @@ class MainWindow(QMainWindow):  # Dock-based
         # Re-apply theme stylesheet immediately (ensures visible change)
         try:
             if hasattr(theme_svc, "generate_qss"):
-                self._apply_theme_stylesheet(theme_svc.generate_qss())
+                qss = theme_svc.generate_qss()
+                try:
+                    from gui.design.glass_surface import build_glass_qss, get_glass_capability
+
+                    colors = theme_svc.colors() if hasattr(theme_svc, "colors") else {}
+                    bg = colors.get("surface.card", colors.get("background.secondary", "#202830"))
+                    border = colors.get("border.medium", colors.get("accent.base", "#3D8BFD"))
+                    qss += "\n" + build_glass_qss(
+                        "QWidget#AvailabilityPanel",
+                        bg,
+                        border,
+                        intensity=22,
+                        capability=get_glass_capability(),
+                    )
+                except Exception:
+                    pass
+                self._apply_theme_stylesheet(qss)
         except Exception:
             pass
         # Walk child widgets breadth-first to limit recursion depth issues
@@ -1018,6 +1084,7 @@ class MainWindow(QMainWindow):  # Dock-based
 
     def _build_availability_dock(self) -> QWidget:
         container = QWidget()
+        container.setObjectName("AvailabilityPanel")  # hook for glass surface styling
         layout = QVBoxLayout(container)
         layout.addWidget(QLabel("Player Availability"))
         self.table = AvailabilityTable()

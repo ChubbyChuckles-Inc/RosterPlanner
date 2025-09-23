@@ -80,4 +80,6 @@ docs(design): add visual integration guide and presence test (Milestone 5.10.19)
 docs(adr): add ADR-0002 progressive visual enhancement strategy (Milestone 5.10.20) with presence test
 feat(gradients): add gradient & tonal ramp registry with defaults and tests (Milestone 5.10.21)
 feat(glass): implement glass surface helper with capability detection & QSS builder, tests, mark 5.10.22 complete
+feat(glass): integrate glass surface styling into AvailabilityPanel with dynamic theme reapplication hooks
+feat(accent): add dynamic accent extraction (median-cut spike) with tests (Milestone 5.10.23)
 
