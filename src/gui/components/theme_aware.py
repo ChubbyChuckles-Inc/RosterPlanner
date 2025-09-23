@@ -23,6 +23,7 @@ Guidelines for Implementers
 - Avoid triggering layout thrashing; prefer direct property updates or
   stylesheet adjustments localized to the widget.
 """
+
 from __future__ import annotations
 from typing import List, Protocol, runtime_checkable
 
@@ -31,9 +32,11 @@ if False:  # pragma: no cover - type checking only
 
 __all__ = ["ThemeAwareMixin", "ThemeAwareProtocol"]
 
+
 @runtime_checkable
 class ThemeAwareProtocol(Protocol):  # pragma: no cover - structural protocol
     def on_theme_changed(self, theme: "ThemeService", changed_keys: List[str]) -> None: ...
+
 
 class ThemeAwareMixin:
     """Mixin providing a hook for theme updates.
@@ -41,5 +44,8 @@ class ThemeAwareMixin:
     Subclasses should override `on_theme_changed`.
     This base class only serves as an anchor for isinstance checks.
     """
-    def on_theme_changed(self, theme: "ThemeService", changed_keys: List[str]) -> None:  # pragma: no cover - override in subclass
+
+    def on_theme_changed(
+        self, theme: "ThemeService", changed_keys: List[str]
+    ) -> None:  # pragma: no cover - override in subclass
         pass

@@ -528,7 +528,7 @@ class MainWindow(QMainWindow):  # Dock-based
             return
         # Re-apply theme stylesheet immediately (ensures visible change)
         try:
-            if hasattr(theme_svc, 'generate_qss'):
+            if hasattr(theme_svc, "generate_qss"):
                 self._apply_theme_stylesheet(theme_svc.generate_qss())
         except Exception:
             pass

@@ -2,7 +2,12 @@
   "version": 1,
   "expanded_divisions": [
     "1 Bezirksliga Erwachsene",
-    "2 Bezirksliga Erwachsene"
+    "1 Stadtliga Gruppe 1",
+    "2 Bezirksliga Erwachsene",
+    "2 Stadtklasse Gruppe 1",
+    "2 Stadtklasse Gruppe 2",
+    "2 Stadtliga Gruppe 2",
+    "Stadtoberliga"
   ],
-  "last_selected_team_id": "80"
+  "last_selected_team_id": "97"
 }

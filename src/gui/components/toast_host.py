@@ -138,9 +138,7 @@ class NotificationManager:
         if style is None:  # pragma: no cover - defensive
             raise ValueError(f"Unknown notification style: {style_id}")
         timeout_ms = (
-            timeout_override_ms
-            if timeout_override_ms is not None
-            else style.default_timeout_ms
+            timeout_override_ms if timeout_override_ms is not None else style.default_timeout_ms
         )
         widget = self._build_toast_widget(style.id, message)
         notif_id = self._allocate_id()

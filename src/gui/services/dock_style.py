@@ -72,7 +72,7 @@ class DockStyleHelper:
         dock.setTitleBarWidget(title)
         # Active state property binding
         try:
-            title.setProperty('dockActive', dock.isActiveWindow())
+            title.setProperty("dockActive", dock.isActiveWindow())
         except Exception:
             pass
         # Install event filters for hover/active visual states
@@ -89,13 +89,13 @@ class DockStyleHelper:
             return False
         et = event.type()
         if et in (QEvent.Type.Enter, QEvent.Type.Leave):
-            obj.setProperty('dockHover', et == QEvent.Type.Enter)
+            obj.setProperty("dockHover", et == QEvent.Type.Enter)
             obj.style().unpolish(obj)
             obj.style().polish(obj)
         elif et == QEvent.Type.WindowActivate:
-            obj.setProperty('dockActive', True)
+            obj.setProperty("dockActive", True)
         elif et == QEvent.Type.WindowDeactivate:
-            obj.setProperty('dockActive', False)
+            obj.setProperty("dockActive", False)
         return False
 
     def apply_to_existing_docks(self, parent):  # pragma: no cover
