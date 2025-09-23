@@ -140,11 +140,29 @@ class MainWindow(QMainWindow):  # Dock-based
             DockStyleHelper().apply_to_existing_docks(self)
         except Exception:
             pass  # non-fatal styling failure
+        # Re-apply theme stylesheet after menu creation (ensures menubar picks styles)
+        try:
+            from gui.services.service_locator import services as _services
+
+            theme_svc = _services.try_get("theme_service")
+            if theme_svc and hasattr(theme_svc, "generate_qss"):
+                self._apply_theme_stylesheet(theme_svc.generate_qss())
+        except Exception:
+            pass
         self._dock_style_helper = DockStyleHelper()
         self._install_dock_event_hooks()
         # Install focus ring styling (Milestone 2.7)
         try:
             install_focus_ring(self)
+        except Exception:
+            pass
+        # Apply initial theme stylesheet if ThemeService available (Milestone 5.10.6 enhancement)
+        try:
+            from gui.services.service_locator import services as _services
+
+            theme_svc = _services.try_get("theme_service")
+            if theme_svc and hasattr(theme_svc, "generate_qss"):
+                self._apply_theme_stylesheet(theme_svc.generate_qss())
         except Exception:
             pass
 
@@ -444,6 +462,11 @@ class MainWindow(QMainWindow):  # Dock-based
             return
         try:
             svc.set_variant(variant)  # type: ignore[attr-defined]
+            if hasattr(svc, "generate_qss"):
+                try:
+                    self._apply_theme_stylesheet(svc.generate_qss())
+                except Exception:
+                    pass
             self._set_status(f"Theme set to {variant}")
         except Exception:
             pass
@@ -507,6 +530,27 @@ class MainWindow(QMainWindow):  # Dock-based
                                 tbl.setRowHeight(r, target_height)
                         except Exception:
                             pass
+
+            def _apply_theme_stylesheet(self, qss: str):  # pragma: no cover - GUI path
+                """Apply (merge) generated theme QSS with existing style sheet.
+
+                Ensures we don't duplicate large blocks; replaces prior theme block if detected.
+                """
+                try:
+                    current = self.styleSheet()
+                except Exception:
+                    current = ""
+                marker = "/* THEME (auto-generated runtime) */"
+                if marker in current:
+                    # Replace existing block: split and keep content before marker
+                    pre = current.split(marker)[0].rstrip()
+                    new_sheet = (pre + "\n" + qss) if pre else qss
+                else:
+                    new_sheet = (current + "\n" + qss) if current else qss
+                try:
+                    self.setStyleSheet(new_sheet)
+                except Exception:
+                    pass
 
     # Export helpers -------------------------------------------------
     def _current_document_widget(self):  # pragma: no cover - simple helper
@@ -692,7 +736,7 @@ class MainWindow(QMainWindow):  # Dock-based
         # Breadcrumb label
         self.breadcrumb_label = QLabel("")
         self.breadcrumb_label.setObjectName("breadcrumbLabel")
-        self.breadcrumb_label.setStyleSheet("color: #666; font-size: 11px;")
+        # Styling via global theme QSS
         layout.addWidget(self.breadcrumb_label)
 
         # Filter Chips (Milestone 4.3)

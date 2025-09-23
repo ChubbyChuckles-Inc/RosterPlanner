@@ -1,4 +1,7 @@
 feat: implement density mode switch (comfortable/compact) with persistence (Milestone 5.10.7)
+feat: apply runtime theme QSS on variant change (fix menu theme toggle not updating UI)
+feat: persist theme variant and expand QSS coverage (menus, tabs, lists, scrollbars)
+fix: add semantic color aliases & proper QSS application so theme switching updates UI
 feat(pipeline): deterministic primary club backfill ensuring all club overview teams persisted\n+\n+Rewrote Step 7d in run_full to always refetch primary club overview and generate both club_team_* and division-style team_roster_* files for every team listed. Added ordering fix in test stub so club overview HTML not shadowed by generic landing response. Added coverage test (test_pipeline_club_team_coverage) now passing.\n+
 feat(export): add ExportService and integrate CSV/JSON export actions (Milestone 5.6)
 
@@ -61,4 +64,11 @@ feat(iconography): add IconRegistry with SVG discovery, refresh icon integration
 feat(iconography): complete Milestone 5.10.4 with additional icons (save, folder-open), button integration, caching & color tint variant, tests, roadmap updated
 feat(motion): complete Milestone 5.10.5 adding animator helpers (dock show/hide, tab crossfade) using motion tokens, roadmap updated, tests added
 feat(theme): complete Milestone 5.10.6 adding theme variant toggle actions (default/brand-neutral/high-contrast), ThemeService bootstrap registration, test, roadmap updated
+feat(theme): unify focus ring styling via theme QSS (Milestone 5.10.8) and add test_focus_ring_qss
+feat(empty-state): introduce EmptyStateRegistry & EmptyStateWidget, integrate into PlayerDetailView, add tests, mark 5.10.9 partial
+feat(empty-state): extend integration to DivisionTableView (no rows case) and update roadmap 5.10.9 note
+feat(empty-state): integrate into ClubDetailView and HtmlSourceView, add templates/tests, update roadmap (5.10.9 progress)
+chore(roadmap): mark 5.10.8 complete post focus ring QSS audit
+test(view): add DivisionTableView empty state activation test and helper (Milestone 5.10.9)
+feat(empty-state): finalize 5.10.9 – add helper methods, division empty state test, mark roadmap complete
 

@@ -34,6 +34,7 @@ from gui.services.column_visibility_persistence import (
     ColumnVisibilityPersistenceService,
     ColumnVisibilityState,
 )
+from gui.components.skeleton_loader import SkeletonLoaderWidget
 
 
 class TeamDetailView(QWidget):
@@ -69,7 +70,7 @@ class TeamDetailView(QWidget):
         root = QVBoxLayout(self)
         self.title_label = QLabel("Team Detail")
         self.title_label.setObjectName("teamTitleLabel")
-        self.title_label.setStyleSheet("font-weight: 600; font-size: 14px;")
+        # Styling (color/size/weight) now handled by global theme QSS via object name
         root.addWidget(self.title_label)
 
         # Roster box
@@ -109,6 +110,10 @@ class TeamDetailView(QWidget):
         except Exception:
             pass
         root.addWidget(roster_box)
+        # Skeleton for roster (will hide once bundle set)
+        self.roster_skeleton = SkeletonLoaderWidget("table-row", rows=5)
+        self.roster_skeleton.start()
+        root.addWidget(self.roster_skeleton)
         # Enable cell tracking for hover tooltips
         try:
             self.roster_table.setMouseTracking(True)
@@ -152,6 +157,11 @@ class TeamDetailView(QWidget):
         self._populate_roster(bundle.players)
         self._populate_matches(bundle.match_dates)
         self._populate_summary(bundle.players)
+        # Stop skeleton once real data applied
+        try:
+            self.roster_skeleton.stop()
+        except Exception:
+            pass
 
     def _populate_roster(self, players: List[PlayerEntry]):
         self.roster_table.setRowCount(len(players))

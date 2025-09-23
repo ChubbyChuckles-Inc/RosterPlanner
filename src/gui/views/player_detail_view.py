@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 from gui.models import PlayerEntry, PlayerHistoryEntry
+from gui.components.empty_state import EmptyStateWidget
 from gui.viewmodels.player_detail_viewmodel import PlayerDetailViewModel
 
 
@@ -24,12 +25,13 @@ class PlayerDetailView(QWidget):
         super().__init__(parent)
         self.player = player
         self.viewmodel = PlayerDetailViewModel(player)
+        self._empty_state_active = False
         self._build_ui()
 
     def _build_ui(self):
         root = QVBoxLayout(self)
         self.title_label = QLabel(f"Player: {self.player.name}")
-        self.title_label.setStyleSheet("font-weight:600;font-size:14px;")
+        self.title_label.setObjectName("viewTitleLabel")  # styled via global QSS
         root.addWidget(self.title_label)
 
         hist_box = QGroupBox("History")
@@ -40,14 +42,23 @@ class PlayerDetailView(QWidget):
         hist_layout.addWidget(self.history_table)
         root.addWidget(hist_box)
 
-        self.summary_label = QLabel("No history data")
-        root.addWidget(self.summary_label)
+        # Empty state widget (replaces plain summary label)
+        self.empty_state = EmptyStateWidget("no_history")
+        self.empty_state.setObjectName("playerHistoryEmpty")
+        root.addWidget(self.empty_state)
+        self.empty_state.show()
         root.addStretch(1)
 
     def set_history(self, entries: List[PlayerHistoryEntry]):
         self.viewmodel.set_history(entries)
         self._populate_history(entries)
-        self.summary_label.setText(self.viewmodel.summary.as_text())
+        # Toggle empty state visibility: hide when we have history
+        if entries:
+            self.empty_state.hide()
+            self._empty_state_active = False
+        else:
+            self.empty_state.show()
+            self._empty_state_active = True
 
     def _populate_history(self, entries: List[PlayerHistoryEntry]):
         self.history_table.setRowCount(len(entries))
@@ -59,6 +70,10 @@ class PlayerDetailView(QWidget):
                 else ("+" if e.live_pz_delta > 0 else "") + str(e.live_pz_delta)
             )
             self.history_table.setItem(r, 1, QTableWidgetItem(delta_text))
+
+    # Testing helper -------------------------------------------------
+    def is_empty_state_active(self) -> bool:  # pragma: no cover - simple accessor
+        return self._empty_state_active
 
 
 __all__ = ["PlayerDetailView"]

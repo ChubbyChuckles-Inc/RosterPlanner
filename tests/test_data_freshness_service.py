@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from gui.services.data_freshness_service import DataFreshnessService, humanize_age
+from typing import Optional
 
 
-def _setup_tracking(tmp_path: Path, last_scrape: datetime | None):
+def _setup_tracking(tmp_path: Path, last_scrape: Optional[datetime]):
     payload = {"last_scrape": last_scrape.isoformat() if last_scrape else None, "divisions": {}}
     (tmp_path / "match_tracking.json").write_text(json.dumps(payload), encoding="utf-8")
 

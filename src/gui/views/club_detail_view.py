@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from gui.models import TeamEntry
+from gui.components.empty_state import EmptyStateWidget
 
 
 class ClubDetailView(QWidget):
@@ -43,12 +44,15 @@ class ClubDetailView(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         self.title_label = QLabel("Club Overview")
-        self.title_label.setStyleSheet("font-weight:600;font-size:14px")
+        self.title_label.setObjectName("viewTitleLabel")
         root.addWidget(self.title_label)
-
-        # Summary strip
-        self.meta_label = QLabel("No teams loaded")
+        # Summary / Empty state container
+        self.meta_label = QLabel("")
+        self.meta_label.setObjectName("clubMetaLabel")
         root.addWidget(self.meta_label)
+        self.empty_state = EmptyStateWidget("no_teams")
+        self.empty_state.hide()
+        root.addWidget(self.empty_state)
 
         # Division table
         div_box = QGroupBox("Divisions")
@@ -67,9 +71,11 @@ class ClubDetailView(QWidget):
 
     def _populate(self):
         if not self._teams:
-            self.meta_label.setText("No teams")
+            self.meta_label.setText("")
             self.div_table.setRowCount(0)
+            self.empty_state.show()
             return
+        self.empty_state.hide()
         # Aggregate by division
         by_div: Dict[str, List[TeamEntry]] = {}
         for t in self._teams:

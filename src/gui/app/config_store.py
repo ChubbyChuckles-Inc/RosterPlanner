@@ -64,6 +64,8 @@ class AppConfig:
     window_state_version: int = WINDOW_STATE_VERSION
     # Visual density mode (Milestone 5.10.7) persisted across sessions. Defaults to "comfortable".
     density_mode: str = "comfortable"
+    # Active theme variant (default | brand-neutral | high-contrast)
+    theme_variant: str = "default"
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -84,6 +86,7 @@ class AppConfig:
             data_dir_history=data.get("data_dir_history"),
             window_state_version=int(data.get("window_state_version", WINDOW_STATE_VERSION)),
             density_mode=str(data.get("density_mode", "comfortable")),
+            theme_variant=str(data.get("theme_variant", "default")),
         )
         return inst
 

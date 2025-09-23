@@ -15,6 +15,8 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QApplication,
 )
+from gui.components.empty_state import EmptyStateWidget
+from gui.components.skeleton_loader import SkeletonLoaderWidget
 
 from gui.viewmodels.division_table_viewmodel import DivisionTableViewModel, NormalizedDivisionRow
 from gui.services.multi_column_sort import MultiColumnSorter, SortKey
@@ -35,44 +37,16 @@ class DivisionTableView(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         self.title_label = QLabel("Division Table")
-        # Apply semantic typography role
-        try:
+        self.title_label.setObjectName("viewTitleLabel")
+        # Typography will be provided by global QSS / theme; attempt role font if available
+        try:  # pragma: no cover - optional enhancement
             from gui.design.typography_roles import TypographyRole, font_for_role
-            from gui.design.loader import load_tokens
 
             self.title_label.setFont(font_for_role(TypographyRole.TITLE))
-            color = load_tokens().color("text", "primary")
-            self.title_label.setStyleSheet(f"color:{color};")
-        except Exception:
-            self.title_label.setStyleSheet("font-weight:600;font-size:14px;")
-        root.addWidget(self.title_label)
-        self.table = QTableWidget(0, 9)
-        try:
-            from gui.design.loader import load_tokens
-
-            tokens = load_tokens()
-            bg = tokens.color("surface", "primary")
-            txt = tokens.color("text", "primary")
-            alt = tokens.color("surface", "secondary")
-            border = tokens.color("border", "medium")
-            radius = tokens.raw.get("radius", {}).get("sm", 4)
-            self.table.setStyleSheet(
-                "QTableWidget {"
-                f"background:{bg};"
-                f"color:{txt};"
-                f"gridline-color:{border};"
-                f"border:1px solid {border};"
-                f"border-radius:{radius}px;"
-                "}"
-                "QHeaderView::section {"
-                f"background:{alt};"
-                f"color:{txt};"
-                f"border:0px solid {border};"
-                "padding:4px 6px;"
-                "}"
-            )
         except Exception:
             pass
+        root.addWidget(self.title_label)
+        self.table = QTableWidget(0, 9)
         self.table.setHorizontalHeaderLabels(
             [
                 "Pos",
@@ -91,15 +65,27 @@ class DivisionTableView(QWidget):
         header.setStretchLastSection(True)
         header.sectionClicked.connect(self._on_header_clicked)  # type: ignore
         root.addWidget(self.table)
-        self.summary_label = QLabel("No teams")
-        root.addWidget(self.summary_label)
+        # Skeleton loader (shown while async load in future; manual control for now)
+        self.skeleton = SkeletonLoaderWidget("table-row", rows=4)
+        self.skeleton.start()
+        root.addWidget(self.skeleton)
+        self.empty_state = EmptyStateWidget("no_division_rows")
+        self.empty_state.setObjectName("divisionEmptyState")
+        root.addWidget(self.empty_state)
         root.addStretch(1)
 
     def set_rows(self, rows: List[DivisionStandingEntry]):
         self.viewmodel.set_rows(rows)
         normalized = self.viewmodel.rows()
         self._populate(normalized)
-        self.summary_label.setText(self.viewmodel.summary.as_text())
+        # Show/hide empty state depending on rows
+        if rows:
+            self.empty_state.hide()
+        else:
+            self.empty_state.show()
+        self._empty_state_active = not bool(rows)
+        # Stop skeleton once rows provided (even if empty -> show empty state)
+        self.skeleton.stop()
 
     def _populate(self, rows: List[NormalizedDivisionRow]):
         # Apply sort priority if any to the viewmodel rows (without mutating original ordering)
@@ -119,47 +105,37 @@ class DivisionTableView(QWidget):
             }
             sort_keys = [SortKey(index_to_key[idx], asc) for idx, asc in self._sort_priority]
             display_rows = MultiColumnSorter(display_rows).sort(sort_keys)
-
         self.table.setRowCount(len(display_rows))
-        for r, row in enumerate(display_rows):
-            e = row.entry
-            cells = [
-                str(e.position),
-                e.team_name,
-                str(e.matches_played),
-                str(e.wins),
-                str(e.draws),
-                str(e.losses),
-                row.differential_text or "",
-                str(e.points),
-                row.form or "",
-            ]
-            for c, text in enumerate(cells):
-                self.table.setItem(r, c, QTableWidgetItem(text))
+        for r, nr in enumerate(display_rows):
+            e = nr.entry
+            self.table.setItem(r, 0, QTableWidgetItem(str(e.position)))
+            self.table.setItem(r, 1, QTableWidgetItem(e.team_name))
+            self.table.setItem(r, 2, QTableWidgetItem(str(e.matches_played)))
+            self.table.setItem(r, 3, QTableWidgetItem(str(e.wins)))
+            self.table.setItem(r, 4, QTableWidgetItem(str(e.draws)))
+            self.table.setItem(r, 5, QTableWidgetItem(str(e.losses)))
+            self.table.setItem(r, 6, QTableWidgetItem(nr.differential_text or ""))
+            self.table.setItem(r, 7, QTableWidgetItem(str(e.points)))
+            self.table.setItem(r, 8, QTableWidgetItem(nr.form or ""))
 
-    # Sorting logic -------------------------------------------------
-    def _on_header_clicked(self, logical_index: int):  # pragma: no cover - GUI event
-        modifiers = QApplication.keyboardModifiers()  # type: ignore
-        shift = bool(modifiers & Qt.KeyboardModifier.ShiftModifier)
-        # Determine if column already in priority
-        existing = next(
-            (i for i, (col, _) in enumerate(self._sort_priority) if col == logical_index), None
-        )
+    def _on_header_clicked(self, logical_index: int):  # pragma: no cover - UI callback
+        # Simple toggle single-column sort for now; shift-click multi-column support
+        modifiers = QApplication.keyboardModifiers()
+        shift = modifiers & Qt.KeyboardModifier.ShiftModifier
+        existing = next((i for i, (c, _) in enumerate(self._sort_priority) if c == logical_index), None)
         if not shift:
-            # Reset priority to this column, toggle ascending if was sole column
-            if existing is not None and len(self._sort_priority) == 1:
+            # Replace priority with this column ascending (or toggle if already first)
+            if existing == 0:
                 col, asc = self._sort_priority[0]
-                self._sort_priority = [(col, not asc)]
+                self._sort_priority[0] = (col, not asc)
             else:
                 self._sort_priority = [(logical_index, True)]
         else:
-            # Shift-click adds or toggles that column while preserving earlier order
             if existing is None:
                 self._sort_priority.append((logical_index, True))
             else:
                 col, asc = self._sort_priority[existing]
                 self._sort_priority[existing] = (col, not asc)
-        # Re-populate with new ordering
         self._populate(self.viewmodel.rows())
 
     def apply_sort_priority(self, priority: List[Tuple[int, bool]]):
@@ -212,3 +188,7 @@ class DivisionTableView(QWidget):
                 }
             )
         return payload
+
+    # Testing helper -------------------------------------------------
+    def is_empty_state_active(self) -> bool:  # pragma: no cover - trivial accessor
+        return getattr(self, "_empty_state_active", False)

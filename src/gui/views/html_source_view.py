@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from gui.services.html_diff import HtmlSource, HtmlDiffService
+from gui.components.empty_state import EmptyStateWidget
 
 
 class HtmlSourceView(QWidget):
@@ -38,8 +39,11 @@ class HtmlSourceView(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         self.title_label = QLabel("HTML Source")
-        self.title_label.setStyleSheet("font-weight:600;font-size:14px")
+        self.title_label.setObjectName("viewTitleLabel")
         root.addWidget(self.title_label)
+        # Empty state (shown if no source loaded yet)
+        self.empty_state = EmptyStateWidget("no_html_source")
+        root.addWidget(self.empty_state)
         # Toggle row
         self.chk_clean = QCheckBox("Show cleaned HTML")
         self.chk_clean.stateChanged.connect(self._on_toggle_mode)  # type: ignore
@@ -49,30 +53,32 @@ class HtmlSourceView(QWidget):
         self.txt_source = QPlainTextEdit()
         self.txt_source.setReadOnly(True)
         self.txt_source.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        self.txt_source.setStyleSheet(
-            "font-family: Consolas, 'Courier New', monospace; font-size:12px"
-        )
+        self.txt_source.setObjectName("monospaceEditor")
         self.tabs.addTab(self.txt_source, "Source")
         # Diff tab
         self.txt_diff = QPlainTextEdit()
         self.txt_diff.setReadOnly(True)
         self.txt_diff.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        self.txt_diff.setStyleSheet(
-            "font-family: Consolas, 'Courier New', monospace; font-size:12px"
-        )
+        self.txt_diff.setObjectName("monospaceEditor")
         self.tabs.addTab(self.txt_diff, "Diff")
         root.addWidget(self.tabs)
         root.addStretch(1)
+        # Initially hide tabs until source provided
+        self.tabs.hide()
 
     # Data -----------------------------------------------------------
     def set_html_source(self, source: HtmlSource):
         self._source = source
         self.title_label.setText(f"HTML: {source.label}")
+        self.empty_state.hide()
+        self.tabs.show()
         self._apply_mode()
 
     # Mode handling -------------------------------------------------
     def _apply_mode(self):
         if not self._source:
+            self.tabs.hide()
+            self.empty_state.show()
             return
         raw_cur = self._source.current_text or ""
         raw_prev = self._source.previous_text
