@@ -229,6 +229,7 @@ class MainWindow(QMainWindow):  # Dock-based
             "availability": self._build_availability_dock,
             "detail": self._build_detail_dock,
             "stats": self._build_stats_dock,
+            "personalization": self._build_personalization_dock,
             "planner": self._build_planner_dock,
             "logs": self._build_logs_dock,
             "recent": self._build_recent_dock,
@@ -253,6 +254,7 @@ class MainWindow(QMainWindow):  # Dock-based
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, avail_dock)
         # Secondary docks created lazily on demand; proactively instantiate to apply elevation roles
         secondary_ids = ["detail", "stats", "planner", "logs", "recent"]
+    # Add personalization dock lazily (not auto-created to reduce visual noise)
         secondary_docks = []
         for did in secondary_ids:
             try:
@@ -1204,6 +1206,16 @@ class MainWindow(QMainWindow):  # Dock-based
         lay = QVBoxLayout(w)
         lay.addWidget(QLabel("Stats Dock Placeholder (future: KPIs, charts)"))
         return w
+
+    def _build_personalization_dock(self) -> QWidget:
+        try:
+            from gui.views.personalization_panel import PersonalizationPanel
+        except Exception:
+            box = QWidget()
+            lay = QVBoxLayout(box)
+            lay.addWidget(QLabel("Personalization unavailable"))
+            return box
+        return PersonalizationPanel()
 
     def _build_planner_dock(self) -> QWidget:
         w = QWidget()
