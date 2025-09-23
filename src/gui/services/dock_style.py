@@ -60,6 +60,7 @@ class DockStyleHelper:
         if not isinstance(dock, QDockWidget):  # type: ignore
             return
         title = QWidget()
+        title.setObjectName("DockTitleBar")
         lay = QHBoxLayout(title)
         lay.setContentsMargins(4, 2, 4, 2)
         grip = _GripWidget()
@@ -69,6 +70,33 @@ class DockStyleHelper:
         lay.addWidget(label)
         lay.addStretch(1)
         dock.setTitleBarWidget(title)
+        # Active state property binding
+        try:
+            title.setProperty('dockActive', dock.isActiveWindow())
+        except Exception:
+            pass
+        # Install event filters for hover/active visual states
+        try:
+            title.installEventFilter(self)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    # Event filter to update pseudo-state properties
+    def eventFilter(self, obj, event):  # pragma: no cover - GUI path
+        try:
+            from PyQt6.QtCore import QEvent
+        except Exception:  # pragma: no cover
+            return False
+        et = event.type()
+        if et in (QEvent.Type.Enter, QEvent.Type.Leave):
+            obj.setProperty('dockHover', et == QEvent.Type.Enter)
+            obj.style().unpolish(obj)
+            obj.style().polish(obj)
+        elif et == QEvent.Type.WindowActivate:
+            obj.setProperty('dockActive', True)
+        elif et == QEvent.Type.WindowDeactivate:
+            obj.setProperty('dockActive', False)
+        return False
 
     def apply_to_existing_docks(self, parent):  # pragma: no cover
         if not hasattr(parent, "findChildren"):

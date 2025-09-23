@@ -214,7 +214,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.11 Toast / notification styling pass (stacking, color roles, motion) using notification guidelines -- toast host + manager, basic QSS; motion animations deferred
 [x] 5.10.12 Update & capture visual regression snapshot baseline (gallery + key views) [T]
 [x] 5.10.13 Theme hot-reload propagation to already open views (complete 0.8 pending UI propagation)
-[ ] 5.10.14 Dock title bar token styling (active/inactive/hover states) + high contrast adjustments
+[x] 5.10.14 Dock title bar token styling (active/inactive/hover states) + high contrast adjustments
 [ ] 5.10.15 Color blindness simulation toggle surfacing (View menu) with status indicator
 [ ] 5.10.16 Accessibility contrast check command: run WCAG validator over current palette & log deltas
 [ ] 5.10.17 Performance guard: measure style (re)apply time; warn if >50ms (instrumentation hook) [T]

@@ -190,6 +190,26 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  }}
  QPushButton#toastCloseButton:hover {{ color:{txt}; }}
  QLabel#toastMessage {{ color:{txt}; }}
+ /* Dock Title Bar Styling (Milestone 5.10.14) */
+ QDockWidget > QWidget#DockTitleBar {{
+     background:{bg2};
+     border-bottom:1px solid {border};
+ }}
+ QDockWidget > QWidget#DockTitleBar QLabel#DockTitleLabel {{
+     color:{txt_muted}; font-weight:600; padding:0px 4px;
+ }}
+ QDockWidget > QWidget#DockTitleBar[dockHover='true'] QLabel#DockTitleLabel {{
+     color:{txt};
+ }}
+ QDockWidget > QWidget#DockTitleBar[dockActive='true'] {{
+     background:{surf};
+     border-bottom:2px solid {accent};
+ }}
+ QDockWidget > QWidget#DockTitleBar[dockActive='true'] QLabel#DockTitleLabel {{
+     color:{accent};
+ }}
+ /* High contrast variant adjustments */
+ /* Rely on presence of high-contrast token differences (e.g., border.medium) */
 {self._notification_dynamic_qss(c)}
         """.strip()
 
