@@ -67,6 +67,39 @@ def _normalize_slug(name: str) -> str:
     return s
 
 
+def _extract_club_and_team_from_title(html: str) -> Optional[Tuple[str, str]]:
+    """Extract (club_name, team_designation) from roster HTML <title>.
+
+    Expected pattern tail: ' - Team <Club Name>, <Team Designation>'
+    Returns None if pattern not found or malformed.
+    """
+    m = re.search(r" - Team ([^,<]+?),\s*([^<]+)</title>", html, re.IGNORECASE)
+    if not m:
+        # Fallback: parse via simpler split if direct regex fails
+        # Locate ' - Team ' then split on first comma
+        idx = html.lower().rfind(" - team ")
+        if idx == -1:
+            return None
+        after = html[idx + len(" - team "):]
+        # up to closing title or first '</title>'
+        end_idx = after.lower().find("</title>")
+        if end_idx != -1:
+            after = after[:end_idx]
+        parts = after.split(",", 1)
+        if len(parts) != 2:
+            return None
+        club = parts[0].strip()
+        team = parts[1].strip()
+        if club and team:
+            return club, team
+        return None
+    club = m.group(1).strip()
+    team = m.group(2).strip()
+    if club and team:
+        return club, team
+    return None
+
+
 @dataclass
 class _RosterIndexEntry:
     path: Path
@@ -277,8 +310,42 @@ def ingest_path(
             display_name = ranking_slug_map.get(slug)
             if not display_name:
                 display_name = re.sub(r"\s+", " ", slug.replace("_", " ").strip()).title()
-            team_db_id = _upsert_team(conn, div_id, display_name)
             roster_html = entry.path.read_text(encoding="utf-8", errors="ignore")
+            # Attempt title-based extraction for club + team designation
+            club_team = _extract_club_and_team_from_title(roster_html)
+            combined_name = display_name
+            original_ranking_name = display_name
+            if club_team:
+                club_name, team_designation = club_team
+                # Build combined formatted name
+                combined_name = f"{club_name} | {team_designation}"
+            # If combined differs, try to UPDATE existing ranking-named row to avoid duplicates
+            team_db_id: int
+            if combined_name != original_ranking_name:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT team_id FROM team WHERE division_id=? AND name=?",
+                    (div_id, original_ranking_name),
+                )
+                row = cur.fetchone()
+                if row:
+                    # Ensure no existing row already has combined_name
+                    cur.execute(
+                        "SELECT 1 FROM team WHERE division_id=? AND name=?",
+                        (div_id, combined_name),
+                    )
+                    if cur.fetchone() is None:
+                        cur.execute(
+                            "UPDATE team SET name=? WHERE team_id=?",
+                            (combined_name, row[0]),
+                        )
+                        team_db_id = int(row[0])
+                    else:
+                        team_db_id = _upsert_team(conn, div_id, combined_name)
+                else:
+                    team_db_id = _upsert_team(conn, div_id, combined_name)
+            else:
+                team_db_id = _upsert_team(conn, div_id, combined_name)
             roster_hash = hash_html(roster_html)
             existing = _provenance_exists(conn, str(entry.path), roster_hash)
             players = extract_players(roster_html, team_id=str(team_db_id))
