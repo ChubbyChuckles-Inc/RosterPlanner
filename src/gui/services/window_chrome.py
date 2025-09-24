@@ -87,6 +87,10 @@ class _ChromeContainer(QWidget):
         self.title_label = QLabel(window.windowTitle())
         self.title_label.setObjectName("chromeTitleLabel")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        try:
+            self.title_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        except Exception:
+            pass
         tb_layout.addWidget(self.title_label, 1)
 
         # Window control buttons
@@ -241,9 +245,7 @@ def try_enable_dialog_chrome(
     If anything fails, the function returns silently.
     """
     try:
-        # Only apply if dialog is top-level (no parent) to avoid nested styling confusion.
-        if dialog.parent() is not None:
-            return
+        # Allow parented dialogs too (common pattern) – still apply custom chrome.
         if dialog.windowFlags() & Qt.WindowType.FramelessWindowHint:
             return
         # Build chrome container similar to main window but simplified
