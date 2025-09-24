@@ -122,10 +122,18 @@ def build_glass_qss(
     if capability.effective():
         # Remove harsh black artifacts by using semi-transparent border derived
         # from supplied border_color alpha blended (simulate subtle frame).
+        # Derive a softer semi-transparent border to avoid harsh dark outline
+        try:
+            br = int(border_color[1:3], 16)
+            bg_ = int(border_color[3:5], 16)
+            bb = int(border_color[5:7], 16)
+            soft_border = f"rgba({br},{bg_},{bb},0.35)"
+        except Exception:
+            soft_border = border_color
         return (
             f"{widget_selector} {{\n"
             f"  background: rgba({int(background_color[1:3],16)},{int(background_color[3:5],16)},{int(background_color[5:7],16)},{intensity/100:.2f});\n"
-            f"  border:1px solid {border_color};\n"
+            f"  border:1px solid {soft_border};\n"
             f"  border-radius:8px;\n"
             f"  outline:0; /* prevent native focus border interfering */\n"
             f"  /* simulated glass via translucent fill (no blur) */\n"

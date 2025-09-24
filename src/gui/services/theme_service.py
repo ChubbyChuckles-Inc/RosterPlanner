@@ -263,8 +263,18 @@ QMenu {{ background: {bg2}; color:{txt}; }}
 QMenu::item:selected {{ background: {accent}; color: {bg}; }}
 QDockWidget::title {{ background: {surf}; color:{txt}; }}
 QLabel {{ color:{txt}; }}
-QTableWidget {{ background:{surf}; color:{txt}; gridline-color:{border}; }}
-QHeaderView::section {{ background:{bg2}; color:{txt}; }}
+ QTableWidget {{ background:{surf}; color:{txt}; gridline-color:{border}; }}
+ /* Stabilize header + vertical header (row numbers) visuals to avoid hover pop-in */
+ QHeaderView::section {{ background:{bg2}; color:{txt}; padding:4px 6px; border:1px solid {border}; }}
+ QTableCornerButton::section {{ background:{bg2}; border:1px solid {border}; }}
+ QTableWidget::item {{ border:none; }}
+ QTableWidget::item:selected {{ background:{accent}; color:{bg}; }}
+ QHeaderView::section:horizontal {{ border-top:none; }}
+ QHeaderView::section:vertical {{ border-left:none; }}
+ /* Hover keeps same background to prevent pop; accent reserved for active sort in future */
+ QHeaderView::section:hover {{ background:{bg2}; color:{txt}; }}
+ /* Row header (=vertical header) styling */
+ QTableView QHeaderView::section:vertical {{ background:{bg2}; color:{txt_muted}; }}
 QLineEdit, QPlainTextEdit {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
 QPushButton {{ background:{surf}; color:{txt}; border:1px solid {border}; padding:4px 8px; }}
 QPushButton:hover {{ background:{accent}; color:{bg}; }}
@@ -300,7 +310,8 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  QCalendarWidget#matchCalendar QToolButton:hover {{ background:{accent}; color:{bg}; }}
  QCalendarWidget#matchCalendar QTableView {{ background:{surf}; alternate-background-color:{bg2}; }}
  /* Glass surface subtle fix: remove dark border artifacts when nested */
- QWidget#AvailabilityPanel {{ border:1px solid {border}; }}
+ /* AvailabilityPanel border now handled by glass surface generator; keep minimal fallback when glass disabled */
+ QWidget#AvailabilityPanel[glassDisabled='true'] {{ border:1px solid {border}; }}
  /* View Titles & Breadcrumb */
  QLabel#viewTitleLabel, QLabel#teamTitleLabel {{ font-weight:600; font-size:14px; color:{txt}; }}
  QLabel#breadcrumbLabel {{ color:{txt_muted}; font-size:11px; }}
