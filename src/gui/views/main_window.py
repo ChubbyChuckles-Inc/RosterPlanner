@@ -86,6 +86,7 @@ from gui.services.export_presets import ExportPresetsService
 from gui.components.theme_aware import ThemeAwareMixin, ThemeAwareProtocol
 from gui.services.color_blind_mode import ColorBlindModeService
 from gui.services.service_locator import services
+from gui.components.status_bar import StatusBarWidget
 
 
 class MainWindow(QMainWindow):  # Dock-based
@@ -149,11 +150,18 @@ class MainWindow(QMainWindow):  # Dock-based
         self._register_docks()
         self._build_document_area()
         self._create_initial_docks()
-        # Skip auto-loading landing data when in test mode to avoid asynchronous
-        # thread scheduling races that can stall certain focused unit tests which
-        # only validate construction side-effects (e.g., custom chrome smoke test).
-        if os.environ.get("RP_TEST_MODE") == "1":  # lightweight fast-path for tests
+        # Install rich status bar (Milestone 5.10.59)
+        try:
+            self._status_bar_widget = StatusBarWidget()
+            # Use QMainWindow native statusBar container to host custom widget
+            sb = self.statusBar()  # type: ignore[attr-defined]
+            sb.addPermanentWidget(self._status_bar_widget, 1)  # type: ignore
+        except Exception:
+            self._status_bar_widget = None  # fallback
+        # Skip auto-loading landing data when in test mode to avoid asynchronous workers.
+        if os.getenv("RP_TEST_MODE") == "1":
             self.teams = []
+            self._set_status("Test Mode")
         else:
             self._load_landing()
         # Capture *default* pristine snapshot BEFORE applying any previously saved layout
@@ -1302,13 +1310,27 @@ class MainWindow(QMainWindow):  # Dock-based
 
     # Status helper --------------------------------------------------
     def _set_status(self, text: str):
-        if hasattr(self, "status_label"):
-            self.status_label.setText(text)
-        else:
+        # Primary message segment
+        if getattr(self, "_status_bar_widget", None) is not None:
+            try:
+                self._status_bar_widget.update_message(text)
+            except Exception:
+                pass
+        else:  # fallback
             try:
                 self.setWindowTitle(f"Roster Planner - {text}")
             except Exception:
                 pass
+        # Update freshness (best effort)
+        try:
+            from gui.services.data_freshness_service import DataFreshnessService
+
+            svc = DataFreshnessService(base_dir=self.data_dir)
+            summary = svc.current().human_summary()
+            if getattr(self, "_status_bar_widget", None) is not None:
+                self._status_bar_widget.update_freshness(summary)
+        except Exception:
+            pass
 
     # Scrape integration ------------------------------------------------
     def _trigger_full_scrape(self):  # pragma: no cover - GUI event
@@ -1511,6 +1533,14 @@ class MainWindow(QMainWindow):  # Dock-based
         except Exception:
             pass
         self._set_status(f"Loaded {len(teams)} teams{freshness_suffix}")
+        # Feed a trivial trend metric: roster sizes distribution tail as placeholder sparkline
+        try:
+            if getattr(self, "_status_bar_widget", None) is not None and teams:
+                # Use length of team name mod 8 as synthetic metric for now
+                vals = [len(t.display_name) % 8 for t in teams[-10:]]
+                self._status_bar_widget.update_trend(vals)
+        except Exception:
+            pass
 
     def _on_filter_chips_changed(self):  # pragma: no cover - GUI path
         proxy = getattr(self, "team_filter_proxy", None)
