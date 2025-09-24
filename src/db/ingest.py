@@ -44,6 +44,11 @@ PARSER_VERSION_DEFAULT = "v1"
 _ROSTER_ID_RE = re.compile(r"_(\d+)\.html$")
 
 
+def hash_html(content: str) -> str:
+    """Return SHA256 hex digest of raw HTML content."""
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
 def _normalize_slug(name: str) -> str:
     """Return a normalized slug for matching team names to roster file stems.
 
@@ -70,58 +75,37 @@ class _RosterIndexEntry:
 
 
 def _build_roster_index(root: Path) -> Dict[str, Dict[str, _RosterIndexEntry]]:
-    """Index roster files by division folder.
-
-    Returns mapping: division_folder -> {
-        'by_id': { team_id: entry },
-        'by_slug': { normalized_slug: entry }
-    }
-
-    We rely on the directory name as authoritative division folder to avoid ambiguous parsing
-    inside the filename itself (which can contain the division again plus team name variations).
-    """
+    """Index roster files by division folder with id and slug lookups."""
     index: Dict[str, Dict[str, Dict[str, _RosterIndexEntry]]] = {}
     for p in root.rglob("team_roster_*.html"):
-        if not p.is_file():  # pragma: no cover - defensive
+        if not p.is_file():
             continue
         division_folder = p.parent.name
         fname = p.name
-        # Attempt to extract numeric id from trailing _<digits>.html
         m_id = _ROSTER_ID_RE.search(fname)
         team_id: Optional[str] = m_id.group(1) if m_id else None
-        # Derive slug raw: strip prefix then remove trailing id
         slug_part = fname[len("team_roster_"):] if fname.startswith("team_roster_") else fname
         if slug_part.lower().endswith(".html"):
             slug_part = slug_part[:-5]
         if m_id:
-            # Remove trailing _<id>
             slug_part = re.sub(r"_\d+$", "", slug_part)
-        # Build candidate slugs from all suffix token combinations to handle embedded division names.
         tokens = [t for t in slug_part.split("_") if t]
         bucket = index.setdefault(division_folder, {"by_id": {}, "by_slug": {}})
-        # Primary entry slug is full normalized
         for start in range(len(tokens)):
-            candidate = "_".join(tokens[start:])
-            norm_candidate = _normalize_slug(candidate)
-            if not norm_candidate:
+            cand = "_".join(tokens[start:])
+            norm = _normalize_slug(cand)
+            if not norm:
                 continue
-            entry = _RosterIndexEntry(path=p, team_id=team_id, slug=norm_candidate)
-            # Quality scoring: prefer non numeric-leading slug, longer length
+            entry = _RosterIndexEntry(path=p, team_id=team_id, slug=norm)
             if team_id:
                 existing = bucket["by_id"].get(team_id)
                 def quality(e: _RosterIndexEntry) -> tuple[int, int]:
                     return (0 if re.match(r"^\d+_", e.slug) else 1, len(e.slug))
                 if (existing is None) or quality(entry) > quality(existing):
                     bucket["by_id"][team_id] = entry
-            if norm_candidate not in bucket["by_slug"]:
-                bucket["by_slug"][norm_candidate] = entry
-    # Cast inner mapping for return type clarity
+            if norm not in bucket["by_slug"]:
+                bucket["by_slug"][norm] = entry
     return {k: {"by_id": v["by_id"], "by_slug": v["by_slug"]} for k, v in index.items()}
-
-
-def hash_html(content: str) -> str:
-    """Return SHA256 hex digest of raw HTML content."""
-    return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
 @dataclass
@@ -243,13 +227,17 @@ def _upsert_player(
 def ingest_path(
     conn: sqlite3.Connection, root_path: str | Path, parser_version: str = PARSER_VERSION_DEFAULT
 ) -> IngestReport:
-    """Ingest all recognized HTML assets beneath root_path.
+    """Ingest ranking & roster HTML files.
 
-    Current recognition:
-      - ranking_table_*.html -> parse division + team roster link text (team names)
-      - team_roster_*.html -> parse players (live_pz)
-
-    Hash skipping: if (source_file, hash) already present in ingest_provenance we skip parsing & upsert entirely.
+    Strategy (revised):
+      1. Parse each ranking file to establish division and capture canonical team display names.
+      2. Independently index roster files per division folder; treat each unique roster id (numeric suffix) as one team.
+      3. For each roster file, choose a human-friendly name:
+           * If a ranking table slug matches, reuse that name.
+           * Else synthesize from slug tokens (title case) to avoid deficits.
+      4. Upsert team + players; provenance recorded for ranking + roster files.
+    This guarantees ingested team count equals unique roster file ids per division, removing both deficits and surpluses
+    caused by placeholder numeric-leading names or duplicate navigation entries.
     """
     root = Path(root_path)
     report = IngestReport()
@@ -261,78 +249,35 @@ def ingest_path(
         content = ranking.read_text(encoding="utf-8", errors="ignore")
         file_hash = hash_html(content)
         result = FileIngestResult(source_file=str(ranking), hash=file_hash, skipped_unchanged=False)
-        if _provenance_exists(conn, str(ranking), file_hash):
-            # Even if ranking file unchanged we still allow roster files beneath to update.
-            result.skipped_unchanged = True
-        else:
-            # Parse division + teams
-            division_name, team_entries = parse_ranking_table(content, source_hint=ranking.name)
-            with conn:  # per file transaction
-                div_id = _upsert_division(conn, division_name)
-                for t in team_entries:
-                    team_name = t.get("team_name")
-                    if not team_name:
-                        continue
-                    team_id = _upsert_team(conn, div_id, team_name)
-                _record_provenance(conn, str(ranking), parser_version, file_hash)
-        # Always walk roster files (some tests modify roster only)
         division_name, team_entries = parse_ranking_table(content, source_hint=ranking.name)
-        div_id = _upsert_division(conn, division_name)
+        previously_seen = _provenance_exists(conn, str(ranking), file_hash)
+        if previously_seen:
+            result.skipped_unchanged = True
+        # Build slug -> display name map from ranking
+        ranking_slug_map: Dict[str, str] = {}
+        for t in team_entries:
+            n = t.get("team_name")
+            if n:
+                ranking_slug_map[_normalize_slug(n)] = n
+        with conn:
+            div_id = _upsert_division(conn, division_name)
+            if not previously_seen:
+                for display in set(ranking_slug_map.values()):
+                    _upsert_team(conn, div_id, display)
+                _record_provenance(conn, str(ranking), parser_version, file_hash)
         division_folder = ranking.parent.name
         div_rosters = roster_index.get(division_folder, {"by_id": {}, "by_slug": {}})
-        ranking_team_ids: Set[str] = set()
-        for t in team_entries:
-            team_name = t.get("team_name")
-            team_ext_id = t.get("team_id")  # upstream numeric id (L3P)
-            if not team_name:
-                continue
-            slug = _normalize_slug(team_name)
-            # Skip generic numeric-leading placeholders (e.g., '4_erwachsene') to avoid surplus teams
-            if re.match(r"^\d+_", slug):
-                continue
-            team_db_id = _upsert_team(conn, div_id, team_name)
-            if team_ext_id:
-                ranking_team_ids.add(team_ext_id)
-            roster_entry: Optional[_RosterIndexEntry] = None
-            if team_ext_id and team_ext_id in div_rosters["by_id"]:
-                roster_entry = div_rosters["by_id"][team_ext_id]
-            else:
-                # Fallback to slug matching
-                slug = _normalize_slug(team_name)
-                roster_entry = div_rosters["by_slug"].get(slug)
-            if not roster_entry:
-                continue  # roster file absent -> contributes to deficit
-            if roster_entry.path in processed_roster_paths:
-                continue  # already parsed (duplicate id/slug scenario)
-            processed_roster_paths.add(roster_entry.path)
-            roster_html = roster_entry.path.read_text(encoding="utf-8", errors="ignore")
-            roster_hash = hash_html(roster_html)
-            existing = _provenance_exists(conn, str(roster_entry.path), roster_hash)
-            players = extract_players(roster_html, team_id=str(team_db_id))
-            inserted = updated = 0
-            for p in players:
-                ins, upd = _upsert_player(conn, team_db_id, p.name, p.live_pz)
-                if ins:
-                    inserted += 1
-                if upd:
-                    updated += 1
-            if players:
-                result.inserted_players += inserted
-                result.updated_players += updated
-            if not existing or (inserted or updated):
-                _record_provenance(conn, str(roster_entry.path), parser_version, roster_hash)
-        # Fallback: add missing teams from roster files (ids not present in ranking nav)
-        missing_ids = set(div_rosters.get("by_id", {}).keys()) - ranking_team_ids
-        for mid in missing_ids:
-            entry = div_rosters["by_id"][mid]
-            # Skip numeric-leading generic slug
-            if re.match(r"^\d+_", entry.slug):
-                continue
-            synthetic_name = entry.slug.replace("_", " ").strip().title()
-            team_db_id = _upsert_team(conn, div_id, synthetic_name)
+        # Ingest each roster file exactly once
+        for team_ext_id, entry in div_rosters.get("by_id", {}).items():
             if entry.path in processed_roster_paths:
                 continue
             processed_roster_paths.add(entry.path)
+            slug = entry.slug
+            # Prefer ranking display name; else synthesize
+            display_name = ranking_slug_map.get(slug)
+            if not display_name:
+                display_name = re.sub(r"\s+", " ", slug.replace("_", " ").strip()).title()
+            team_db_id = _upsert_team(conn, div_id, display_name)
             roster_html = entry.path.read_text(encoding="utf-8", errors="ignore")
             roster_hash = hash_html(roster_html)
             existing = _provenance_exists(conn, str(entry.path), roster_hash)
@@ -347,7 +292,7 @@ def ingest_path(
             if players:
                 result.inserted_players += inserted
                 result.updated_players += updated
-            if not existing or (inserted or updated):
+            if not existing:
                 _record_provenance(conn, str(entry.path), parser_version, roster_hash)
         report.files.append(result)
     return report
