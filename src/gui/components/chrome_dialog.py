@@ -24,6 +24,8 @@ from __future__ import annotations
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QPoint, QEvent, QRect, QObject, QSettings
+from PyQt6.QtGui import QMouseEvent, QCursor, QColor
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtWidgets import (
     QDialog,
     QWidget,
@@ -121,6 +123,11 @@ class ChromeDialog(QDialog):
     def __init__(self, parent=None, title: str = "", resize_margin: int = 6):
         super().__init__(parent, flags=Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setObjectName("ChromeDialog")
+        # Property selector for QSS (allows subclass objectNames to differ)
+        try:
+            self.setProperty("chromeDialog", True)
+        except Exception:
+            pass
         if title:
             self.setWindowTitle(title)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
@@ -167,6 +174,15 @@ class ChromeDialog(QDialog):
         # Track title changes
         try:
             self.windowTitleChanged.connect(self._title_label.setText)  # type: ignore
+        except Exception:
+            pass
+        # Drop shadow (visual elevation). Skip for some platforms if fails.
+        try:
+            shadow = QGraphicsDropShadowEffect(self)
+            shadow.setBlurRadius(28)
+            shadow.setOffset(0, 6)
+            shadow.setColor(QColor(0, 0, 0, 140))
+            self.setGraphicsEffect(shadow)
         except Exception:
             pass
         # Restore persisted geometry (identifier based on class name)
