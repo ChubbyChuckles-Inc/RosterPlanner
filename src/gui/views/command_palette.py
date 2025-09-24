@@ -27,6 +27,7 @@ except Exception:  # pragma: no cover
     QDialog = object  # type: ignore
 
 from gui.services.command_registry import global_command_registry, CommandEntry
+from gui.services.window_chrome import try_enable_dialog_chrome
 
 __all__ = ["CommandPaletteDialog"]
 
@@ -46,6 +47,10 @@ class CommandPaletteDialog(QDialog):  # type: ignore[misc]
             self.setWindowTitle("Command Palette")
         # Theming hooks -------------------------------------------------
         self.setObjectName("CommandPaletteDialog")
+        try:
+            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
+        except Exception:
+            pass
         # Use a consistent window flag style to avoid native title bar stylistic clash.
         try:
             from PyQt6.QtCore import Qt as _Qt  # type: ignore

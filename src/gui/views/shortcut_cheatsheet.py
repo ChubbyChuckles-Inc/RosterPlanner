@@ -23,6 +23,7 @@ except Exception:  # pragma: no cover
     QDialog = object  # type: ignore
 
 from gui.services.shortcut_registry import global_shortcut_registry, ShortcutEntry
+from gui.services.window_chrome import try_enable_dialog_chrome
 
 
 class ShortcutCheatSheetDialog(QDialog):  # pragma: no cover - GUI interaction test optional
@@ -31,6 +32,10 @@ class ShortcutCheatSheetDialog(QDialog):  # pragma: no cover - GUI interaction t
         self.setWindowTitle("Keyboard Shortcuts")
         self.resize(640, 480)
         self.setObjectName("ShortcutCheatSheetDialog")
+        try:
+            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
+        except Exception:
+            pass
         layout = QVBoxLayout(self)
         self.filter_edit = QLineEdit(self)
         self.filter_edit.setPlaceholderText("Filter shortcuts…")

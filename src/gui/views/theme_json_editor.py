@@ -46,6 +46,7 @@ import json
 from gui.services.service_locator import services
 from gui.services.theme_service import ThemeService, validate_theme_keys
 from gui.services.custom_theme import load_custom_theme, CustomThemeError
+from gui.services.window_chrome import try_enable_dialog_chrome
 
 __all__ = ["ThemeJsonEditorDialog"]
 
@@ -59,6 +60,10 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
             self.setWindowTitle("Theme JSON Editor")
         self.setModal(True)
         self.setObjectName("ThemeJsonEditorDialog")
+        try:
+            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
+        except Exception:
+            pass
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)  # type: ignore[attr-defined]
         self._theme: ThemeService = services.get_typed("theme_service", ThemeService)
         self._original = dict(self._theme.colors())  # deep copy snapshot

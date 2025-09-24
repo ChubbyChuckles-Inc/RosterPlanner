@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 from db.rebuild import rebuild_database_with_progress, RebuildProgressEvent, RebuildPhase
+from gui.services.window_chrome import try_enable_dialog_chrome
 
 
 class _RebuildWorker(QThread):  # pragma: no cover - Qt thread execution path
@@ -50,6 +51,10 @@ class RebuildProgressDialog(QDialog):  # pragma: no cover - GUI component
         super().__init__(parent)
         self.setWindowTitle("Rebuild Database")
         self.resize(420, 160)
+        try:
+            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
+        except Exception:
+            pass
         self._label = QLabel("Starting...")
         self._bar = QProgressBar()
         self._bar.setRange(0, 100)

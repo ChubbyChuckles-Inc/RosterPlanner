@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QToolButton,
     QSizeGrip,
+    QDialog,
 )
 from PyQt6.QtCore import Qt, QPoint, QRect
 from PyQt6.QtGui import QMouseEvent, QCursor, QPixmap
@@ -221,4 +222,78 @@ def try_enable_custom_chrome(window: QMainWindow, icon_path: str | None = None) 
         return
 
 
-__all__ = ["try_enable_custom_chrome"]
+def try_enable_dialog_chrome(dialog: QDialog, icon_path: str | None = None) -> None:  # pragma: no cover - UI integration
+    """Apply a lightweight chrome wrapper to a top-level QDialog.
+
+    For dialogs we reuse the same container but omit minimize/maximize controls
+    (only a close button) to keep interaction expectations aligned with native UI.
+    If anything fails, the function returns silently.
+    """
+    try:
+        # Only apply if dialog is top-level (no parent) to avoid nested styling confusion.
+        if dialog.parent() is not None:
+            return
+        if dialog.windowFlags() & Qt.WindowType.FramelessWindowHint:
+            return
+        # Build chrome container similar to main window but simplified
+        container = QWidget(dialog)
+        container.setObjectName("chromeRoot")
+        outer = QVBoxLayout(container)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        title_bar = QWidget()
+        title_bar.setObjectName("chromeTitleBar")
+        tb = QHBoxLayout(title_bar)
+        tb.setContentsMargins(10, 4, 6, 4)
+        tb.setSpacing(6)
+        # Icon
+        if icon_path:
+            try:
+                pm = QPixmap(icon_path)
+            except Exception:
+                pm = QPixmap()
+            if not pm.isNull():
+                icon_lbl = QLabel()
+                icon_lbl.setObjectName("chromeWindowIcon")
+                icon_lbl.setPixmap(pm.scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                tb.addWidget(icon_lbl, 0)
+        ttl = QLabel(dialog.windowTitle())
+        ttl.setObjectName("chromeTitleLabel")
+        tb.addWidget(ttl, 1)
+        btn_close = QToolButton()
+        btn_close.setText("✕")
+        btn_close.setObjectName("chromeBtnClose")
+        btn_close.clicked.connect(dialog.close)  # type: ignore
+        tb.addWidget(btn_close)
+        outer.addWidget(title_bar)
+        content_host = QWidget()
+        content_host.setObjectName("chromeContentHost")
+        ch_lay = QVBoxLayout(content_host)
+        ch_lay.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(content_host, 1)
+        # Move existing layout/content into host
+        if dialog.layout() is not None:
+            old_layout = dialog.layout()
+            # Reparent all widgets into content host preserving order
+            widgets = []
+            for i in range(old_layout.count()):
+                it = old_layout.itemAt(i)
+                w = it.widget()
+                if w:
+                    widgets.append(w)
+            # Remove old layout from dialog
+            QWidget().setLayout(old_layout)  # detach (Qt trick)
+            for w in widgets:
+                ch_lay.addWidget(w)
+        # Install container as sole layout
+        main_layout = QVBoxLayout(dialog)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(container)
+        dialog.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        dialog.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+    except Exception:
+        return
+
+
+__all__ = ["try_enable_custom_chrome", "try_enable_dialog_chrome"]
