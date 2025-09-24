@@ -212,13 +212,8 @@ class ThemeJsonEditorDialog(ChromeDialog):  # type: ignore[misc]
             if w:
                 w.deleteLater()
         colors = self._theme.colors()
-        keys = [
-            k
-            for k in sorted(colors.keys())
-            if any(
-                k.startswith(p) for p in ("background.", "surface.", "text.", "accent.", "border.")
-            )
-        ]
+        # Show every flattened color key now that fine‑grained assignment is supported
+        keys = sorted([k for k in colors.keys() if "." in k])
         for row, key in enumerate(keys):
             lbl = QLabel(key)
             btn = QPushButton(colors[key])

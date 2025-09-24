@@ -45,15 +45,12 @@ __all__ = [
 
 
 REQUIRED_COLOR_KEYS: tuple[str, ...] = (
-    # Core surface/text roles (subset; extendable later)
+    # Core surface/text roles (kept intentionally small so user can experiment freely)
     "background.primary",
     "background.secondary",
     "surface.card",
     "text.primary",
-    "text.muted",
     "accent.base",
-    "accent.hover",
-    "accent.active",
 )
 
 
@@ -450,13 +447,8 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
         old = self._cached_map.copy()
         changed = 0
         for k, v in mapping.items():
-            if (
-                k.startswith("background.")
-                or k.startswith("surface.")
-                or k.startswith("text.")
-                or k.startswith("accent.")
-                or k.startswith("border.")
-            ):
+            # Accept any flattened color semantic (group.role) where value looks like a hex string
+            if "." in k and isinstance(v, str) and v.startswith("#") and len(v) >= 4:
                 if old.get(k) != v:
                     self._cached_map[k] = v
                     changed += 1
@@ -473,6 +465,12 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
                 cb = services.try_get("color_blind_mode")
                 if cb and getattr(cb, "mode", None):
                     apply_color_vision_filter_if_active(self._cached_map, cb.mode)
+            except Exception:
+                pass
+            # Re-augment + normalize after arbitrary custom injection so derived keys stay in sync
+            try:
+                self._augment_semantics(self._cached_map)
+                self._normalize_contrast(self._cached_map)
             except Exception:
                 pass
             self._publish_theme_changed(diff)
@@ -590,6 +588,8 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
         This bridges design-token-level keys (base/elevated) to semantic
         roles (primary/secondary) without mutating original token names.
         """
+        from gui.design.contrast import contrast_ratio as _cr  # local import for lazy usage
+
         # Background
         if "background.base" in mapping and "background.primary" not in mapping:
             mapping["background.primary"] = mapping["background.base"]
@@ -608,6 +608,54 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
         # Derive a default border.medium if accent present but border missing
         if "border.medium" not in mapping and "accent.base" in mapping:
             mapping["border.medium"] = mapping["accent.base"]
+        # Derive focus border (slightly brighter than accent or fallback to border.medium)
+        if "border.focus" not in mapping:
+            base = mapping.get("accent.base") or mapping.get("border.medium")
+            if base:
+                try:
+                    # Simple lighten by mixing with white
+                    r = int(base[1:3], 16)
+                    g = int(base[3:5], 16)
+                    b = int(base[5:7], 16)
+                    lr = min(255, int(r + (255 - r) * 0.35))
+                    lg = min(255, int(g + (255 - g) * 0.35))
+                    lb = min(255, int(b + (255 - b) * 0.35))
+                    mapping["border.focus"] = f"#{lr:02X}{lg:02X}{lb:02X}"
+                except Exception:
+                    pass
+        # Accent foreground (text placed on accent surfaces) ensure contrast >= 4.5 else invert heuristic
+        if "accent.foreground" not in mapping and "accent.base" in mapping:
+            accent = mapping["accent.base"]
+            bg_candidates = ["#FFFFFF", "#000000", mapping.get("text.primary", "#FFFFFF")]
+            chosen = "#FFFFFF"
+            best = 0.0
+            for cand in bg_candidates:
+                try:
+                    cr = _cr(cand, accent)
+                    if cr > best:
+                        best = cr
+                        chosen = cand
+                except Exception:
+                    continue
+            mapping["accent.foreground"] = chosen
+        # Provide text.muted if missing
+        if "text.muted" not in mapping and "text.primary" in mapping:
+            p = mapping["text.primary"]
+            try:
+                r = int(p[1:3], 16)
+                g = int(p[3:5], 16)
+                b = int(p[5:7], 16)
+                # Blend towards background for a subtle muted tone
+                bg = mapping.get("background.primary", "#202020")
+                br = int(bg[1:3], 16)
+                bg_ = int(bg[3:5], 16)
+                bb = int(bg[5:7], 16)
+                mr = int((r * 0.65) + (br * 0.35))
+                mg = int((g * 0.65) + (bg_ * 0.35))
+                mb = int((b * 0.65) + (bb * 0.35))
+                mapping["text.muted"] = f"#{mr:02X}{mg:02X}{mb:02X}"
+            except Exception:
+                pass
 
     # Contrast normalization ------------------------------------------
     @staticmethod
