@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
     QSizeGrip,
 )
 from PyQt6.QtCore import Qt, QPoint, QRect
-from PyQt6.QtGui import QMouseEvent, QCursor
+from PyQt6.QtGui import QMouseEvent, QCursor, QPixmap
 
 _ACTIVE_ROLE = "--active"  # suffix for state classes (future theming hook)
 
@@ -45,7 +45,7 @@ class _ChromeContainer(QWidget):
 
     FRAME_WIDTH = 6
 
-    def __init__(self, window: QMainWindow):
+    def __init__(self, window: QMainWindow, icon_path: str | None = None):
         super().__init__(window)
         self._window = window
         self._drag_pos: QPoint | None = None
@@ -63,6 +63,19 @@ class _ChromeContainer(QWidget):
         tb_layout.setContentsMargins(10, 4, 6, 4)
         tb_layout.setSpacing(6)
 
+        # Optional window icon
+        if icon_path:
+            try:
+                pm = QPixmap(icon_path)
+            except Exception:
+                pm = QPixmap()
+        else:
+            pm = QPixmap()
+        if not pm.isNull():
+            self.icon_label = QLabel()
+            self.icon_label.setObjectName("chromeWindowIcon")
+            self.icon_label.setPixmap(pm.scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            tb_layout.addWidget(self.icon_label, 0)
         self.title_label = QLabel(window.windowTitle())
         self.title_label.setObjectName("chromeTitleLabel")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
@@ -181,7 +194,7 @@ class _ChromeContainer(QWidget):
         return (w - fw <= pt.x() <= w) and (h - fw <= pt.y() <= h)
 
 
-def try_enable_custom_chrome(window: QMainWindow) -> None:  # pragma: no cover - UI integration
+def try_enable_custom_chrome(window: QMainWindow, icon_path: str | None = None) -> None:  # pragma: no cover - UI integration
     """Enable custom chrome if feasible.
 
     Re-parents the existing central widget into a chrome container and sets
@@ -192,7 +205,7 @@ def try_enable_custom_chrome(window: QMainWindow) -> None:  # pragma: no cover -
             return  # already applied
         # Capture current central widget
         current = window.centralWidget()
-        container = _ChromeContainer(window)
+        container = _ChromeContainer(window, icon_path=icon_path)
         window.setCentralWidget(container)
         if current is not None:
             current.setParent(container.content_host)

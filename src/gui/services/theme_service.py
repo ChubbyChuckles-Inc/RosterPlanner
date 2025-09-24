@@ -360,6 +360,15 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  /* View Titles & Breadcrumb */
  QLabel#viewTitleLabel, QLabel#teamTitleLabel {{ font-weight:600; font-size:14px; color:{txt}; }}
  QLabel#breadcrumbLabel {{ color:{txt_muted}; font-size:11px; }}
+ /* Custom Chrome Window Integration */
+ QWidget#chromeTitleBar {{ background:{bg2}; border-bottom:1px solid {border}; }}
+ QLabel#chromeTitleLabel {{ color:{txt}; font-weight:600; padding-left:4px; }}
+ QLabel#chromeWindowIcon {{ padding-left:6px; }}
+ QToolButton#chromeBtnClose {{ color:{txt}; border:none; background:transparent; }}
+ QToolButton#chromeBtnClose:hover {{ background:rgba(255,0,0,0.35); color:#FFFFFF; }}
+ QToolButton#chromeBtnMin, QToolButton#chromeBtnMax {{ color:{txt_muted}; border:none; background:transparent; }}
+ QToolButton#chromeBtnMin:hover, QToolButton#chromeBtnMax:hover {{ background:{accent}; color:{bg}; }}
+ QWidget#chromeContentHost {{ background:{surf}; }}
  /* Monospace editors */
  QPlainTextEdit#monospaceEditor {{ font-family: Consolas, 'Courier New', monospace; font-size:12px; }}
  /* Focus Ring Unification */

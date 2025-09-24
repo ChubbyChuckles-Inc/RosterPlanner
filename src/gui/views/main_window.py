@@ -100,12 +100,14 @@ class MainWindow(QMainWindow):  # Dock-based
         self.av_state = availability_store.load(self.availability_path)
         self.teams: List[TeamEntry] = []
         # ...existing code...
-        # Optional experimental custom window chrome (Milestone 5.10.57). Disabled by default.
-        if os.getenv("ENABLE_CUSTOM_CHROME") == "1":
-            try:
-                try_enable_custom_chrome(self)
-            except Exception:
-                pass
+        # Enable custom window chrome by default with app icon (Milestone 5.10.57 enhanced)
+        try:
+            icon_path = os.path.join(self.data_dir, "assets", "icons", "base", "table-tennis.png")
+            if not os.path.exists(icon_path):  # fallback to relative project root path
+                icon_path = os.path.join("assets", "icons", "base", "table-tennis.png")
+            try_enable_custom_chrome(self, icon_path)
+        except Exception:
+            pass
         self._layout_service = LayoutPersistenceService(base_dir=self.data_dir)
         # Navigation filter persistence (Milestone 4.3.1)
         self._nav_filter_service = NavigationFilterPersistenceService(base_dir=self.data_dir)
