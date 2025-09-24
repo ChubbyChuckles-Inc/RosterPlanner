@@ -264,7 +264,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.61 Reduced color / monochrome mode fallback styling toggle
 [x] 5.10.62 Print stylesheet parity test harness (layout + contrast assertions) [T]
 [x] 5.10.63 Shadow elevation visual regression testing (bitmap hash snapshots) [T]
-[ ] 5.10.64 Layout shift monitor (collect cumulative layout shift metric) [T]
+[x] 5.10.64 Layout shift monitor (collect cumulative layout shift metric) [T]
 [ ] 5.10.65 Accessibility focus order visual path map overlay [D]
 [ ] 5.10.66 Modal backdrop auto-darken & subtle zoom animation (reduced-motion fallback)
 [ ] 5.10.67 Animated progress indicators (determinate + indeterminate variants) token-driven
