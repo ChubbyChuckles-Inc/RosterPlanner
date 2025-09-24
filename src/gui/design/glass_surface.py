@@ -141,6 +141,7 @@ def build_glass_qss(
             f"  outline:0; /* prevent native focus border interfering */\n"
             f"  /* simulated glass via translucent fill (no blur) */\n"
             f"}}\n"
+            f"QDockWidget[floating='true'] {widget_selector} {{ border:1px solid rgba(0,0,0,0.0); }}\n"
             f"{widget_selector}::before {{ /* highlight overlay */\n"
             f"  content:'';\n"
             f"  position:absolute;\n"
@@ -155,6 +156,7 @@ def build_glass_qss(
         f"  background: {background_color};\n"
         f"  border:1px solid {border_color};\n"
         f"  border-radius:8px;\n"
+        f"  qproperty-glassDisabled: true;\n"
         f"  /* glass disabled: {capability.reason} */\n"
         f"}}"
     )

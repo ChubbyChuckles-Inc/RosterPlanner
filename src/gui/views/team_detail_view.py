@@ -110,8 +110,6 @@ class TeamDetailView(QWidget):
             hh.setVisible(True)
             vh.setVisible(True)
             # Minimal stylesheet nudge to ensure immediate paint
-            hh.setStyleSheet("QHeaderView::section{background:transparent;}")
-            vh.setStyleSheet("QHeaderView::section{background:transparent;}")
             # Force layout / repaint
             hh.resizeSections(hh.ResizeMode.ResizeToContents)
             vh.resizeSections(vh.ResizeMode.ResizeToContents)

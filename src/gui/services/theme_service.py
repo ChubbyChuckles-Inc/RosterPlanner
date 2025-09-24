@@ -268,6 +268,8 @@ QLabel {{ color:{txt}; }}
  QHeaderView::section {{ background:{bg2}; color:{txt}; padding:3px 6px; border:none; }}
  QTableCornerButton::section {{ background:{bg2}; border:none; }}
  QTableWidget::item:selected {{ background:{accent}; color:{bg}; }}
+ /* Ensure vertical header (row numbers) inherits same palette */
+ QTableView QHeaderView::section {{ background:{bg2}; color:{txt_muted}; }}
 QLineEdit, QPlainTextEdit {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
 QPushButton {{ background:{surf}; color:{txt}; border:1px solid {border}; padding:4px 8px; }}
 QPushButton:hover {{ background:{accent}; color:{bg}; }}
@@ -305,6 +307,8 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  /* Glass surface subtle fix: remove dark border artifacts when nested */
  /* AvailabilityPanel border now handled by glass surface generator; keep minimal fallback when glass disabled */
  QWidget#AvailabilityPanel[glassDisabled='true'] {{ border:1px solid {border}; }}
+ /* When docked widget is floating, suppress dark border override (Qt sets a frame). */
+ QDockWidget[floating="true"] QWidget#AvailabilityPanel {{ border:1px solid rgba(0,0,0,0); }}
  /* View Titles & Breadcrumb */
  QLabel#viewTitleLabel, QLabel#teamTitleLabel {{ font-weight:600; font-size:14px; color:{txt}; }}
  QLabel#breadcrumbLabel {{ color:{txt_muted}; font-size:11px; }}
