@@ -71,20 +71,28 @@ class IngestReport:
 
 def _provenance_exists(conn: sqlite3.Connection, source_file: str, file_hash: str) -> bool:
     cur = conn.cursor()
-    cur.execute(
-        "SELECT 1 FROM ingest_provenance WHERE source_file=? AND hash=?",
-        (source_file, file_hash),
-    )
-    return cur.fetchone() is not None
+    try:
+        cur.execute(
+            "SELECT 1 FROM ingest_provenance WHERE source_file=? AND hash=?",
+            (source_file, file_hash),
+        )
+        return cur.fetchone() is not None
+    except sqlite3.OperationalError:
+        # Table not yet created (earlier schema or migration missing) – treat as absent.
+        return False
 
 
 def _record_provenance(
     conn: sqlite3.Connection, source_file: str, parser_version: str, file_hash: str
 ) -> None:
-    conn.execute(
-        "INSERT OR IGNORE INTO ingest_provenance(source_file, parser_version, hash) VALUES (?,?,?)",
-        (source_file, parser_version, file_hash),
-    )
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO ingest_provenance(source_file, parser_version, hash) VALUES (?,?,?)",
+            (source_file, parser_version, file_hash),
+        )
+    except sqlite3.OperationalError:
+        # Gracefully ignore if table missing
+        pass
 
 
 def _touch_provenance(conn: sqlite3.Connection, source_file: str) -> None:

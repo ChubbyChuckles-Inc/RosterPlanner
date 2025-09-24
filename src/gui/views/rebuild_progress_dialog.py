@@ -75,7 +75,12 @@ class RebuildProgressDialog(ChromeDialog):  # pragma: no cover - GUI component
             self._close_btn.setEnabled(True)
 
     def _on_success(self, report):
-        self._label.setText(f"Rebuild complete: {len(report.ingested_files)} files")
+        # IngestReport exposes 'files' list; no 'ingested_files' attribute.
+        try:
+            total = len(getattr(report, "files", []))
+        except Exception:
+            total = 0
+        self._label.setText(f"Rebuild complete: {total} files")
         self._bar.setValue(100)
         self._close_btn.setEnabled(True)
 

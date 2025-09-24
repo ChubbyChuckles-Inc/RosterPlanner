@@ -155,6 +155,12 @@ class _MainWindowResizer(QObject):
         self._origin_pos: QPoint | None = None
 
     def eventFilter(self, _obj, ev):  # type: ignore
+        # Guard against C++ object deletion during shutdown
+        try:
+            if self._w is None or not self._w.isVisible():
+                return False
+        except RuntimeError:
+            return False
         if self._w.isMaximized():
             return False
         t = ev.type()

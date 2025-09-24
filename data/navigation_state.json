@@ -1,12 +1,9 @@
 {
   "version": 1,
   "expanded_divisions": [
-    "1 Bezirksliga Erwachsene",
     "1 Stadtliga Gruppe 1",
     "1 Stadtliga Jugend 15",
-    "1 Stadtliga Jugend 19 Vorrunde Gruppe 2",
-    "2 Bezirksliga Erwachsene",
-    "2 Stadtklasse Gruppe 1"
+    "1 Stadtliga Jugend 19 Vorrunde Gruppe 2"
   ],
-  "last_selected_team_id": "37"
+  "last_selected_team_id": "31"
 }

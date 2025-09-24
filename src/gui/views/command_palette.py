@@ -59,6 +59,18 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         self._refresh_list("")
         self.search_edit.setFocus()
 
+    # ------------------------------------------------------------------
+    def _on_text_changed(self, text: str):  # pragma: no cover - simple delegate
+        """Update list when the search text changes.
+
+        Separated to keep the signal connection explicit; was previously
+        missing which caused an AttributeError at runtime.
+        """
+        try:
+            self._refresh_list(text)
+        except Exception:
+            pass
+
     def _refresh_list(self, query: str):  # pragma: no cover trivial
         self.list_widget.clear()
         entries: List[CommandEntry] = global_command_registry.search(query)

@@ -53,6 +53,12 @@ class _FramelessResizer(QObject):
         self._origin_pos: Optional[QPoint] = None
 
     def eventFilter(self, _obj, ev):  # type: ignore
+        # Lifetime guard – during shutdown underlying C++ QWidget may already be gone
+        try:
+            if self._t is None or not self._t.isVisible():
+                return False
+        except RuntimeError:  # underlying C++ deleted
+            return False
         if ev.type() == QEvent.Type.MouseMove:
             pos = self._t.mapFromGlobal(QCursor.pos())
             if not self._pressed:
@@ -70,9 +76,15 @@ class _FramelessResizer(QObject):
                 elif t or b:
                     cursor = Qt.CursorShape.SizeVerCursor
                 if cursor:
-                    QCursor.setShape(cursor)
+                    try:
+                        self._t.setCursor(cursor)
+                    except Exception:
+                        pass
                 else:
-                    QCursor.setShape(Qt.CursorShape.ArrowCursor)
+                    try:
+                        self._t.unsetCursor()
+                    except Exception:
+                        pass
                 self._edges = (l, t, r, b)
             else:
                 if self._origin_geom and self._origin_pos:
@@ -181,6 +193,15 @@ class ChromeDialog(QDialog):
     def mouseReleaseEvent(self, e: QMouseEvent):  # type: ignore[override]
         self._drag_pos = None
         super().mouseReleaseEvent(e)
+
+    def closeEvent(self, e):  # type: ignore[override]
+        # Proactively detach resizer filter to avoid late events on shutdown
+        try:
+            if self._resizer:
+                self.removeEventFilter(self._resizer)
+        except Exception:
+            pass
+        super().closeEvent(e)
 
     # Helpers ------------------------------------------------------
     def _in_title_bar(self, pt: QPoint) -> bool:
