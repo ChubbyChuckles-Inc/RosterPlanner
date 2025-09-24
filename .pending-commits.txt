@@ -23,4 +23,5 @@ feat(layout): add LayoutReflowCoordinator service with debounce + tests (Milesto
 feat(theme): add ThemeWarmLoader service for accent palette prefetch (Milestone 5.10.69)
 
 feat(stats): implement StatsService, KPI registry, time-series builder, and LivePZ histogram service with tests (Milestone 6.1-6.3)
+feat(stats-ui): add StatsViewModel, StatsDockView, and integrate KPIs + time-series + histogram into stats dock (Milestone 6 UI integration)
 

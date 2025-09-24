@@ -1424,10 +1424,15 @@ class MainWindow(QMainWindow):  # Dock-based
         return w
 
     def _build_stats_dock(self) -> QWidget:
-        w = QWidget()
-        lay = QVBoxLayout(w)
-        lay.addWidget(QLabel("Stats Dock Placeholder (future: KPIs, charts)"))
-        return w
+        try:
+            from gui.views.stats_dock_view import StatsDockView
+
+            return StatsDockView()
+        except Exception:
+            w = QWidget()
+            lay = QVBoxLayout(w)
+            lay.addWidget(QLabel("Stats Dock (fallback – stats view failed to load)"))
+            return w
 
     def _build_personalization_dock(self) -> QWidget:
         try:
