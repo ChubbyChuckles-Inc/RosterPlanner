@@ -16,4 +16,5 @@ feat(modal): add modal backdrop with auto-darken + reduced-motion aware zoom (Mi
 fix(modal): align reduced motion state via src.* import fallback + register pyqtProperty for backdropOpacity; all modal backdrop tests green
 feat(progress): add determinate & indeterminate progress indicators (reduced-motion aware) with tests (Milestone 5.10.67)
 feat(layout): add LayoutReflowCoordinator service with debounce + tests (Milestone 5.10.68)
+feat(theme): add ThemeWarmLoader service for accent palette prefetch (Milestone 5.10.69)
 
