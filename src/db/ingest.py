@@ -106,8 +106,13 @@ def _build_roster_index(root: Path) -> Dict[str, Dict[str, _RosterIndexEntry]]:
             if not norm_candidate:
                 continue
             entry = _RosterIndexEntry(path=p, team_id=team_id, slug=norm_candidate)
-            if team_id and team_id not in bucket["by_id"]:
-                bucket["by_id"][team_id] = entry
+            # Quality scoring: prefer non numeric-leading slug, longer length
+            if team_id:
+                existing = bucket["by_id"].get(team_id)
+                def quality(e: _RosterIndexEntry) -> tuple[int, int]:
+                    return (0 if re.match(r"^\d+_", e.slug) else 1, len(e.slug))
+                if (existing is None) or quality(entry) > quality(existing):
+                    bucket["by_id"][team_id] = entry
             if norm_candidate not in bucket["by_slug"]:
                 bucket["by_slug"][norm_candidate] = entry
     # Cast inner mapping for return type clarity
@@ -275,12 +280,19 @@ def ingest_path(
         div_id = _upsert_division(conn, division_name)
         division_folder = ranking.parent.name
         div_rosters = roster_index.get(division_folder, {"by_id": {}, "by_slug": {}})
+        ranking_team_ids: Set[str] = set()
         for t in team_entries:
             team_name = t.get("team_name")
             team_ext_id = t.get("team_id")  # upstream numeric id (L3P)
             if not team_name:
                 continue
+            slug = _normalize_slug(team_name)
+            # Skip generic numeric-leading placeholders (e.g., '4_erwachsene') to avoid surplus teams
+            if re.match(r"^\d+_", slug):
+                continue
             team_db_id = _upsert_team(conn, div_id, team_name)
+            if team_ext_id:
+                ranking_team_ids.add(team_ext_id)
             roster_entry: Optional[_RosterIndexEntry] = None
             if team_ext_id and team_ext_id in div_rosters["by_id"]:
                 roster_entry = div_rosters["by_id"][team_ext_id]
@@ -309,6 +321,34 @@ def ingest_path(
                 result.updated_players += updated
             if not existing or (inserted or updated):
                 _record_provenance(conn, str(roster_entry.path), parser_version, roster_hash)
+        # Fallback: add missing teams from roster files (ids not present in ranking nav)
+        missing_ids = set(div_rosters.get("by_id", {}).keys()) - ranking_team_ids
+        for mid in missing_ids:
+            entry = div_rosters["by_id"][mid]
+            # Skip numeric-leading generic slug
+            if re.match(r"^\d+_", entry.slug):
+                continue
+            synthetic_name = entry.slug.replace("_", " ").strip().title()
+            team_db_id = _upsert_team(conn, div_id, synthetic_name)
+            if entry.path in processed_roster_paths:
+                continue
+            processed_roster_paths.add(entry.path)
+            roster_html = entry.path.read_text(encoding="utf-8", errors="ignore")
+            roster_hash = hash_html(roster_html)
+            existing = _provenance_exists(conn, str(entry.path), roster_hash)
+            players = extract_players(roster_html, team_id=str(team_db_id))
+            inserted = updated = 0
+            for p in players:
+                ins, upd = _upsert_player(conn, team_db_id, p.name, p.live_pz)
+                if ins:
+                    inserted += 1
+                if upd:
+                    updated += 1
+            if players:
+                result.inserted_players += inserted
+                result.updated_players += updated
+            if not existing or (inserted or updated):
+                _record_provenance(conn, str(entry.path), parser_version, roster_hash)
         report.files.append(result)
     return report
 
