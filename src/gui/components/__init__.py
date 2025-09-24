@@ -17,6 +17,7 @@ from .gallery import (
     clear_demos,
     build_gallery_window,
 )
+from .progress_indicator import DeterminateProgress, IndeterminateProgress
 
 __all__ = [
     "register_demo",
@@ -24,4 +25,6 @@ __all__ = [
     "get_demo",
     "clear_demos",
     "build_gallery_window",
+    "DeterminateProgress",
+    "IndeterminateProgress",
 ]
