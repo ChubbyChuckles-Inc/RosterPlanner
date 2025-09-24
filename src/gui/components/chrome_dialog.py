@@ -279,9 +279,27 @@ class ChromeDialog(QDialog):
             path.addRoundedRect(QRectF(qrect), self._corner_radius, self._corner_radius)
         except Exception:
             path.addRect(qrect)
-        # Background color from palette (fallback to dark gray)
-        pal_col = self.palette().color(QPalette.ColorRole.Window)
-        p.fillPath(path, pal_col)
+        # Resolve base fill from theme tokens (use surface.card or background.secondary)
+        fill_qcolor = None
+        try:
+            from gui.services.service_locator import services as _services
+
+            theme = _services.try_get("theme_service")
+            if theme:
+                colors = getattr(theme, "colors", lambda: {})()
+                hexv = (
+                    colors.get("surface.dialog")
+                    or colors.get("surface.card")
+                    or colors.get("background.secondary")
+                    or colors.get("background.primary")
+                )
+                if isinstance(hexv, str) and hexv.startswith("#"):
+                    fill_qcolor = QColor(hexv)
+        except Exception:
+            pass
+        if fill_qcolor is None:
+            fill_qcolor = self.palette().color(QPalette.ColorRole.Window)
+        p.fillPath(path, fill_qcolor)
         # Resolve border color from theme service if available
         border_qcolor = QColor(68, 68, 68)
         try:

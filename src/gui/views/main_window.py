@@ -81,6 +81,7 @@ from gui.services.scrape_runner import ScrapeRunner
 from db import rebuild_database, ingest_path  # type: ignore
 import sqlite3
 from gui.views.rebuild_progress_dialog import RebuildProgressDialog
+from gui.components.chrome_dialog import ChromeDialog
 from gui.services.export_service import ExportService, ExportFormat
 from gui.services.export_presets import ExportPresetsService
 from gui.components.theme_aware import ThemeAwareMixin, ThemeAwareProtocol
@@ -999,9 +1000,43 @@ class MainWindow(QMainWindow):  # Dock-based
                 )
             else:
                 summary = "\n".join(failures[:25])
-                QMessageBox.warning(
-                    self, "Contrast Issues", f"{len(failures)} failures detected:\n\n{summary}"
-                )
+                try:
+                    dlg = ChromeDialog(self, title="Contrast Issues")
+                    lay = dlg.content_layout()
+                    from PyQt6.QtWidgets import QListWidget, QPushButton
+
+                    lst = QListWidget()
+                    for line in failures[:150]:
+                        lst.addItem(line)
+                    lay.addWidget(lst)
+                    btn_row = QWidget()
+                    from PyQt6.QtWidgets import QHBoxLayout
+
+                    row = QHBoxLayout(btn_row)
+                    row.addStretch(1)
+                    copy_btn = QPushButton("Copy All")
+                    ok_btn = QPushButton("OK")
+
+                    def _copy():  # pragma: no cover - UI path
+                        try:
+                            from PyQt6.QtWidgets import QApplication
+
+                            cb = QApplication.clipboard()
+                            cb.setText("\n".join(failures))
+                        except Exception:
+                            pass
+
+                    copy_btn.clicked.connect(_copy)  # type: ignore
+                    ok_btn.clicked.connect(dlg.accept)  # type: ignore
+                    row.addWidget(copy_btn)
+                    row.addWidget(ok_btn)
+                    lay.addWidget(btn_row)
+                    dlg.resize(620, 460)
+                    dlg.exec()
+                except Exception:
+                    QMessageBox.warning(
+                        self, "Contrast Issues", f"{len(failures)} failures detected:\n\n{summary}"
+                    )
         self._set_status("Contrast check completed")
 
     def _apply_density_spacing(self):  # pragma: no cover - GUI relayout path
@@ -1571,7 +1606,23 @@ class MainWindow(QMainWindow):  # Dock-based
         msg = "\n".join(lines)
         # Tell user where JSON was written
         msg += f"\n\nDetailed JSON: {data_dir}\\diagnostics\\team_count_comparison.json"
-        QMessageBox.information(self, "Team Count Diagnostics", msg)
+        try:
+            dlg = ChromeDialog(self, title="Team Count Diagnostics")
+            lay = dlg.content_layout()
+            from PyQt6.QtWidgets import QPlainTextEdit, QPushButton
+
+            txt = QPlainTextEdit()
+            txt.setReadOnly(True)
+            txt.setPlainText(msg)
+            txt.setObjectName("monospaceEditor")
+            lay.addWidget(txt)
+            btn = QPushButton("OK")
+            btn.clicked.connect(dlg.accept)  # type: ignore
+            lay.addWidget(btn)
+            dlg.resize(680, 480)
+            dlg.exec()
+        except Exception:
+            QMessageBox.information(self, "Team Count Diagnostics", msg)
 
     def _on_scrape_started(self):  # pragma: no cover
         self._set_status("Scrape running...")
