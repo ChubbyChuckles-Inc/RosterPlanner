@@ -268,7 +268,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.65 Accessibility focus order visual path map overlay [D]
 [x] 5.10.66 Modal backdrop auto-darken & subtle zoom animation (reduced-motion fallback)
 [x] 5.10.67 Animated progress indicators (determinate + indeterminate variants) token-driven
-[ ] 5.10.68 Smooth layout reflow during window resize (debounced transform strategy)
+[x] 5.10.68 Smooth layout reflow during window resize (debounced transform strategy)
 [ ] 5.10.69 Theme warm-load prefetch (precompute derived palettes in idle)
 [ ] 5.10.70 Virtualized list styling parity test (ensure consistent tokens) [T]
 
