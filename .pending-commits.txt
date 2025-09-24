@@ -1,4 +1,7 @@
 feat(tabs): add animated tab open/close transitions with fade + reduced test-mode duration (Milestone 5.10.58)
 test: ensure deterministic tab close in RP_TEST_MODE by bypassing animation finalize path
 feat(status-bar): implement rich status bar with message, freshness pill, and sparkline (Milestone 5.10.59)
+feat(dev-tools): add developer color picker overlay with token suggestion + tests (Milestone 5.10.60)
+
+feat(accessibility): add reduced color / monochrome mode toggle with grayscale service (Milestone 5.10.61)
 

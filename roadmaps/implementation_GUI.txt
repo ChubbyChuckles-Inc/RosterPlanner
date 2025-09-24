@@ -260,8 +260,8 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.57 Custom window chrome/titlebar with integrated tabs (Windows platform feasibility) [R]
 [x] 5.10.58 Animated tab open/close transitions (opacity + scale) with easing tokens
 [x] 5.10.59 Status bar rich segments (icon badges, mini sparkline, freshness pill) token-aligned
-[ ] 5.10.60 Developer color picker overlay (sample any on-screen pixel + token suggestion)
-[ ] 5.10.61 Reduced color / monochrome mode fallback styling toggle
+[x] 5.10.60 Developer color picker overlay (sample any on-screen pixel + token suggestion)
+[x] 5.10.61 Reduced color / monochrome mode fallback styling toggle
 [ ] 5.10.62 Print stylesheet parity test harness (layout + contrast assertions) [T]
 [ ] 5.10.63 Shadow elevation visual regression testing (bitmap hash snapshots) [T]
 [ ] 5.10.64 Layout shift monitor (collect cumulative layout shift metric) [T]

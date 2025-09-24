@@ -186,6 +186,18 @@ class MainWindow(QMainWindow):  # Dock-based
             DockStyleHelper().apply_to_existing_docks(self)
         except Exception:
             pass  # non-fatal styling failure
+        # Register reduced color mode service if absent (Milestone 5.10.61)
+        try:
+            from gui.services.service_locator import services as _services  # type: ignore
+
+            if not _services.try_get("reduced_color_mode"):
+                from gui.services.reduced_color_mode_service import (
+                    ReducedColorModeService as _RCMS,
+                )
+
+                _services.register("reduced_color_mode", _RCMS())
+        except Exception:
+            pass
         # Re-apply theme stylesheet after menu creation (ensures menubar picks styles)
         try:
             from gui.services.service_locator import services as _services
@@ -446,6 +458,10 @@ class MainWindow(QMainWindow):  # Dock-based
         act_cb_none.triggered.connect(lambda: self._set_color_blind_mode(None))  # type: ignore[attr-defined]
         act_cb_prot.triggered.connect(lambda: self._set_color_blind_mode("protanopia"))  # type: ignore[attr-defined]
         act_cb_deut.triggered.connect(lambda: self._set_color_blind_mode("deuteranopia"))  # type: ignore[attr-defined]
+        # Reduced color / monochrome mode (Milestone 5.10.61)
+        self._act_reduced_color = view_menu.addAction("Reduced Color Mode")
+        self._act_reduced_color.setCheckable(True)
+        self._act_reduced_color.triggered.connect(self._toggle_reduced_color_mode)  # type: ignore[attr-defined]
         # Add actions via convenience overload (returns QAction object)
         reset_action = view_menu.addAction("Reset Layout")
         reset_action.triggered.connect(self._on_reset_layout)  # type: ignore[attr-defined]
@@ -1021,11 +1037,18 @@ class MainWindow(QMainWindow):  # Dock-based
         Ensures we don't duplicate large blocks; replaces prior theme block if detected.
         """
         try:
-            from gui.services.service_locator import (
-                services as _services,
-            )  # local import to avoid cycles
+            from gui.services.service_locator import services as _services  # type: ignore
 
             evt_bus = _services.try_get("event_bus")
+            # Append reduced color snippet if active
+            try:
+                rc_mode = _services.try_get("reduced_color_mode")
+                if rc_mode and getattr(rc_mode, "is_active", lambda: False)():
+                    snippet = rc_mode.neutral_qss_snippet()  # type: ignore[attr-defined]
+                    if snippet:
+                        qss += "\n/* __REDUCED_COLOR_APPEND */\n" + snippet
+            except Exception:
+                pass
         except Exception:
             evt_bus = None
         try:
@@ -1037,6 +1060,17 @@ class MainWindow(QMainWindow):  # Dock-based
                 self.setStyleSheet(qss)
             except Exception:
                 pass
+        # Root property for selectors
+        try:
+            from gui.services.service_locator import services as _services  # type: ignore
+
+            rc_mode = _services.try_get("reduced_color_mode")
+            active = bool(rc_mode and getattr(rc_mode, "is_active", lambda: False)())
+            self.setProperty("reducedColor", "1" if active else "0")
+            self.style().unpolish(self)
+            self.style().polish(self)
+        except Exception:
+            pass
 
     # Export helpers -------------------------------------------------
     def _current_document_widget(self):  # pragma: no cover - simple helper
