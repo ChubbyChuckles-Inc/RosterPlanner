@@ -113,7 +113,8 @@ class TeamDetailView(QWidget):
             # Force layout / repaint
             hh.resizeSections(hh.ResizeMode.ResizeToContents)
             vh.resizeSections(vh.ResizeMode.ResizeToContents)
-            hh.repaint(); vh.repaint()
+            hh.repaint()
+            vh.repaint()
         except Exception:
             pass
         roster_layout.addWidget(self.roster_table)
@@ -204,11 +205,16 @@ class TeamDetailView(QWidget):
         try:
             hh = self.roster_table.horizontalHeader()
             vh = self.roster_table.verticalHeader()
-            hh.blockSignals(True); vh.blockSignals(True)
+            hh.blockSignals(True)
+            vh.blockSignals(True)
             hh.resizeSections(hh.ResizeMode.ResizeToContents)
             vh.resizeSections(vh.ResizeMode.ResizeToContents)
-            hh.blockSignals(False); vh.blockSignals(False)
-            hh.update(); vh.update(); hh.repaint(); vh.repaint()
+            hh.blockSignals(False)
+            vh.blockSignals(False)
+            hh.update()
+            vh.update()
+            hh.repaint()
+            vh.repaint()
         except Exception:
             pass
 

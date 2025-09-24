@@ -58,6 +58,7 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
         if hasattr(self, "setWindowTitle"):
             self.setWindowTitle("Theme JSON Editor")
         self.setModal(True)
+        self.setObjectName("ThemeJsonEditorDialog")
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)  # type: ignore[attr-defined]
         self._theme: ThemeService = services.get_typed("theme_service", ThemeService)
         self._original = dict(self._theme.colors())  # deep copy snapshot
@@ -214,7 +215,13 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
             if w:
                 w.deleteLater()
         colors = self._theme.colors()
-        keys = [k for k in sorted(colors.keys()) if any(k.startswith(p) for p in ("background.", "surface.", "text.", "accent.", "border."))]
+        keys = [
+            k
+            for k in sorted(colors.keys())
+            if any(
+                k.startswith(p) for p in ("background.", "surface.", "text.", "accent.", "border.")
+            )
+        ]
         for row, key in enumerate(keys):
             lbl = QLabel(key)
             btn = QPushButton(colors[key])

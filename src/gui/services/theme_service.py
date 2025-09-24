@@ -122,6 +122,38 @@ class ThemeService:
             svc.load_filesystem_themes()
         except Exception:
             pass
+        # Write built-in overlays to assets/themes if not present
+        try:
+            theme_dir = Path(os.getcwd()) / "assets" / "themes"
+            theme_dir.mkdir(parents=True, exist_ok=True)
+            # Export default snapshot
+            if not (theme_dir / "default.json").exists():
+                payload = {"color": {}}
+                for k, v in base_map.items():
+                    if "." in k:
+                        g, r = k.split(".", 1)
+                        payload["color"].setdefault(g, {})[r] = v
+                with (theme_dir / "default.json").open("w", encoding="utf-8") as fh:
+                    json.dump(payload, fh, indent=2)
+            # Overlay presets
+            for ov_name in available_variant_overlays():
+                ov = get_overlay(ov_name)
+                if not ov:
+                    continue
+                path = theme_dir / f"{ov_name}.json"
+                if path.exists():
+                    continue
+                payload = {"color": {}}
+                for k, v in ov.items():
+                    if "." in k:
+                        g, r = k.split(".", 1)
+                        payload["color"].setdefault(g, {})[r] = v
+                with path.open("w", encoding="utf-8") as fh:
+                    json.dump(payload, fh, indent=2)
+            # Reload to include these
+            svc.load_filesystem_themes()
+        except Exception:
+            pass
         return svc
 
     # Accessors ---------------------------------------------------------
@@ -307,6 +339,13 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  QTreeWidget#shortcutTree::item:selected {{ background:{accent}; color:{bg}; }}
  QPushButton#shortcutCloseButton {{ background:{bg2}; color:{txt}; border:1px solid {border}; padding:4px 10px; border-radius:4px; }}
  QPushButton#shortcutCloseButton:hover {{ background:{accent}; color:{bg}; }}
+ /* Theme JSON Editor Dialog */
+ QDialog#ThemeJsonEditorDialog {{ background:{surf}; border:1px solid {border}; border-radius:6px; }}
+ QPlainTextEdit#themeJsonEditor {{ background:{bg2}; color:{txt}; border:1px solid {border}; font-family: Consolas, 'Courier New', monospace; }}
+ QLabel#themeJsonStatus {{ color:{txt_muted}; }}
+ QListWidget {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
+ QPushButton {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
+ QPushButton:hover {{ background:{accent}; color:{bg}; }}
  /* Calendar Widget */
  QCalendarWidget#matchCalendar QWidget {{ background:{surf}; }}
  QCalendarWidget#matchCalendar QAbstractItemView {{ selection-background-color:{accent}; selection-color:{bg}; outline:0; }}
@@ -584,7 +623,12 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
     def available_variants(self) -> List[str]:
         base = ["default", "brand-neutral", "high-contrast"]
         overlays = available_variant_overlays()
-        return base + overlays
+        fs = []
+        try:
+            fs = list(getattr(self, "_cached_filesystem_overlays", {}).keys())
+        except Exception:
+            fs = []
+        return base + overlays + fs
 
     # Diff helper -----------------------------------------------------
     @staticmethod

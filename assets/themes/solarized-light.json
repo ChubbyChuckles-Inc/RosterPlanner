@@ -1,0 +1,23 @@
+{
+  "color": {
+    "background": {
+      "primary": "#FDF6E3",
+      "secondary": "#F4EAD0"
+    },
+    "surface": {
+      "card": "#FFFFFF"
+    },
+    "text": {
+      "primary": "#073642",
+      "muted": "#586E75"
+    },
+    "accent": {
+      "base": "#268BD2",
+      "hover": "#3799DE",
+      "active": "#1E74B4"
+    },
+    "border": {
+      "medium": "#D3C7AF"
+    }
+  }
+}
