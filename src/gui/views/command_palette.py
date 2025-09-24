@@ -44,16 +44,27 @@ class CommandPaletteDialog(QDialog):  # type: ignore[misc]
         super().__init__(parent)
         if hasattr(self, "setWindowTitle"):
             self.setWindowTitle("Command Palette")
+        # Theming hooks -------------------------------------------------
+        self.setObjectName("CommandPaletteDialog")
+        # Use a consistent window flag style to avoid native title bar stylistic clash.
+        try:
+            from PyQt6.QtCore import Qt as _Qt  # type: ignore
+
+            self.setWindowFlag(_Qt.WindowType.Tool, True)  # type: ignore[attr-defined]
+        except Exception:  # pragma: no cover
+            pass
         self.setModal(True)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)  # type: ignore[attr-defined]
         layout = QVBoxLayout(self)
         self.search_edit = QLineEdit(self)
+        self.search_edit.setObjectName("commandPaletteSearch")
         self.search_edit.setPlaceholderText("Type a command…")
         self.search_edit.textChanged.connect(self._on_text_changed)  # type: ignore[attr-defined]
         self.search_edit.returnPressed.connect(self._activate_selected)  # type: ignore[attr-defined]
         layout.addWidget(self.search_edit)
 
         self.list_widget = QListWidget(self)
+        self.list_widget.setObjectName("commandPaletteList")
         self.list_widget.itemActivated.connect(lambda _: self._activate_selected())  # type: ignore[attr-defined]
         layout.addWidget(self.list_widget)
 
@@ -76,14 +87,12 @@ class CommandPaletteDialog(QDialog):  # type: ignore[misc]
         for cat in sorted(bucket.keys()):
             grouped.append((cat, bucket[cat]))
         for cat, group_entries in grouped:
-            # If filtering yields only a single group and a query is present,
-            # suppress the header to maintain legacy test expectations where
-            # a filtered result count corresponds to number of executable items.
-            if not (query and len(grouped) == 1):
-                header = QListWidgetItem(cat.upper())
-                header.setFlags(Qt.ItemFlag.NoItemFlags)  # type: ignore[attr-defined]
-                header.setData(Qt.ItemDataRole.UserRole, None)  # type: ignore[attr-defined]
-                self.list_widget.addItem(header)
+            # Always include group header to preserve theming & test expectations.
+            header = QListWidgetItem(cat.upper())
+            header.setFlags(Qt.ItemFlag.NoItemFlags)  # type: ignore[attr-defined]
+            header.setData(Qt.ItemDataRole.UserRole, None)  # type: ignore[attr-defined]
+            header.setData(Qt.ItemDataRole.ToolTipRole, f"Category: {cat}")  # type: ignore[attr-defined]
+            self.list_widget.addItem(header)
             for entry in group_entries:
                 display = self._format_entry_text(entry, query)
                 item = QListWidgetItem(display)

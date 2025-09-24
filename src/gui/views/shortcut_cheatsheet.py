@@ -30,19 +30,23 @@ class ShortcutCheatSheetDialog(QDialog):  # pragma: no cover - GUI interaction t
         super().__init__(parent)
         self.setWindowTitle("Keyboard Shortcuts")
         self.resize(640, 480)
+        self.setObjectName("ShortcutCheatSheetDialog")
         layout = QVBoxLayout(self)
         self.filter_edit = QLineEdit(self)
         self.filter_edit.setPlaceholderText("Filter shortcuts…")
+        self.filter_edit.setObjectName("shortcutFilterEdit")
         self.filter_edit.textChanged.connect(self._refresh)  # type: ignore
         layout.addWidget(self.filter_edit)
 
         self.tree = QTreeWidget(self)
+        self.tree.setObjectName("shortcutTree")
         self.tree.setColumnCount(3)
         self.tree.setHeaderLabels(["Shortcut", "Description", "Category"])
         layout.addWidget(self.tree)
 
         btn_row = QHBoxLayout()
         close_btn = QPushButton("Close", self)
+        close_btn.setObjectName("shortcutCloseButton")
         close_btn.clicked.connect(self.accept)  # type: ignore
         btn_row.addStretch(1)
         btn_row.addWidget(close_btn)

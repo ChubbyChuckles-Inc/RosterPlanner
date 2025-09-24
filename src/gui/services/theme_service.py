@@ -279,6 +279,28 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  QScrollBar::handle:vertical {{ background:{accent}; border-radius:5px; min-height:20px; }}
  QScrollBar:horizontal {{ background:{bg2}; height:12px; }}
  QScrollBar::handle:horizontal {{ background:{accent}; border-radius:5px; min-width:20px; }}
+ /* Command Palette Dialog */
+ QDialog#CommandPaletteDialog {{ background:{surf}; border:1px solid {border}; border-radius:6px; }}
+ QLineEdit#commandPaletteSearch {{ background:{bg2}; color:{txt}; border:1px solid {border}; padding:4px 6px; border-radius:4px; }}
+ QListWidget#commandPaletteList {{ background:{surf}; color:{txt}; border:1px solid {border}; }}
+ QListWidget#commandPaletteList::item:selected {{ background:{accent}; color:{bg}; }}
+ QListWidget#commandPaletteList::item {{ padding:3px 6px; }}
+ /* Highlight span inside HTML text (using <span data-role=hl>) -> emulate via CSS-like selector mapping to QListView not possible; rely on rich text default + accent color fallback. */
+ /* Shortcut Cheat Sheet Dialog */
+ QDialog#ShortcutCheatSheetDialog {{ background:{surf}; border:1px solid {border}; border-radius:6px; }}
+ QLineEdit#shortcutFilterEdit {{ background:{bg2}; color:{txt}; border:1px solid {border}; padding:4px 6px; border-radius:4px; }}
+ QTreeWidget#shortcutTree {{ background:{surf}; color:{txt}; border:1px solid {border}; }}
+ QTreeWidget#shortcutTree::item:selected {{ background:{accent}; color:{bg}; }}
+ QPushButton#shortcutCloseButton {{ background:{bg2}; color:{txt}; border:1px solid {border}; padding:4px 10px; border-radius:4px; }}
+ QPushButton#shortcutCloseButton:hover {{ background:{accent}; color:{bg}; }}
+ /* Calendar Widget */
+ QCalendarWidget#matchCalendar QWidget {{ background:{surf}; }}
+ QCalendarWidget#matchCalendar QAbstractItemView {{ selection-background-color:{accent}; selection-color:{bg}; outline:0; }}
+ QCalendarWidget#matchCalendar QToolButton {{ background:{bg2}; color:{txt}; border:1px solid {border}; border-radius:4px; padding:2px 6px; }}
+ QCalendarWidget#matchCalendar QToolButton:hover {{ background:{accent}; color:{bg}; }}
+ QCalendarWidget#matchCalendar QTableView {{ background:{surf}; alternate-background-color:{bg2}; }}
+ /* Glass surface subtle fix: remove dark border artifacts when nested */
+ QWidget#AvailabilityPanel {{ border:1px solid {border}; }}
  /* View Titles & Breadcrumb */
  QLabel#viewTitleLabel, QLabel#teamTitleLabel {{ font-weight:600; font-size:14px; color:{txt}; }}
  QLabel#breadcrumbLabel {{ color:{txt_muted}; font-size:11px; }}

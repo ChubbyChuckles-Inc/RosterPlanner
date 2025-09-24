@@ -1341,6 +1341,13 @@ class MainWindow(QMainWindow):  # Dock-based
         except Exception:
             layout.addWidget(QLabel("Match Dates (Calendar)"))
         self.calendar = QCalendarWidget()
+        # Theming hooks for calendar widget
+        try:
+            self.calendar.setObjectName("matchCalendar")
+            self.calendar.setProperty("density", "comfortable")
+            self.calendar.setProperty("variant", "primary")
+        except Exception:  # pragma: no cover
+            pass
         self.calendar.setGridVisible(True)
         layout.addWidget(self.calendar)
 

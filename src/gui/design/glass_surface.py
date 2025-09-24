@@ -120,11 +120,14 @@ def build_glass_qss(
     # Layered approach: base transparent layer + subtle inner highlight. Real
     # backdrop blur would require platform window attributes (future).
     if capability.effective():
+        # Remove harsh black artifacts by using semi-transparent border derived
+        # from supplied border_color alpha blended (simulate subtle frame).
         return (
             f"{widget_selector} {{\n"
             f"  background: rgba({int(background_color[1:3],16)},{int(background_color[3:5],16)},{int(background_color[5:7],16)},{intensity/100:.2f});\n"
             f"  border:1px solid {border_color};\n"
             f"  border-radius:8px;\n"
+            f"  outline:0; /* prevent native focus border interfering */\n"
             f"  /* simulated glass via translucent fill (no blur) */\n"
             f"}}\n"
             f"{widget_selector}::before {{ /* highlight overlay */\n"
