@@ -112,4 +112,6 @@ feat(components): add inline ErrorBadge component with severity token mapping & 
 feat(window): implement custom frameless window chrome with title bar buttons, drag move, maximize/restore, size grip, feature-flag enablement, smoke test, and mark roadmap 5.10.57 complete
 test: centralize Qt worker run helper with hard timeout (prevent hanging tests) and refactor related tests
 test: mitigate hang by skipping LandingLoadWorker in RP_TEST_MODE and refactor custom chrome smoke test to lightweight QMainWindow
+feat(tabs): add animated tab open/close transitions with fade + reduced test-mode duration (Milestone 5.10.58)
+test: ensure deterministic tab close in RP_TEST_MODE by bypassing animation finalize path
 

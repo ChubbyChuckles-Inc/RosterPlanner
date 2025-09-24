@@ -13,8 +13,9 @@ Future enhancements (later milestones):
 
 from __future__ import annotations
 from typing import Callable, Dict, Optional, Any
-from PyQt6.QtWidgets import QTabWidget, QMenu, QColorDialog
+from PyQt6.QtWidgets import QTabWidget, QMenu, QColorDialog, QWidget, QGraphicsOpacityEffect
 from PyQt6.QtGui import QColor
+from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QObject, pyqtSignal, Qt
 
 from gui.services.tab_metadata_persistence import TabMetadataPersistenceService
 
@@ -64,6 +65,11 @@ class DocumentArea(QTabWidget):
         # Reorder if pinned
         self._reorder_pinned()
         self.setCurrentIndex(idx)  # type: ignore[attr-defined]
+        # Animate open (fade + scale) unless in reduced motion or test mode
+        try:
+            self._animate_open(widget)
+        except Exception:
+            pass
         return widget
 
     def has_document(self, doc_id: str) -> bool:
@@ -166,6 +172,114 @@ class DocumentArea(QTabWidget):
 
     def _close_tab(self, index: int):  # pragma: no cover - GUI path
         try:
+            w = self.widget(index)  # type: ignore[attr-defined]
+            if w is None:
+                return
+            self._animate_close(index, w)
+        except Exception:
+            # Fallback to immediate removal
+            try:
+                self.removeTab(index)  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+    # ---- Animation Helpers -------------------------------------------------
+    def _motion_enabled(self) -> bool:
+        # Honour reduced motion + test mode quick path
+        import os
+
+        if os.environ.get("RP_TEST_MODE") == "1":
+            return True  # still run but extremely fast to exercise path
+        if os.environ.get("RP_REDUCED_MOTION") == "1":
+            return False
+        return True
+
+    def _duration_ms(self) -> int:
+        import os
+
+        if os.environ.get("RP_TEST_MODE") == "1":
+            return 5
+        # Fallback constant; could fetch from design tokens via motion.get_duration_ms
+        try:
+            from gui.design.loader import load_tokens
+            from gui.design.motion import get_duration_ms
+
+            tokens = load_tokens()
+            return min(260, get_duration_ms(tokens, "subtle"))  # clamp to 260ms max
+        except Exception:
+            return 180
+
+    def _animate_open(self, widget: QWidget):  # pragma: no cover - visual path
+        if not self._motion_enabled():
+            return
+        # Apply opacity effect
+        if widget.graphicsEffect() is None:
+            eff = QGraphicsOpacityEffect(widget)
+            widget.setGraphicsEffect(eff)
+        else:
+            eff = widget.graphicsEffect()
+        try:
+            eff.setOpacity(0.0)  # type: ignore
+        except Exception:
+            return
+        anim = QPropertyAnimation(eff, b"opacity", widget)
+        anim.setDuration(self._duration_ms())
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        # Keep reference to prevent GC
+        if not hasattr(self, "_live_anims"):
+            self._live_anims = []  # type: ignore
+        self._live_anims.append(anim)  # type: ignore
+
+        def _cleanup():  # type: ignore
+            try:
+                self._live_anims.remove(anim)  # type: ignore
+            except Exception:
+                pass
+
+        anim.finished.connect(_cleanup)  # type: ignore
+        anim.start()
+
+    def _animate_close(self, index: int, widget: QWidget):  # pragma: no cover - visual path
+        import os
+
+        if os.environ.get("RP_TEST_MODE") == "1":
+            # Deterministic fast path for tests – skip animation scheduling
+            self._finalize_close(index)
+            return
+        if not self._motion_enabled():
+            self._finalize_close(index)
+            return
+        eff = widget.graphicsEffect()
+        if eff is None:
+            eff = QGraphicsOpacityEffect(widget)
+            widget.setGraphicsEffect(eff)
+        anim = QPropertyAnimation(eff, b"opacity", widget)
+        anim.setDuration(self._duration_ms())
+        try:
+            from gui.design.motion import parse_cubic_bezier  # reuse parser if custom curve desired
+        except Exception:
+            pass
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.0)
+        anim.setEasingCurve(QEasingCurve.Type.InCubic)
+        if not hasattr(self, "_live_anims"):
+            self._live_anims = []  # type: ignore
+        self._live_anims.append(anim)  # type: ignore
+
+        def _finish():  # type: ignore
+            self._finalize_close(index)
+            try:
+                self._live_anims.remove(anim)  # type: ignore
+            except Exception:
+                pass
+
+        anim.finished.connect(_finish)  # type: ignore
+        anim.start()
+
+    def _finalize_close(self, index: int):  # pragma: no cover - GUI path
+        try:
             # Reverse map doc_id
             doc_id = None
             for k, v in list(self._doc_index.items()):
@@ -174,7 +288,6 @@ class DocumentArea(QTabWidget):
             self.removeTab(index)  # type: ignore[attr-defined]
             if doc_id:
                 self._doc_index.pop(doc_id, None)
-                # Adjust indices > removed
                 for k, v in list(self._doc_index.items()):
                     if v > index:
                         self._doc_index[k] = v - 1
