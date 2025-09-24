@@ -426,6 +426,10 @@ class MainWindow(QMainWindow):  # Dock-based
         self._act_spacing_grid = view_menu.addAction("Toggle Spacing Grid Overlay")
         self._act_spacing_grid.setCheckable(True)
         self._act_spacing_grid.triggered.connect(self._toggle_spacing_grid_overlay)  # type: ignore[attr-defined]
+        # Developer color picker overlay (Milestone 5.10.60)
+        self._act_color_picker = view_menu.addAction("Toggle Color Picker Overlay")
+        self._act_color_picker.setCheckable(True)
+        self._act_color_picker.triggered.connect(self._toggle_color_picker_overlay)  # type: ignore[attr-defined]
         act_plugin_sandbox = view_menu.addAction("Plugin Visual Sandbox Panel")
         act_plugin_sandbox.triggered.connect(self._open_plugin_visual_sandbox_panel)  # type: ignore[attr-defined]
         # Density toggle submenu (Milestone 5.10.7)
@@ -714,6 +718,40 @@ class MainWindow(QMainWindow):  # Dock-based
             except Exception:
                 pass
             ov.show()
+        else:
+            ov.hide()
+
+    # Color Picker Overlay -------------------------------------------
+    def _ensure_color_picker_overlay(self):  # pragma: no cover - GUI path
+        if getattr(self, "_color_picker_overlay", None) is None:
+            try:
+                from gui.views.color_picker_overlay import ColorPickerOverlay
+
+                self._color_picker_overlay = ColorPickerOverlay(self)
+            except Exception:
+                self._color_picker_overlay = None
+        return getattr(self, "_color_picker_overlay", None)
+
+    def _toggle_color_picker_overlay(self):  # pragma: no cover - GUI path
+        checked = False
+        try:
+            checked = self._act_color_picker.isChecked()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        ov = self._ensure_color_picker_overlay()
+        if ov is None:
+            return
+        if checked:
+            try:
+                ov.setGeometry(self.rect())
+            except Exception:
+                pass
+            ov.show()
+            # Force raise above child docks
+            try:
+                ov.raise_()
+            except Exception:
+                pass
         else:
             ov.hide()
 
@@ -1561,6 +1599,20 @@ class MainWindow(QMainWindow):  # Dock-based
             levels.add("Stadtliga")
         if self.chk_lvl_stadtklasse.isChecked():
             levels.add("Stadtklasse")
+        # Apply to proxy & persist state
+        try:
+            proxy.setDivisionTypes(types)
+            proxy.setLevels(levels)
+            proxy.setActiveOnly(self.chk_active_only.isChecked())
+        except Exception:
+            pass
+        self._nav_filter_state.division_types = types
+        self._nav_filter_state.levels = levels
+        self._nav_filter_state.active_only = self.chk_active_only.isChecked()
+        try:
+            self._nav_filter_service.save(self._nav_filter_state)
+        except Exception:
+            pass
 
     # ---------------- Ingestion metrics integration -----------------
     def _on_data_refreshed(self, _payload):  # pragma: no cover - Qt/event path
@@ -1628,14 +1680,6 @@ class MainWindow(QMainWindow):  # Dock-based
             self._status_bar_widget.lbl_freshness.setToolTip(tooltip)
         except Exception:
             pass
-        proxy.setDivisionTypes(types)
-        proxy.setLevels(levels)
-        proxy.setActiveOnly(self.chk_active_only.isChecked())
-        # Persist state
-        self._nav_filter_state.division_types = types
-        self._nav_filter_state.levels = levels
-        self._nav_filter_state.active_only = self.chk_active_only.isChecked()
-        self._nav_filter_service.save(self._nav_filter_state)
 
     def _on_search_text_changed(self, text: str):  # pragma: no cover - GUI path
         if hasattr(self, "team_filter_proxy"):
