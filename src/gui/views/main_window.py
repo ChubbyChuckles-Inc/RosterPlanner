@@ -16,6 +16,14 @@ from __future__ import annotations
 from typing import List
 import os
 
+try:
+    from gui.services.window_chrome import try_enable_custom_chrome  # type: ignore
+except Exception:  # pragma: no cover - optional feature
+
+    def try_enable_custom_chrome(_w):
+        return
+
+
 from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -91,6 +99,12 @@ class MainWindow(QMainWindow):  # Dock-based
         self.av_state = availability_store.load(self.availability_path)
         self.teams: List[TeamEntry] = []
         # ...existing code...
+        # Optional experimental custom window chrome (Milestone 5.10.57). Disabled by default.
+        if os.getenv("ENABLE_CUSTOM_CHROME") == "1":
+            try:
+                try_enable_custom_chrome(self)
+            except Exception:
+                pass
         self._layout_service = LayoutPersistenceService(base_dir=self.data_dir)
         # Navigation filter persistence (Milestone 4.3.1)
         self._nav_filter_service = NavigationFilterPersistenceService(base_dir=self.data_dir)
