@@ -100,14 +100,6 @@ class MainWindow(QMainWindow):  # Dock-based
         self.av_state = availability_store.load(self.availability_path)
         self.teams: List[TeamEntry] = []
         # ...existing code...
-        # Enable custom window chrome by default with app icon (Milestone 5.10.57 enhanced)
-        try:
-            icon_path = os.path.join(self.data_dir, "assets", "icons", "base", "table-tennis.png")
-            if not os.path.exists(icon_path):  # fallback to relative project root path
-                icon_path = os.path.join("assets", "icons", "base", "table-tennis.png")
-            try_enable_custom_chrome(self, icon_path)
-        except Exception:
-            pass
         self._layout_service = LayoutPersistenceService(base_dir=self.data_dir)
         # Navigation filter persistence (Milestone 4.3.1)
         self._nav_filter_service = NavigationFilterPersistenceService(base_dir=self.data_dir)
@@ -188,6 +180,14 @@ class MainWindow(QMainWindow):  # Dock-based
             DockStyleHelper().apply_to_existing_docks(self)
         except Exception:
             pass  # non-fatal styling failure
+        # Enable custom window chrome AFTER central widget & docks created so we can reparent correctly
+        try:
+            icon_path = os.path.join(self.data_dir, "assets", "icons", "base", "table-tennis.png")
+            if not os.path.exists(icon_path):
+                icon_path = os.path.join("assets", "icons", "base", "table-tennis.png")
+            try_enable_custom_chrome(self, icon_path)
+        except Exception:
+            pass
         # Register reduced color mode service if absent (Milestone 5.10.61)
         try:
             from gui.services.service_locator import services as _services  # type: ignore

@@ -75,7 +75,14 @@ class _ChromeContainer(QWidget):
         if not pm.isNull():
             self.icon_label = QLabel()
             self.icon_label.setObjectName("chromeWindowIcon")
-            self.icon_label.setPixmap(pm.scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            self.icon_label.setPixmap(
+                pm.scaled(
+                    16,
+                    16,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
             tb_layout.addWidget(self.icon_label, 0)
         self.title_label = QLabel(window.windowTitle())
         self.title_label.setObjectName("chromeTitleLabel")
@@ -195,7 +202,9 @@ class _ChromeContainer(QWidget):
         return (w - fw <= pt.x() <= w) and (h - fw <= pt.y() <= h)
 
 
-def try_enable_custom_chrome(window: QMainWindow, icon_path: str | None = None) -> None:  # pragma: no cover - UI integration
+def try_enable_custom_chrome(
+    window: QMainWindow, icon_path: str | None = None
+) -> None:  # pragma: no cover - UI integration
     """Enable custom chrome if feasible.
 
     Re-parents the existing central widget into a chrome container and sets
@@ -222,7 +231,9 @@ def try_enable_custom_chrome(window: QMainWindow, icon_path: str | None = None) 
         return
 
 
-def try_enable_dialog_chrome(dialog: QDialog, icon_path: str | None = None) -> None:  # pragma: no cover - UI integration
+def try_enable_dialog_chrome(
+    dialog: QDialog, icon_path: str | None = None
+) -> None:  # pragma: no cover - UI integration
     """Apply a lightweight chrome wrapper to a top-level QDialog.
 
     For dialogs we reuse the same container but omit minimize/maximize controls
@@ -255,7 +266,14 @@ def try_enable_dialog_chrome(dialog: QDialog, icon_path: str | None = None) -> N
             if not pm.isNull():
                 icon_lbl = QLabel()
                 icon_lbl.setObjectName("chromeWindowIcon")
-                icon_lbl.setPixmap(pm.scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                icon_lbl.setPixmap(
+                    pm.scaled(
+                        16,
+                        16,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
                 tb.addWidget(icon_lbl, 0)
         ttl = QLabel(dialog.windowTitle())
         ttl.setObjectName("chromeTitleLabel")
@@ -292,6 +310,27 @@ def try_enable_dialog_chrome(dialog: QDialog, icon_path: str | None = None) -> N
         main_layout.addWidget(container)
         dialog.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         dialog.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+
+        # Install simple drag handling on title bar
+        drag_state = {"pos": None}
+
+        def _tb_mouse_press(ev):  # type: ignore
+            if ev.button() == Qt.MouseButton.LeftButton:
+                drag_state["pos"] = ev.globalPosition().toPoint() - dialog.frameGeometry().topLeft()
+
+        def _tb_mouse_move(ev):  # type: ignore
+            if drag_state["pos"] is not None and ev.buttons() & Qt.MouseButton.LeftButton:
+                dialog.move(ev.globalPosition().toPoint() - drag_state["pos"])
+
+        def _tb_mouse_release(ev):  # type: ignore
+            drag_state["pos"] = None
+
+        try:
+            title_bar.mousePressEvent = _tb_mouse_press  # type: ignore
+            title_bar.mouseMoveEvent = _tb_mouse_move  # type: ignore
+            title_bar.mouseReleaseEvent = _tb_mouse_release  # type: ignore
+        except Exception:
+            pass
     except Exception:
         return
 
