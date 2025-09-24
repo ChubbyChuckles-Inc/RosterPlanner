@@ -10,4 +10,5 @@ test(print): add print stylesheet parity test harness (Milestone 5.10.62)
 test(elevation): add shadow elevation visual regression hash harness (Milestone 5.10.63)
 
 test(layout): implement layout shift monitor service + tests (Milestone 5.10.64)
+feat(accessibility): add focus order visual overlay service + tests (Milestone 5.10.65)
 
