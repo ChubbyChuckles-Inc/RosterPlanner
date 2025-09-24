@@ -1,5 +1,5 @@
 {
-  "last_scrape": "2025-09-23T23:17:07.901336",
+  "last_scrape": "2025-09-24T14:02:14.368952",
   "divisions": {
     "1. Bezirksliga Erwachsene": {
       "name": "1. Bezirksliga Erwachsene",
@@ -4707,9 +4707,9 @@
     {
       "team_id": "129755",
       "match_number": "219",
-      "date": "26.09.25",
+      "date": "08.10.25",
       "time": "19:00",
-      "weekday": "Fr",
+      "weekday": "Mi",
       "home_team": "SV BW Lindenau",
       "guest_team": "SV Weißblau Allianz",
       "home_score": null,
@@ -4851,9 +4851,9 @@
     {
       "team_id": "129955",
       "match_number": "219",
-      "date": "26.09.25",
+      "date": "08.10.25",
       "time": "19:00",
-      "weekday": "Fr",
+      "weekday": "Mi",
       "home_team": "SV BW Lindenau",
       "guest_team": "SV Weißblau Allianz",
       "home_score": null,
@@ -7562,24 +7562,24 @@
     },
     {
       "team_id": "134122",
-      "match_number": "16",
-      "date": "27.09.25",
-      "time": "10:00",
-      "weekday": "Sa",
-      "home_team": "SV Lindenau 1848",
-      "guest_team": "ATV Volkmarsdorf",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "134122",
       "match_number": "25",
       "date": "01.11.25",
       "time": "10:15",
       "weekday": "Sa",
       "home_team": "ATV Volkmarsdorf",
       "guest_team": "SG MoGoNo Leipzig",
+      "home_score": null,
+      "guest_score": null,
+      "status": "upcoming"
+    },
+    {
+      "team_id": "134122",
+      "match_number": "16",
+      "date": "03.11.25",
+      "time": "17:30",
+      "weekday": "Mo",
+      "home_team": "SV Lindenau 1848",
+      "guest_team": "ATV Volkmarsdorf",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"
@@ -7994,24 +7994,24 @@
     },
     {
       "team_id": "132429",
-      "match_number": "16",
-      "date": "27.09.25",
-      "time": "10:00",
-      "weekday": "Sa",
-      "home_team": "SV Lindenau 1848",
-      "guest_team": "ATV Volkmarsdorf",
-      "home_score": null,
-      "guest_score": null,
-      "status": "upcoming"
-    },
-    {
-      "team_id": "132429",
       "match_number": "21",
       "date": "24.10.25",
       "time": "17:30",
       "weekday": "Fr",
       "home_team": "Leutzscher Füchse",
       "guest_team": "SV Lindenau 1848",
+      "home_score": null,
+      "guest_score": null,
+      "status": "upcoming"
+    },
+    {
+      "team_id": "132429",
+      "match_number": "16",
+      "date": "03.11.25",
+      "time": "17:30",
+      "weekday": "Mo",
+      "home_team": "SV Lindenau 1848",
+      "guest_team": "ATV Volkmarsdorf",
       "home_score": null,
       "guest_score": null,
       "status": "upcoming"

@@ -13,6 +13,7 @@ import sqlite3
 import json
 import time
 from typing import Optional
+import re
 
 from .data_audit import DataAuditService
 from .event_bus import EventBus, Event  # type: ignore
@@ -293,6 +294,77 @@ class IngestionCoordinator:
             def ingest_team(team_name: str, roster_path: Path | None):
                 nonlocal teams_ingested, players_ingested, skipped_files, processed_files
                 norm_key = _norm_name(team_name)
+
+                # If we have a roster file, attempt to extract refined Club | Team designation
+                # mirroring the logic in db.ingest._extract_club_and_team_from_title so that
+                # GUI-triggered ingestion produces identical canonical team names.
+                if roster_path and roster_path.exists():
+                    try:
+                        html_txt = roster_path.read_text(encoding="utf-8", errors="ignore")
+                    except Exception:
+                        html_txt = ""
+                    if html_txt:
+                        m = re.search(r" - Team ([^,<]+?),\s*([^<]+)</title>", html_txt, re.IGNORECASE)
+                        club_team: tuple[str, str] | None = None
+                        if m:
+                            club = m.group(1).strip()
+                            team_designation = m.group(2).strip()
+                            if club and team_designation:
+                                club_team = (club, team_designation)
+                        else:
+                            # Fallback heuristic (find last occurrence of ' - Team ')
+                            lower = html_txt.lower()
+                            idx_t = lower.rfind(" - team ")
+                            if idx_t != -1:
+                                after = html_txt[idx_t + len(" - team ") :]
+                                end_idx = after.lower().find("</title>")
+                                if end_idx != -1:
+                                    after = after[:end_idx]
+                                parts = after.split(",", 1)
+                                if len(parts) == 2:
+                                    c_candidate = parts[0].strip()
+                                    t_candidate = parts[1].strip()
+                                    if c_candidate and t_candidate:
+                                        club_team = (c_candidate, t_candidate)
+                        if club_team:
+                            club_name, team_designation = club_team
+                            combined_name = f"{club_name} | {team_designation}"
+                            if combined_name != team_name:
+                                # Attempt in-place rename of existing team row (avoid duplicates)
+                                try:
+                                    readable_division = d.division.replace("_", " ")
+                                    div_row = self.conn.execute(
+                                        f"SELECT division_id FROM {self._table_division} WHERE name=?",
+                                        (readable_division,),
+                                    ).fetchone()
+                                    if div_row:
+                                        division_id_val = div_row[0]
+                                        cur = self.conn.execute(
+                                            f"SELECT team_id FROM {self._table_team} WHERE division_id=? AND name=?",
+                                            (division_id_val, team_name),
+                                        ).fetchone()
+                                        if cur:
+                                            # Only rename if combined not already present
+                                            dup = self.conn.execute(
+                                                f"SELECT 1 FROM {self._table_team} WHERE division_id=? AND name=?",
+                                                (division_id_val, combined_name),
+                                            ).fetchone()
+                                            if not dup:
+                                                self.conn.execute(
+                                                    f"UPDATE {self._table_team} SET name=? WHERE team_id=?",
+                                                    (combined_name, cur[0]),
+                                                )
+                                                team_name = combined_name
+                                            else:
+                                                team_name = combined_name
+                                        else:
+                                            team_name = combined_name
+                                    else:
+                                        team_name = combined_name
+                                except Exception:
+                                    # Fall back silently (rename failure should not abort ingestion)
+                                    pass
+                                norm_key = _norm_name(team_name)
 
                 # If we've already ingested a variant of this team and now have a roster file,
                 # parse players into the existing team instead of creating a duplicate.
