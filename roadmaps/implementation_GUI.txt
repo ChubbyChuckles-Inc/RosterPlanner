@@ -257,7 +257,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.54 Theme A/B experiment harness (random assignment + logging) [T]
 [x] 5.10.55 Personalization preview panel (simulate user preference sets: reduced motion, high contrast)
 [x] 5.10.56 Multi-monitor DPI live recalibration (listen + update scaling tokens)
-[ ] 5.10.57 Custom window chrome/titlebar with integrated tabs (Windows platform feasibility) [R]
+[x] 5.10.57 Custom window chrome/titlebar with integrated tabs (Windows platform feasibility) [R]
 [ ] 5.10.58 Animated tab open/close transitions (opacity + scale) with easing tokens
 [ ] 5.10.59 Status bar rich segments (icon badges, mini sparkline, freshness pill) token-aligned
 [ ] 5.10.60 Developer color picker overlay (sample any on-screen pixel + token suggestion)

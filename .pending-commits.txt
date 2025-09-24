@@ -109,4 +109,7 @@ feat(glass): add adaptive intensity helper adjusting translucency based on backg
 feat(design): add neutral ramp delta-E calibration tool with Lab conversion & validation tests; mark 5.10.47 complete
 feat(split-view): add styled splitter grab-handle with hover/pressed affordances and test; mark 5.10.48 complete
 feat(components): add inline ErrorBadge component with severity token mapping & tests; mark 5.10.49 complete
+feat(window): implement custom frameless window chrome with title bar buttons, drag move, maximize/restore, size grip, feature-flag enablement, smoke test, and mark roadmap 5.10.57 complete
+test: centralize Qt worker run helper with hard timeout (prevent hanging tests) and refactor related tests
+test: mitigate hang by skipping LandingLoadWorker in RP_TEST_MODE and refactor custom chrome smoke test to lightweight QMainWindow
 

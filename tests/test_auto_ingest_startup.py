@@ -1,30 +1,16 @@
 import os
 import sqlite3
-from PyQt6.QtCore import QCoreApplication, QTimer
-
 from gui.services.service_locator import services
 from gui.workers import LandingLoadWorker
+from tests.qt_worker_test_util import run_qt_worker  # type: ignore
 from config import settings
 
 # Helper to run Qt thread synchronously in test
 
 
 def run_worker(worker_cls, *args, **kwargs):
-    app = QCoreApplication.instance() or QCoreApplication([])
-    # Safety timeout to avoid indefinite hang if worker never finishes
-    QTimer.singleShot(9000, app.quit)
-    result_container = {}
-    w = worker_cls(*args, **kwargs)
-
-    def _finished(teams, error):
-        result_container["teams"] = teams
-        result_container["error"] = error
-        app.quit()
-
-    w.finished.connect(_finished)  # type: ignore
-    w.start()
-    app.exec()  # run event loop until worker finishes
-    return result_container["teams"], result_container["error"]
+    # Wrap old interface for backward compatibility; use shared helper with shorter timeout
+    return run_qt_worker(worker_cls, *args, timeout_ms=3000, **kwargs)
 
 
 def test_auto_ingest_populates_from_existing_assets(tmp_path, monkeypatch):
