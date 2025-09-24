@@ -622,13 +622,28 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
     # Variant enumeration ---------------------------------------------
     def available_variants(self) -> List[str]:
         base = ["default", "brand-neutral", "high-contrast"]
-        overlays = available_variant_overlays()
-        fs = []
+        overlays_all = available_variant_overlays()
+        # Deduplicate overlays while preserving original order
+        seen: set[str] = set()
+        overlays: List[str] = []
+        for ov in overlays_all:
+            if ov not in seen:
+                overlays.append(ov)
+                seen.add(ov)
+        # Filesystem themes (exclude any that collide with base/overlays case-insensitively)
         try:
-            fs = list(getattr(self, "_cached_filesystem_overlays", {}).keys())
+            fs_all = list(getattr(self, "_cached_filesystem_overlays", {}).keys())
         except Exception:
-            fs = []
-        return base + overlays + fs
+            fs_all = []
+        known_ci = {v.lower() for v in base + overlays}
+        fs_filtered: List[str] = []
+        for name in fs_all:
+            if name.lower() in known_ci:
+                continue  # skip duplicates (built-in exported copies)
+            if name not in fs_filtered:
+                fs_filtered.append(name)
+        fs_filtered.sort()
+        return base + overlays + fs_filtered
 
     # Diff helper -----------------------------------------------------
     @staticmethod

@@ -413,6 +413,14 @@ class MainWindow(QMainWindow):  # Dock-based
             data_menu = QMenu("&Data", self)
             mb.addMenu(data_menu)
         # Theme toggle submenu (Milestone 5.10.6 + extended variants)
+        # Remove existing Theme Variant menu if rebuilding to prevent duplicates
+        existing_theme_menu = None
+        for act in view_menu.actions():
+            if act.menu() and act.text() == "Theme Variant":
+                existing_theme_menu = act.menu()
+                break
+        if existing_theme_menu is not None:
+            view_menu.removeAction(existing_theme_menu.menuAction())
         theme_menu = view_menu.addMenu("Theme Variant")
         try:
             from gui.services.service_locator import services as _services
@@ -429,7 +437,12 @@ class MainWindow(QMainWindow):  # Dock-based
         core = ["default", "brand-neutral", "high-contrast"]
         extra = [v for v in variants if v not in core]
         ordered = core + sorted(extra)
+        # Deduplicate ordered list in case service returned duplicates due to runtime changes
+        seen_variants = set()
         for v in ordered:
+            if v in seen_variants:
+                continue
+            seen_variants.add(v)
             label = v.replace("-", " ").title()
             act = theme_menu.addAction(label)
             act.triggered.connect(lambda _checked=False, name=v: self._set_theme_variant(name))  # type: ignore[attr-defined]
