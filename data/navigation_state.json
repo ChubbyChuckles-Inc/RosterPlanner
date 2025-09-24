@@ -1,5 +1,7 @@
 {
   "version": 1,
-  "expanded_divisions": [],
-  "last_selected_team_id": "19"
+  "expanded_divisions": [
+    "1 Bezirksliga Erwachsene"
+  ],
+  "last_selected_team_id": "11"
 }
