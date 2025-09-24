@@ -264,17 +264,10 @@ QMenu::item:selected {{ background: {accent}; color: {bg}; }}
 QDockWidget::title {{ background: {surf}; color:{txt}; }}
 QLabel {{ color:{txt}; }}
  QTableWidget {{ background:{surf}; color:{txt}; gridline-color:{border}; }}
- /* Stabilize header + vertical header (row numbers) visuals to avoid hover pop-in */
- QHeaderView::section {{ background:{bg2}; color:{txt}; padding:4px 6px; border:1px solid {border}; }}
- QTableCornerButton::section {{ background:{bg2}; border:1px solid {border}; }}
- QTableWidget::item {{ border:none; }}
+ /* Simplified header styling to avoid deferred paint issues */
+ QHeaderView::section {{ background:{bg2}; color:{txt}; padding:3px 6px; border:none; }}
+ QTableCornerButton::section {{ background:{bg2}; border:none; }}
  QTableWidget::item:selected {{ background:{accent}; color:{bg}; }}
- QHeaderView::section:horizontal {{ border-top:none; }}
- QHeaderView::section:vertical {{ border-left:none; }}
- /* Hover keeps same background to prevent pop; accent reserved for active sort in future */
- QHeaderView::section:hover {{ background:{bg2}; color:{txt}; }}
- /* Row header (=vertical header) styling */
- QTableView QHeaderView::section:vertical {{ background:{bg2}; color:{txt_muted}; }}
 QLineEdit, QPlainTextEdit {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
 QPushButton {{ background:{surf}; color:{txt}; border:1px solid {border}; padding:4px 8px; }}
 QPushButton:hover {{ background:{accent}; color:{bg}; }}

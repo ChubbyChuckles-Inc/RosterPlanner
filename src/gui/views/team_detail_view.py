@@ -103,6 +103,21 @@ class TeamDetailView(QWidget):
             ["Player", "LivePZ", "Trend"]
         )  # trend sparkline
         self.roster_table.horizontalHeader().setStretchLastSection(True)
+        # Force headers to be visible immediately (some styles delay painting until hover)
+        try:
+            hh = self.roster_table.horizontalHeader()
+            vh = self.roster_table.verticalHeader()
+            hh.setVisible(True)
+            vh.setVisible(True)
+            # Minimal stylesheet nudge to ensure immediate paint
+            hh.setStyleSheet("QHeaderView::section{background:transparent;}")
+            vh.setStyleSheet("QHeaderView::section{background:transparent;}")
+            # Force layout / repaint
+            hh.resizeSections(hh.ResizeMode.ResizeToContents)
+            vh.resizeSections(vh.ResizeMode.ResizeToContents)
+            hh.repaint(); vh.repaint()
+        except Exception:
+            pass
         roster_layout.addWidget(self.roster_table)
         # Double-click to open player detail
         try:
