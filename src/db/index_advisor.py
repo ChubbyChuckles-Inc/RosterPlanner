@@ -101,7 +101,12 @@ def analyze_query_for_indexes(conn: sqlite3.Connection, sql: str) -> List[IndexS
         table = None
         for i, tok in enumerate(tokens):
             if tok in ("scan", "search") and i + 1 < len(tokens):
-                table = tokens[i + 1]
+                cand = tokens[i + 1]
+                # Some plans emit 'scan table player'; skip literal 'table'
+                if cand == "table" and i + 2 < len(tokens):
+                    table = tokens[i + 2]
+                else:
+                    table = cand
                 break
         if not table:
             continue

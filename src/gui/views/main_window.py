@@ -158,6 +158,13 @@ class MainWindow(QMainWindow):  # Dock-based
             sb.addPermanentWidget(self._status_bar_widget, 1)  # type: ignore
         except Exception:
             self._status_bar_widget = None  # fallback
+        # Subscribe to ingestion refresh events for live metrics (best effort)
+        try:
+            self._event_bus = services.try_get("event_bus")
+            if self._event_bus and hasattr(self._event_bus, "subscribe"):
+                self._event_bus.subscribe("DATA_REFRESHED", self._on_data_refreshed)
+        except Exception:
+            self._event_bus = None
         # Skip auto-loading landing data when in test mode to avoid asynchronous workers.
         if os.getenv("RP_TEST_MODE") == "1":
             self.teams = []
@@ -1329,6 +1336,8 @@ class MainWindow(QMainWindow):  # Dock-based
             summary = svc.current().human_summary()
             if getattr(self, "_status_bar_widget", None) is not None:
                 self._status_bar_widget.update_freshness(summary)
+                # Build extended tooltip including ingest metrics
+                self._apply_freshness_tooltip()
         except Exception:
             pass
 
@@ -1533,14 +1542,8 @@ class MainWindow(QMainWindow):  # Dock-based
         except Exception:
             pass
         self._set_status(f"Loaded {len(teams)} teams{freshness_suffix}")
-        # Feed a trivial trend metric: roster sizes distribution tail as placeholder sparkline
-        try:
-            if getattr(self, "_status_bar_widget", None) is not None and teams:
-                # Use length of team name mod 8 as synthetic metric for now
-                vals = [len(t.display_name) % 8 for t in teams[-10:]]
-                self._status_bar_widget.update_trend(vals)
-        except Exception:
-            pass
+        # Attempt to show real ingest metrics if available (players_ingested trend)
+        self._update_ingest_trend()
 
     def _on_filter_chips_changed(self):  # pragma: no cover - GUI path
         proxy = getattr(self, "team_filter_proxy", None)
@@ -1558,6 +1561,73 @@ class MainWindow(QMainWindow):  # Dock-based
             levels.add("Stadtliga")
         if self.chk_lvl_stadtklasse.isChecked():
             levels.add("Stadtklasse")
+
+    # ---------------- Ingestion metrics integration -----------------
+    def _on_data_refreshed(self, _payload):  # pragma: no cover - Qt/event path
+        try:
+            self._update_ingest_trend()
+            self._apply_freshness_tooltip()
+        except Exception:
+            pass
+
+    def _update_ingest_trend(self):
+        if getattr(self, "_status_bar_widget", None) is None:
+            return
+        try:
+            from gui.services.service_locator import services as _services
+
+            metrics = _services.try_get("ingest_metrics")
+            if not metrics:
+                return
+            runs = metrics.recent_runs()
+            if not runs:
+                return
+            # Prefer players_ingested; fallback to processed_files if all zero
+            players = [r.players_ingested for r in runs]
+            if any(players):
+                self._status_bar_widget.update_trend(players)
+            else:
+                self._status_bar_widget.update_trend([r.processed_files for r in runs])
+            # Update diagnostics badges with last run counts
+            last = runs[-1]
+            self._status_bar_widget.update_diagnostics(last.warn_count, last.error_count)
+        except Exception:
+            pass
+
+    def _apply_freshness_tooltip(self):
+        if getattr(self, "_status_bar_widget", None) is None:
+            return
+        try:
+            from gui.services.data_freshness_service import DataFreshnessService
+            from gui.services.service_locator import services as _services
+            from datetime import datetime
+            import math
+
+            svc = DataFreshnessService(base_dir=self.data_dir)
+            snap = svc.current()
+            metrics = _services.try_get("ingest_metrics")
+            lines = []
+
+            def fmt_dt(dt):
+                if not dt:
+                    return "never"
+                return dt.isoformat(sep=" ", timespec="seconds")
+
+            lines.append(f"Last Scrape: {fmt_dt(snap.last_scrape)}")
+            lines.append(f"Last Ingest: {fmt_dt(snap.last_ingest)}")
+            if metrics:
+                runs = metrics.recent_runs()
+                if runs:
+                    avg_ms = sum(r.duration_ms for r in runs) / len(runs)
+                    last = runs[-1]
+                    lines.append(f"Recent Runs: {len(runs)} (avg {int(avg_ms)} ms)")
+                    lines.append(
+                        f"Last: div {last.divisions_ingested} | teams {last.teams_ingested} | players {last.players_ingested} | files {last.processed_files}/{last.skipped_files} | dur {last.duration_ms} ms | errs {last.error_count} | warns {last.warn_count}"
+                    )
+            tooltip = "\n".join(lines)
+            self._status_bar_widget.lbl_freshness.setToolTip(tooltip)
+        except Exception:
+            pass
         proxy.setDivisionTypes(types)
         proxy.setLevels(levels)
         proxy.setActiveOnly(self.chk_active_only.isChecked())

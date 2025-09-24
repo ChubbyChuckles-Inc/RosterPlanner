@@ -23,3 +23,9 @@ def test_status_bar_updates(monkeypatch):
     assert sb.lbl_trend.text() != ""
     sb.update_trend(None)
     assert not sb.lbl_trend.isVisible()
+    # Diagnostics badges
+    sb.update_diagnostics(0, 0)
+    assert not sb.lbl_warn.isVisible() and not sb.lbl_error.isVisible()
+    sb.update_diagnostics(2, 1)
+    assert "⚠ 2" in sb.lbl_warn.text()
+    assert "⛔ 1" in sb.lbl_error.text()

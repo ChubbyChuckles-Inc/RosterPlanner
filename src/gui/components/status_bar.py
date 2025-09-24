@@ -72,6 +72,19 @@ class StatusBarWidget(QWidget):
         self.lbl_trend.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(self.lbl_trend, 0)
 
+        # Diagnostics (warn/error) badges – hidden by default
+        self.lbl_warn = QLabel("")
+        self.lbl_warn.setObjectName("StatusWarnBadge")
+        self.lbl_warn.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_warn.setVisible(False)
+        lay.addWidget(self.lbl_warn, 0)
+
+        self.lbl_error = QLabel("")
+        self.lbl_error.setObjectName("StatusErrorBadge")
+        self.lbl_error.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_error.setVisible(False)
+        lay.addWidget(self.lbl_error, 0)
+
         self._apply_style()
 
     # Public API --------------------------------------------------
@@ -90,6 +103,20 @@ class StatusBarWidget(QWidget):
         self.lbl_trend.setText(_sparkline(values))
         self.lbl_trend.setVisible(True)
 
+    def update_diagnostics(self, warn_count: int, error_count: int) -> None:
+        """Show/hide warning & error badges based on counts."""
+        has_warn = warn_count > 0
+        has_error = error_count > 0
+        if has_warn:
+            self.lbl_warn.setText(f"⚠ {warn_count}")
+        self.lbl_warn.setVisible(has_warn)
+        if has_error:
+            self.lbl_error.setText(f"⛔ {error_count}")
+        self.lbl_error.setVisible(has_error)
+        # Force a minimal layout update so visibility flags propagate in headless test env
+        self.lbl_warn.updateGeometry()
+        self.lbl_error.updateGeometry()
+
     # Styling -----------------------------------------------------
     def _apply_style(self):  # pragma: no cover - visual
         self.setStyleSheet(
@@ -98,5 +125,7 @@ class StatusBarWidget(QWidget):
             QLabel#StatusMessageLabel { font-size: 12px; color: palette(WindowText); }
             QLabel#StatusFreshnessPill { padding:2px 6px; border-radius: 8px; background: palette(Button); color: palette(ButtonText); }
             QLabel#StatusTrendSpark { font-family: 'Consolas', 'Courier New', monospace; }
+            QLabel#StatusWarnBadge { padding:2px 4px; border-radius:6px; background:#FFC107; color:#202020; font-weight:600; }
+            QLabel#StatusErrorBadge { padding:2px 4px; border-radius:6px; background:#DC3545; color:#ffffff; font-weight:600; }
             """
         )

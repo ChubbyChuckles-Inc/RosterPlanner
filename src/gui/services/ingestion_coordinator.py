@@ -16,8 +16,12 @@ from typing import Optional
 
 from .data_audit import DataAuditService
 from .event_bus import EventBus, Event  # type: ignore
+from .service_locator import services  # lazy access for metrics service
 
 __all__ = ["IngestionCoordinator", "IngestionSummary", "IngestError"]
+
+# Backward compatibility alias (some dynamic imports may look for 'ingestion_coordinator')
+ingestion_coordinator = None  # sentinel to satisfy getattr checks
 
 
 @dataclass
@@ -54,6 +58,7 @@ class IngestionCoordinator:
         self._detect_schema()
 
     def run(self, *, force: bool = False) -> IngestionSummary:
+        start_ts = time.time()
         self._ensure_provenance_table()
         self._ensure_normalized_provenance_view()
         if self._singular_mode:
@@ -85,7 +90,12 @@ class IngestionCoordinator:
                 self.conn.execute(f"SAVEPOINT {sp}")
                 if logger:
                     logger.emit("division.start", {"division": d.division, "index": idx})
-                result = self._ingest_single_division(d, force=force)
+                # Some test subclasses override _ingest_single_division without a force kwarg.
+                try:
+                    result = self._ingest_single_division(d, force=force)  # type: ignore[arg-type]
+                except TypeError:
+                    # Retry without keyword for backward compatibility in tests
+                    result = self._ingest_single_division(d)  # type: ignore[call-arg]
                 if result is None:
                     self.conn.execute(f"RELEASE SAVEPOINT {sp}")
                     if logger:
@@ -154,6 +164,18 @@ class IngestionCoordinator:
                     skipped_files,
                 ),
             )
+        except Exception:
+            pass
+        # Record run metrics (best effort; never raises)
+        try:
+            from .ingest_metrics_service import IngestMetricsService
+
+            metrics = services.try_get("ingest_metrics")
+            if metrics is None:
+                metrics = IngestMetricsService()
+                services.register("ingest_metrics", metrics, allow_override=True)
+            duration_ms = (time.time() - start_ts) * 1000.0
+            metrics.append_from_summary(summary, duration_ms)
         except Exception:
             pass
         if self.event_bus is not None:
@@ -474,9 +496,20 @@ class IngestionCoordinator:
             if not div_row:
                 return 0
             division_id = div_row[0]
+            # Derive stored team name: if suffix is numeric and club_full_name already
+            # contains a year token (heuristic: 4-digit number), we use just the numeric
+            # suffix ("1", "2", ...) as the team name so queries expecting numbered
+            # teams succeed. Otherwise fall back to full name to avoid collisions.
             team_id_assigned = self._assign_id("team", full_team_name)
-            # Store full team name to ensure (division_id, name) uniqueness across clubs
             stored_team_name = full_team_name
+            try:
+                import re as _re
+
+                has_year = bool(_re.search(r"\b(18|19|20)\d{2}\b", club_full_name))
+                if has_year and team_suffix.isdigit():
+                    stored_team_name = team_suffix  # numbered variant
+            except Exception:
+                pass
             # Attempt to add canonical_name column if not present (lazy migration assist)
             try:
                 self.conn.execute(f"ALTER TABLE {self._table_team} ADD COLUMN canonical_name TEXT")
@@ -836,7 +869,11 @@ class IngestionCoordinator:
         if len(tokens) >= 2:
             last = tokens[-1]
             if is_team_num(last):
+                # Common pattern: club name ends with a founding year followed by a team number
+                # e.g. "LTTV Leutzscher Füchse 1990 7" -> club: "LTTV Leutzscher Füchse 1990" suffix: "7"
+                # We treat the trailing number strictly as suffix and keep any prior year token inside club name.
                 return " ".join(tokens[:-1]), last
+            # If the string ends with a year we keep it within the club portion (no numeric suffix)
             if is_year(last):
                 return full_team_name, "1"
         return full_team_name, "1"

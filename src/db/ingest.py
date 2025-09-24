@@ -172,40 +172,47 @@ def ingest_path(
         file_hash = hash_html(content)
         result = FileIngestResult(source_file=str(ranking), hash=file_hash, skipped_unchanged=False)
         if _provenance_exists(conn, str(ranking), file_hash):
+            # Even if ranking file unchanged we still allow roster files beneath to update.
             result.skipped_unchanged = True
-            report.files.append(result)
-            continue
-        # Parse division + teams
+        else:
+            # Parse division + teams
+            division_name, team_entries = parse_ranking_table(content, source_hint=ranking.name)
+            with conn:  # per file transaction
+                div_id = _upsert_division(conn, division_name)
+                for t in team_entries:
+                    team_name = t.get("team_name")
+                    if not team_name:
+                        continue
+                    team_id = _upsert_team(conn, div_id, team_name)
+                _record_provenance(conn, str(ranking), parser_version, file_hash)
+        # Always walk roster files (some tests modify roster only)
         division_name, team_entries = parse_ranking_table(content, source_hint=ranking.name)
-        with conn:  # per file transaction
-            div_id = _upsert_division(conn, division_name)
-            for t in team_entries:
-                team_name = t.get("team_name")
-                if not team_name:
+        div_id = _upsert_division(conn, division_name)
+        for t in team_entries:
+            team_name = t.get("team_name")
+            if not team_name:
+                continue
+            team_id = _upsert_team(conn, div_id, team_name)
+            for fname, roster_path in roster_files.items():
+                if team_name.replace(" ", "_") not in fname:
                     continue
-                team_id = _upsert_team(conn, div_id, team_name)
-                # Attempt roster file resolution by normalized name presence in filename
-                # (Simplified heuristic; future: link-based mapping)
-                for fname, roster_path in roster_files.items():
-                    if team_name.replace(" ", "_") in fname:
-                        roster_html = roster_path.read_text(encoding="utf-8", errors="ignore")
-                        roster_hash = hash_html(roster_html)
-                        if _provenance_exists(conn, str(roster_path), roster_hash):
-                            continue
-                        players = extract_players(roster_html, team_id=str(team_id))
-                        inserted = updated = 0
-                        for p in players:
-                            ins, upd = _upsert_player(conn, team_id, p.name, p.live_pz)
-                            if ins:
-                                inserted += 1
-                            if upd:
-                                updated += 1
-                        if players:
-                            result.inserted_players += inserted
-                            result.updated_players += updated
-                        _record_provenance(conn, str(roster_path), parser_version, roster_hash)
-            # Record provenance for ranking file after successful ingestion
-            _record_provenance(conn, str(ranking), parser_version, file_hash)
+                roster_html = roster_path.read_text(encoding="utf-8", errors="ignore")
+                roster_hash = hash_html(roster_html)
+                existing = _provenance_exists(conn, str(roster_path), roster_hash)
+                players = extract_players(roster_html, team_id=str(team_id))
+                inserted = updated = 0
+                for p in players:
+                    ins, upd = _upsert_player(conn, team_id, p.name, p.live_pz)
+                    if ins:
+                        inserted += 1
+                    if upd:
+                        updated += 1
+                if players:
+                    result.inserted_players += inserted
+                    result.updated_players += updated
+                if not existing or (inserted or updated):
+                    # Record or refresh provenance when content changed or player data updated
+                    _record_provenance(conn, str(roster_path), parser_version, roster_hash)
         report.files.append(result)
     return report
 

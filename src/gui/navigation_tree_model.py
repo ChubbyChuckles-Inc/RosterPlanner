@@ -152,7 +152,15 @@ class NavigationTreeModel(QAbstractItemModel):  # pragma: no cover - exercised v
         # Guard against re-entrancy: mark loaded BEFORE emitting signals so if
         # rowCount is queried again during insert it will not attempt to load twice.
         node._loaded = True
-        teams = sorted(pending, key=lambda x: x.display_name)
+
+        def _sort_key(team):
+            dn = team.display_name
+            parts = dn.split()
+            has_suffix = ("–" in dn) and parts and parts[-1].isdigit()
+            # Group 0: has club prefix + numeric suffix, Group 1: everything else
+            return (0 if has_suffix else 1, dn.lower())
+
+        teams = sorted(pending, key=_sort_key)
         self.beginInsertRows(self._create_index_for(node), 0, len(teams) - 1)
         for team in teams:
             node.append(NavNode(label=team.display_name, kind="team", team=team))

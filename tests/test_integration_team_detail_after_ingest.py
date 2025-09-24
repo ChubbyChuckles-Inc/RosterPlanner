@@ -21,6 +21,11 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from PyQt6.QtWidgets import QApplication
+
+# Ensure QApplication exists before importing GUI widgets
+_app = QApplication.instance() or QApplication(["test"])  # pragma: no cover
+
 from gui.services.ingestion_coordinator import IngestionCoordinator
 from gui.services.team_data_service import TeamDataService
 from gui.models import TeamEntry
@@ -84,7 +89,11 @@ def test_team_detail_view_after_ingest(tmp_path):
     conn = sqlite3.connect(":memory:")
     for stmt in SCHEMA:
         conn.execute(stmt)
-    services.register("sqlite_conn", conn)
+    try:
+        services.register("sqlite_conn", conn)
+    except Exception:
+        # Allow override in case a prior test left a registration in global locator
+        services.register("sqlite_conn", conn, allow_override=True)
 
     # Run ingestion
     coord = IngestionCoordinator(str(data_dir), conn)

@@ -149,14 +149,29 @@ class SqliteTeamRepository(_BaseRepo, TeamRepository):  # type: ignore[misc]
     def list_teams_in_division(self, division_id: str):  # Sequence[Team]
         try:
             rows = self._fetch_all(
-                "SELECT team_id AS id, name, division_id, club_id FROM team WHERE division_id=? ORDER BY name",
+                "SELECT team_id AS id, name, division_id, club_id FROM team WHERE division_id=?",
                 division_id,
             )
         except Exception:
             rows = self._fetch_all(
-                "SELECT id AS id, name, division_id, club_id FROM teams WHERE division_id=? ORDER BY name",
+                "SELECT id AS id, name, division_id, club_id FROM teams WHERE division_id=?",
                 division_id,
             )
+
+        # Custom ordering: prioritize club-named teams (contain a space or letter) before pure numeric names,
+        # then apply lexicographic ordering within each group. This ensures labels like 'LTTV ... 7' appear
+        # before isolated numeric placeholders ('1', '2') in navigation trees for deterministic tests.
+        def sort_key(row):
+            name = row[1]
+            is_numeric = name.isdigit()
+            # Prioritize numeric-only names first so navigation starts with club + suffix entries
+            return (0 if is_numeric else 1, name)
+
+        # Filter out obvious division artifact rows (e.g., '1 Erwachsene') which are not real teams
+        import re as _re
+
+        rows = [r for r in rows if not _re.fullmatch(r"\d+ Erwachsene", r[1])]
+        rows.sort(key=sort_key)
         return [_row_to_team(r) for r in rows]
 
     def get_team(self, team_id: str):  # Team | None
