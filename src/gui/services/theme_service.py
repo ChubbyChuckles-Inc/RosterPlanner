@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Mapping, Iterable, List
+from pathlib import Path
+import os, json
 
 from gui.design import ThemeManager, ThemeDiff, load_tokens
 from gui.design.contrast import contrast_ratio
@@ -113,7 +115,14 @@ class ThemeService:
                 apply_color_vision_filter_if_active(base_map, mode)
         except Exception:
             pass
-        return cls(manager=mgr, _cached_map=base_map)
+        svc = cls(manager=mgr, _cached_map=base_map)
+        # Initialize cache for filesystem overlays
+        svc._cached_filesystem_overlays = {}
+        try:
+            svc.load_filesystem_themes()
+        except Exception:
+            pass
+        return svc
 
     # Accessors ---------------------------------------------------------
     def colors(self) -> Mapping[str, str]:
@@ -416,6 +425,69 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
                 pass
             self._publish_theme_changed(diff)
         return changed
+
+    # Filesystem theme integration ----------------------------------
+    def load_filesystem_themes(self, directory: str | None = None) -> List[str]:
+        """Discover JSON theme files in assets/themes and cache overlays.
+
+        Returns list of loaded theme names (filename stems).
+        """
+        if directory is None:
+            directory = os.path.join(os.getcwd(), "assets", "themes")
+        loaded: List[str] = []
+        try:
+            p = Path(directory)
+            if not p.exists():
+                return loaded
+            for file in p.glob("*.json"):
+                try:
+                    with file.open("r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                    if not isinstance(data, dict):
+                        continue
+                    color = data.get("color")
+                    if not isinstance(color, dict):
+                        continue
+                    flat: dict[str, str] = {}
+                    for group, gv in color.items():
+                        if not isinstance(gv, dict):
+                            continue
+                        for k, v in gv.items():
+                            if isinstance(v, str) and v.startswith("#"):
+                                flat[f"{group}.{k}"] = v
+                    if flat:
+                        name = file.stem
+                        self._cached_filesystem_overlays[name] = flat
+                        loaded.append(name)
+                except Exception:
+                    continue
+        except Exception:
+            return loaded
+        return loaded
+
+    def apply_filesystem_theme(self, name: str) -> bool:
+        flat = getattr(self, "_cached_filesystem_overlays", {}).get(name)
+        if not flat:
+            return False
+        self.apply_custom(flat)
+        return True
+
+    def export_current_theme(self, name: str) -> Path | None:
+        try:
+            directory = Path(os.getcwd()) / "assets" / "themes"
+            directory.mkdir(parents=True, exist_ok=True)
+            payload: dict[str, dict[str, dict[str, str]]] = {"color": {}}
+            for k, v in self._cached_map.items():
+                if "." not in k:
+                    continue
+                group, role = k.split(".", 1)
+                payload["color"].setdefault(group, {})[role] = v
+            out = directory / f"{name}.json"
+            with out.open("w", encoding="utf-8") as fh:
+                json.dump(payload, fh, indent=2)
+            return out
+        except Exception:
+            return None
 
     # Instrumentation -------------------------------------------------
     def _maybe_log_slow(self, kind: str, value: str, elapsed_ms: float, diff: ThemeDiff) -> None:

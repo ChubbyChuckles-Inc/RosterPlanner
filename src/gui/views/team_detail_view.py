@@ -200,6 +200,17 @@ class TeamDetailView(QWidget):
             self.roster_table.setItem(row, 2, QTableWidgetItem(spark))
         # Ensure visibility applied after population (header unaffected by row ops)
         self._apply_column_visibility()
+        # Force header layout update & repaint (workaround for delayed initial paint on some platforms)
+        try:
+            hh = self.roster_table.horizontalHeader()
+            vh = self.roster_table.verticalHeader()
+            hh.blockSignals(True); vh.blockSignals(True)
+            hh.resizeSections(hh.ResizeMode.ResizeToContents)
+            vh.resizeSections(vh.ResizeMode.ResizeToContents)
+            hh.blockSignals(False); vh.blockSignals(False)
+            hh.update(); vh.update(); hh.repaint(); vh.repaint()
+        except Exception:
+            pass
 
     def _generate_placeholder_trend(self, player: PlayerEntry) -> List[int]:
         # Deterministic pseudo-random small range values derived from player name for stable tests

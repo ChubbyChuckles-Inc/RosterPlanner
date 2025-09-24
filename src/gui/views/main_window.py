@@ -217,6 +217,7 @@ class MainWindow(QMainWindow):  # Dock-based
                         border,
                         intensity=22,
                         capability=get_glass_capability(),
+                        border_alpha=0.05,
                     )
                 except Exception:
                     pass
@@ -249,6 +250,7 @@ class MainWindow(QMainWindow):  # Dock-based
                         border,
                         intensity=22,
                         capability=get_glass_capability(),
+                        border_alpha=0.05,
                     )
                 except Exception:
                     pass

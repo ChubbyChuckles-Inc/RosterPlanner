@@ -86,6 +86,7 @@ def build_glass_qss(
     adaptive: bool = False,
     luminance: float | None = None,
     capability: Optional[GlassCapability] = None,
+    border_alpha: float | None = None,
 ) -> str:
     """Return a QSS snippet for a translucent glass-like surface.
 
@@ -127,9 +128,12 @@ def build_glass_qss(
             br = int(border_color[1:3], 16)
             bg_ = int(border_color[3:5], 16)
             bb = int(border_color[5:7], 16)
-            # Adjust alpha based on perceived luminance of background to avoid black ring
-            lum = (0.2126 * br + 0.7152 * bg_ + 0.0722 * bb) / 255.0
-            alpha = 0.25 if lum < 0.25 else (0.18 if lum < 0.5 else 0.15)
+            # Adjust alpha based on perceived luminance unless explicit override provided
+            if border_alpha is None:
+                lum = (0.2126 * br + 0.7152 * bg_ + 0.0722 * bb) / 255.0
+                alpha = 0.20 if lum < 0.25 else (0.14 if lum < 0.5 else 0.10)
+            else:
+                alpha = max(0.0, min(border_alpha, 1.0))
             soft_border = f"rgba({br},{bg_},{bb},{alpha:.2f})"
         except Exception:
             soft_border = border_color

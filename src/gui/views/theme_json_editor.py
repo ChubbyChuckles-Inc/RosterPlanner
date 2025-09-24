@@ -30,6 +30,12 @@ try:  # pragma: no cover - import guard for headless tests
         QPlainTextEdit,
         QLabel,
         QMessageBox,
+        QListWidget,
+        QListWidgetItem,
+        QWidget,
+        QGridLayout,
+        QColorDialog,
+        QScrollArea,
     )
     from PyQt6.QtCore import Qt
 except Exception:  # pragma: no cover
@@ -70,6 +76,28 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
         self.status_label = QLabel("")
         self.status_label.setObjectName("themeJsonStatus")
         layout.addWidget(self.status_label)
+        # Filesystem theme list + export row
+        fs_row = QHBoxLayout()
+        self.fs_list = QListWidget()
+        self.fs_list.setMaximumHeight(90)
+        fs_row.addWidget(QLabel("Available FS Themes:"))
+        fs_row.addWidget(self.fs_list, 1)
+        self.reload_btn = QPushButton("Reload")
+        self.export_btn = QPushButton("Export Current")
+        fs_row.addWidget(self.reload_btn)
+        fs_row.addWidget(self.export_btn)
+        layout.addLayout(fs_row)
+
+        # Dynamic color key editor (scrollable) -------------------------------------------------
+        self.key_editor_area = QScrollArea()
+        self.key_editor_area.setWidgetResizable(True)
+        self._key_container = QWidget()
+        self._key_layout = QGridLayout(self._key_container)
+        self.key_editor_area.setMinimumHeight(200)
+        self.key_editor_area.setWidget(self._key_container)
+        layout.addWidget(QLabel("Interactive Color Keys:"))
+        layout.addWidget(self.key_editor_area)
+
         btn_row = QHBoxLayout()
         self.preview_btn = QPushButton("Preview")
         self.apply_btn = QPushButton("Apply")
@@ -82,6 +110,17 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
         btn_row.addStretch(1)
         btn_row.addWidget(self.cancel_btn)
         layout.addLayout(btn_row)
+
+        # Wire filesystem theme interactions
+        try:
+            self.reload_btn.clicked.connect(self._reload_fs)  # type: ignore
+            self.export_btn.clicked.connect(self._export_current)  # type: ignore
+            self.fs_list.itemDoubleClicked.connect(self._apply_fs_item)  # type: ignore
+        except Exception:
+            pass
+        self._reload_fs()
+        self._populate_key_editors()
+        self._load_current_theme_into_editor()
 
     # Event handlers -------------------------------------------------
     def _on_preview(self):  # pragma: no cover - direct UI path
@@ -140,3 +179,75 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
         else:
             self.status_label.setText(f"Parsed {len(flat)} keys. Ready to preview.")
         return flat
+
+    # Filesystem theme utilities ----------------------------------
+    def _reload_fs(self):  # pragma: no cover - UI path
+        self.fs_list.clear()
+        try:
+            names = self._theme.load_filesystem_themes()
+            for n in names:
+                QListWidgetItem(n, self.fs_list)
+        except Exception:
+            pass
+
+    def _apply_fs_item(self, item):  # pragma: no cover - UI path
+        if not item:
+            return
+        name = item.text()
+        if self._theme.apply_filesystem_theme(name):
+            self.status_label.setText(f"Applied filesystem theme: {name}")
+            self._original = dict(self._theme.colors())
+            self._populate_key_editors()
+            self._load_current_theme_into_editor()
+
+    def _export_current(self):  # pragma: no cover - UI path
+        out = self._theme.export_current_theme("exported_theme")
+        if out:
+            self.status_label.setText(f"Exported to {out}")
+
+    # Interactive color key editors -------------------------------
+    def _populate_key_editors(self):  # pragma: no cover - UI path
+        # Clear layout
+        while self._key_layout.count():
+            item = self._key_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+        colors = self._theme.colors()
+        keys = [k for k in sorted(colors.keys()) if any(k.startswith(p) for p in ("background.", "surface.", "text.", "accent.", "border."))]
+        for row, key in enumerate(keys):
+            lbl = QLabel(key)
+            btn = QPushButton(colors[key])
+            btn.setObjectName(f"colorKeyBtn_{key}")
+            btn.clicked.connect(lambda _=False, k=key, b=btn: self._edit_color_key(k, b))  # type: ignore
+            self._key_layout.addWidget(lbl, row, 0)
+            self._key_layout.addWidget(btn, row, 1)
+
+    def _edit_color_key(self, key: str, btn: QPushButton):  # pragma: no cover - UI path
+        try:
+            col = QColorDialog.getColor()  # native dialog
+            if not col.isValid():
+                return
+            hexv = col.name().upper()
+            self._theme.apply_custom({key: hexv})
+            btn.setText(hexv)
+            # Update editor JSON view snapshot
+            self._load_current_theme_into_editor()
+            self.status_label.setText(f"Updated {key} -> {hexv}")
+        except Exception:
+            pass
+
+    def _load_current_theme_into_editor(self):  # pragma: no cover - UI path
+        # Reconstruct grouped JSON
+        colors = self._theme.colors()
+        grouped: dict[str, dict[str, str]] = {}
+        for k, v in colors.items():
+            if "." not in k:
+                continue
+            group, role = k.split(".", 1)
+            grouped.setdefault(group, {})[role] = v
+        payload = {"color": grouped}
+        try:
+            self.editor.setPlainText(json.dumps(payload, indent=2))
+        except Exception:
+            pass
