@@ -24,7 +24,16 @@ from __future__ import annotations
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QPoint, QEvent, QRect, QObject, QSettings
-from PyQt6.QtGui import QMouseEvent, QCursor, QColor
+from PyQt6.QtGui import (
+    QMouseEvent,
+    QCursor,
+    QColor,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPalette,
+    QRegion,
+)
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtWidgets import (
     QDialog,
@@ -131,6 +140,11 @@ class ChromeDialog(QDialog):
         if title:
             self.setWindowTitle(title)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        # Ensure palette background is filled to avoid corner artifacts when rounded
+        try:
+            self.setAutoFillBackground(True)
+        except Exception:
+            pass
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
@@ -176,13 +190,10 @@ class ChromeDialog(QDialog):
             self.windowTitleChanged.connect(self._title_label.setText)  # type: ignore
         except Exception:
             pass
-        # Drop shadow (visual elevation). Skip for some platforms if fails.
+        # Rounded mask (addresses corner artifacts); disable shadow for now to avoid gaps
+        self._corner_radius = 8
         try:
-            shadow = QGraphicsDropShadowEffect(self)
-            shadow.setBlurRadius(28)
-            shadow.setOffset(0, 6)
-            shadow.setColor(QColor(0, 0, 0, 140))
-            self.setGraphicsEffect(shadow)
+            self._apply_mask()
         except Exception:
             pass
         # Restore persisted geometry (identifier based on class name)
@@ -234,6 +245,69 @@ class ChromeDialog(QDialog):
         except Exception:
             pass
         super().closeEvent(e)
+
+    def resizeEvent(self, e):  # type: ignore[override]
+        try:
+            self._apply_mask()
+        except Exception:
+            pass
+        super().resizeEvent(e)
+
+    def _apply_mask(self):
+        # Create a rounded mask so child widget rects cannot bleed square corners
+        r = self.rect()
+        if r.isEmpty():
+            return
+        path = QPainterPath()
+        radius = self._corner_radius
+        path.addRoundedRect(r.adjusted(0, 0, -1, -1), radius, radius)
+        region = QRegion(path.toFillPolygon().toPolygon())
+        self.setMask(region)
+
+    def paintEvent(self, e):  # type: ignore[override]
+        # Custom paint to ensure clean antialiased rounded edges & single border
+        p = QPainter(self)
+        try:
+            p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        except Exception:
+            pass
+        qrect = self.rect().adjusted(0, 0, -1, -1)
+        path = QPainterPath()
+        try:
+            from PyQt6.QtCore import QRectF
+
+            path.addRoundedRect(QRectF(qrect), self._corner_radius, self._corner_radius)
+        except Exception:
+            path.addRect(qrect)
+        # Background color from palette (fallback to dark gray)
+        pal_col = self.palette().color(QPalette.ColorRole.Window)
+        p.fillPath(path, pal_col)
+        # Resolve border color from theme service if available
+        border_qcolor = QColor(68, 68, 68)
+        try:
+            from gui.services.service_locator import services as _services
+
+            theme = _services.try_get("theme_service")
+            if theme:
+                colors = getattr(theme, "colors", lambda: {})()
+                hexv = colors.get("border.medium") or colors.get("accent.base")
+                if hexv and isinstance(hexv, str) and hexv.startswith("#"):
+                    border_qcolor = QColor(hexv)
+        except Exception:
+            pass
+        pen = QPen(border_qcolor)
+        pen.setWidth(1)
+        p.setPen(pen)
+        p.drawPath(path)
+        # Title/content separator (optional subtle line)
+        try:
+            sep_y = self._title_bar.height()
+            if sep_y > 0:
+                p.setPen(QPen(border_qcolor.darker(115)))
+                p.drawLine(qrect.left() + 1, sep_y, qrect.right() - 1, sep_y)
+        except Exception:
+            pass
+        p.end()
 
     # Helpers ------------------------------------------------------
     def _in_title_bar(self, pt: QPoint) -> bool:

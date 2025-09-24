@@ -369,10 +369,9 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  QToolButton#chromeBtnClose:focus {{ background:rgba(255,0,0,0.55); color:#FFFFFF; outline:2px solid rgba(255,255,255,0.6); }}
  QToolButton#chromeBtnMin, QToolButton#chromeBtnMax {{ color:{txt_muted}; border:none; background:transparent; }}
  QToolButton#chromeBtnMin:hover, QToolButton#chromeBtnMax:hover {{ background:{accent}; color:{bg}; }}
- QWidget#chromeContentHost {{ background:{surf}; border:1px solid {border}; border-top:none; }}
- QDialog#ChromeDialog, QDialog[chromeDialog="true"] {{ border:1px solid {border}; background:{surf}; border-radius:8px; }}
- QWidget#chromeTitleBar {{ border-top-left-radius:8px; border-top-right-radius:8px; }}
- QWidget#chromeContentHost {{ border-bottom-left-radius:8px; border-bottom-right-radius:8px; }}
+ /* Dialog content host made transparent so only outer frame draws rounded border */
+ QWidget#chromeContentHost {{ background:transparent; border:none; }}
+ /* ChromeDialog now paints its own rounded border; keep content host transparent */
  QDialog#ThemeJsonEditorDialog QWidget#chromeContentHost QWidget {{ background:transparent; }}
  /* Monospace editors */
  QPlainTextEdit#monospaceEditor {{ font-family: Consolas, 'Courier New', monospace; font-size:12px; }}
