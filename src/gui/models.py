@@ -20,14 +20,16 @@ class TeamEntry:
         # 2. Else if club present, format 'Club | TeamName'.
         # 3. Avoid duplication when club_name equals name (previous buggy state) – collapse to single occurrence.
         base_name = self.name.strip()
-        if " | " in base_name:
+        if " | " in base_name or " – " in base_name:
+            # Already combined (legacy pipe or new en dash form) -> return as-is
             disp = base_name
         elif self.club_name and self.club_name.strip():
             club = self.club_name.strip()
             if club == base_name:
                 disp = club  # degenerate duplicate
             else:
-                disp = f"{club} | {base_name}"
+                # New canonical separator: en dash with surrounding spaces for readability
+                disp = f"{club} – {base_name}"
         else:
             disp = base_name
         if self.roster_pending:

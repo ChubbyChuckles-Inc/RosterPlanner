@@ -467,10 +467,12 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
                     apply_color_vision_filter_if_active(self._cached_map, cb.mode)
             except Exception:
                 pass
-            # Re-augment + normalize after arbitrary custom injection so derived keys stay in sync
+            # IMPORTANT: Avoid re-normalizing contrast for direct user overrides of text.* colors
+            # to prevent a user-specified text.primary (#222222) from being pushed back to a
+            # higher-contrast fallback (#FFFFFF). We only augment missing aliases; skip contrast
+            # normalization pass here to keep explicit overrides authoritative.
             try:
                 self._augment_semantics(self._cached_map)
-                self._normalize_contrast(self._cached_map)
             except Exception:
                 pass
             self._publish_theme_changed(diff)

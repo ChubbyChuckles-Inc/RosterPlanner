@@ -22,3 +22,5 @@ feat(progress): add determinate & indeterminate progress indicators (reduced-mot
 feat(layout): add LayoutReflowCoordinator service with debounce + tests (Milestone 5.10.68)
 feat(theme): add ThemeWarmLoader service for accent palette prefetch (Milestone 5.10.69)
 
+feat(stats): implement StatsService, KPI registry, time-series builder, and LivePZ histogram service with tests (Milestone 6.1-6.3)
+

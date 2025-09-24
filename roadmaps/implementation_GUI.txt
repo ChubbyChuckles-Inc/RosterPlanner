@@ -273,10 +273,10 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.70 Virtualized list styling parity test (ensure consistent tokens) [T]
 
 Milestone 6: Advanced Statistics Engine
-[ ] 6.1 Stats service: compute aggregated KPIs (win %, avg LivePZ per lineup, player participation rate)
-[ ] 6.1.1 KPI registry (declarative definitions + metadata)
-[ ] 6.2 Time-series builder (date-indexed match density, availability coverage)
-[ ] 6.3 Player strength distribution histograms (binning LivePZ)
+[x] 6.1 Stats service: compute aggregated KPIs (win %, avg LivePZ per lineup, player participation rate)
+[x] 6.1.1 KPI registry (declarative definitions + metadata)
+[x] 6.2 Time-series builder (date-indexed match density, availability coverage)
+[x] 6.3 Player strength distribution histograms (binning LivePZ)
 [ ] 6.4 Match outcome predictor (baseline heuristic: average top N player LivePZ vs opponent)
 [ ] 6.4.1 Add calibration metrics logging (Brier score placeholder)
 [ ] 6.5 Division strength index (ELO-like aggregate per division)

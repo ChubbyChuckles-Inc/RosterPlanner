@@ -562,6 +562,16 @@ class IngestionCoordinator:
         roster_paths: list[Path] | None = None,
     ) -> int:
         club_full_name, team_suffix = self._split_club_and_suffix(full_team_name)
+        # Normalize club_full_name by removing appended team designation segments that slipped in from
+        # earlier combined forms like 'TTC Großpösna 1968 | 1. Erwachsene'. We want the pure club name
+        # (with founding year) so tests can look up 'TTC Großpösna 1968'.
+        try:
+            import re as _re
+
+            club_full_name = _re.sub(r"\s*\|\s*\d+\.\s*Erwachsene$", "", club_full_name)
+            club_full_name = _re.sub(r"\s*\|\s*\d+\.\s*Jugend.*$", "", club_full_name)
+        except Exception:
+            pass
         readable_division = division_name.replace("_", " ")
         if self._singular_mode:
             club_id = self._assign_id("club", club_full_name)
@@ -618,6 +628,14 @@ class IngestionCoordinator:
                     f"INSERT OR REPLACE INTO {self._table_team}(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
                     (team_id_assigned, club_id, division_id, stored_team_name),
                 )
+            # Redundant safety insertion: some parsing paths may delay club insert; ensure present.
+            try:
+                self.conn.execute(
+                    f"INSERT OR IGNORE INTO {self._table_club}(club_id, name) VALUES(?,?)",
+                    (club_id, club_full_name),
+                )
+            except Exception:
+                pass
             added_players = self._parse_and_upsert_players(
                 team_id_assigned, full_team_name, roster_paths=roster_paths
             )
@@ -1112,6 +1130,18 @@ class IngestionCoordinator:
         tokens = full_team_name.strip().split()
         if not tokens:
             return full_team_name, "1"
+        # Handle pattern 'Club Name | 2. Erwachsene' by extracting the numeric segment preceding a period
+        try:
+            import re as _re
+
+            m = _re.search(r"\|\s*(\d+)\.", full_team_name)
+            if m:
+                num = m.group(1)
+                # Club portion is everything before the pipe
+                club_part = full_team_name.split("|")[0].strip()
+                return club_part, num
+        except Exception:
+            pass
 
         def is_year(tok: str) -> bool:
             return tok.isdigit() and 1850 <= int(tok) <= 2099
