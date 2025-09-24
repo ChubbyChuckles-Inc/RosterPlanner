@@ -9,13 +9,13 @@ logging.
 from __future__ import annotations
 
 from PyQt6.QtCore import QThread, pyqtSignal, QObject
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QPushButton
+from PyQt6.QtWidgets import QLabel, QProgressBar, QPushButton
 import sqlite3
 from pathlib import Path
 from typing import Optional
 
 from db.rebuild import rebuild_database_with_progress, RebuildProgressEvent, RebuildPhase
-from gui.services.window_chrome import try_enable_dialog_chrome
+from gui.components.chrome_dialog import ChromeDialog
 
 
 class _RebuildWorker(QThread):  # pragma: no cover - Qt thread execution path
@@ -46,17 +46,16 @@ class _RebuildWorker(QThread):  # pragma: no cover - Qt thread execution path
             self.failed.emit(str(e))
 
 
-class RebuildProgressDialog(QDialog):  # pragma: no cover - GUI component
+class RebuildProgressDialog(ChromeDialog):  # pragma: no cover - GUI component
     def __init__(self, db_path: str, html_root: str, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Rebuild Database")
+        super().__init__(parent, title="Rebuild Database")
         self.resize(420, 160)
         self._label = QLabel("Starting...")
         self._bar = QProgressBar()
         self._bar.setRange(0, 100)
         self._close_btn = QPushButton("Close")
         self._close_btn.setEnabled(False)
-        lay = QVBoxLayout(self)
+        lay = self.content_layout()
         lay.addWidget(self._label)
         lay.addWidget(self._bar)
         lay.addWidget(self._close_btn)
@@ -67,10 +66,7 @@ class RebuildProgressDialog(QDialog):  # pragma: no cover - GUI component
         self._worker.finished_success.connect(self._on_success)
         self._worker.failed.connect(self._on_failed)
         self._worker.start()
-        try:
-            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
-        except Exception:
-            pass
+        # Chrome already applied
 
     def _on_progress(self, evt: RebuildProgressEvent):
         self._label.setText(evt.message)

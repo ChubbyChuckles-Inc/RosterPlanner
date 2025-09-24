@@ -11,8 +11,6 @@ from typing import List
 
 try:  # pragma: no cover - only executed when PyQt6 present
     from PyQt6.QtWidgets import (
-        QDialog,
-        QVBoxLayout,
         QLineEdit,
         QTreeWidget,
         QTreeWidgetItem,
@@ -20,19 +18,18 @@ try:  # pragma: no cover - only executed when PyQt6 present
         QHBoxLayout,
     )
 except Exception:  # pragma: no cover
-    QDialog = object  # type: ignore
+    pass
 
 from gui.services.shortcut_registry import global_shortcut_registry, ShortcutEntry
-from gui.services.window_chrome import try_enable_dialog_chrome
+from gui.components.chrome_dialog import ChromeDialog
 
 
-class ShortcutCheatSheetDialog(QDialog):  # pragma: no cover - GUI interaction test optional
+class ShortcutCheatSheetDialog(ChromeDialog):  # pragma: no cover - GUI interaction test optional
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Keyboard Shortcuts")
+        super().__init__(parent, title="Keyboard Shortcuts")
         self.resize(640, 480)
         self.setObjectName("ShortcutCheatSheetDialog")
-        layout = QVBoxLayout(self)
+        layout = self.content_layout()
         self.filter_edit = QLineEdit(self)
         self.filter_edit.setPlaceholderText("Filter shortcuts…")
         self.filter_edit.setObjectName("shortcutFilterEdit")
@@ -54,10 +51,7 @@ class ShortcutCheatSheetDialog(QDialog):  # pragma: no cover - GUI interaction t
         layout.addLayout(btn_row)
 
         self._refresh()
-        try:
-            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
-        except Exception:
-            pass
+        # Chrome provided by base class
 
     # -------------------------------------------------------------
     def _refresh(self):

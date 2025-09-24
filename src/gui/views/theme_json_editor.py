@@ -23,8 +23,6 @@ from typing import Optional
 
 try:  # pragma: no cover - import guard for headless tests
     from PyQt6.QtWidgets import (
-        QDialog,
-        QVBoxLayout,
         QHBoxLayout,
         QPushButton,
         QPlainTextEdit,
@@ -39,31 +37,28 @@ try:  # pragma: no cover - import guard for headless tests
     )
     from PyQt6.QtCore import Qt
 except Exception:  # pragma: no cover
-    QDialog = object  # type: ignore
+    pass
 
 import json
 
 from gui.services.service_locator import services
 from gui.services.theme_service import ThemeService, validate_theme_keys
 from gui.services.custom_theme import load_custom_theme, CustomThemeError
-from gui.services.window_chrome import try_enable_dialog_chrome
+from gui.components.chrome_dialog import ChromeDialog
 
 __all__ = ["ThemeJsonEditorDialog"]
 
 
-class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
+class ThemeJsonEditorDialog(ChromeDialog):  # type: ignore[misc]
     """Dialog for editing and previewing a custom theme JSON mapping."""
 
     def __init__(self, parent=None):  # pragma: no cover - UI scaffolding
-        super().__init__(parent)
-        if hasattr(self, "setWindowTitle"):
-            self.setWindowTitle("Theme JSON Editor")
+        super().__init__(parent, title="Theme JSON Editor")
         self.setModal(True)
         self.setObjectName("ThemeJsonEditorDialog")
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)  # type: ignore[attr-defined]
         self._theme: ThemeService = services.get_typed("theme_service", ThemeService)
         self._original = dict(self._theme.colors())  # deep copy snapshot
-        layout = QVBoxLayout(self)
+        layout = self.content_layout()
         self.info_label = QLabel(
             "Paste or edit JSON. Click Preview to temporarily apply; Apply to persist for session."
         )
@@ -123,11 +118,7 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
         self._reload_fs()
         self._populate_key_editors()
         self._load_current_theme_into_editor()
-        # Apply chrome AFTER content/layout established
-        try:
-            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
-        except Exception:
-            pass
+        # Chrome supplied by inheritance
 
     # Event handlers -------------------------------------------------
     def _on_preview(self):  # pragma: no cover - direct UI path

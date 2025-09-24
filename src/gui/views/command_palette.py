@@ -16,23 +16,21 @@ from typing import List, Tuple
 
 try:  # Optional PyQt6 (tests may skip if not installed)
     from PyQt6.QtWidgets import (
-        QDialog,
-        QVBoxLayout,
         QLineEdit,
         QListWidget,
         QListWidgetItem,
     )
     from PyQt6.QtCore import Qt
 except Exception:  # pragma: no cover
-    QDialog = object  # type: ignore
+    pass
 
 from gui.services.command_registry import global_command_registry, CommandEntry
-from gui.services.window_chrome import try_enable_dialog_chrome
+from gui.components.chrome_dialog import ChromeDialog
 
 __all__ = ["CommandPaletteDialog"]
 
 
-class CommandPaletteDialog(QDialog):  # type: ignore[misc]
+class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
     """Command palette with basic theming enhancements.
 
     Enhancements for Milestone 5.10.51:
@@ -42,21 +40,10 @@ class CommandPaletteDialog(QDialog):  # type: ignore[misc]
     """
 
     def __init__(self, parent=None):  # pragma: no cover - UI wiring mostly
-        super().__init__(parent)
-        if hasattr(self, "setWindowTitle"):
-            self.setWindowTitle("Command Palette")
-        # Theming hooks -------------------------------------------------
+        super().__init__(parent, title="Command Palette")
         self.setObjectName("CommandPaletteDialog")
-        # Use a consistent window flag style to avoid native title bar stylistic clash.
-        try:
-            from PyQt6.QtCore import Qt as _Qt  # type: ignore
-
-            self.setWindowFlag(_Qt.WindowType.Tool, True)  # type: ignore[attr-defined]
-        except Exception:  # pragma: no cover
-            pass
         self.setModal(True)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)  # type: ignore[attr-defined]
-        layout = QVBoxLayout(self)
+        layout = self.content_layout()
         self.search_edit = QLineEdit(self)
         self.search_edit.setObjectName("commandPaletteSearch")
         self.search_edit.setPlaceholderText("Type a command…")
@@ -71,14 +58,6 @@ class CommandPaletteDialog(QDialog):  # type: ignore[misc]
 
         self._refresh_list("")
         self.search_edit.setFocus()
-        try:
-            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
-        except Exception:
-            pass
-
-    # Internal -----------------------------------------------------
-    def _on_text_changed(self, text: str):  # pragma: no cover trivial
-        self._refresh_list(text)
 
     def _refresh_list(self, query: str):  # pragma: no cover trivial
         self.list_widget.clear()
