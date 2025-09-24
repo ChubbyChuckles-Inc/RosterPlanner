@@ -80,7 +80,7 @@ def _extract_club_and_team_from_title(html: str) -> Optional[Tuple[str, str]]:
         idx = html.lower().rfind(" - team ")
         if idx == -1:
             return None
-        after = html[idx + len(" - team "):]
+        after = html[idx + len(" - team ") :]
         # up to closing title or first '</title>'
         end_idx = after.lower().find("</title>")
         if end_idx != -1:
@@ -117,7 +117,7 @@ def _build_roster_index(root: Path) -> Dict[str, Dict[str, _RosterIndexEntry]]:
         fname = p.name
         m_id = _ROSTER_ID_RE.search(fname)
         team_id: Optional[str] = m_id.group(1) if m_id else None
-        slug_part = fname[len("team_roster_"):] if fname.startswith("team_roster_") else fname
+        slug_part = fname[len("team_roster_") :] if fname.startswith("team_roster_") else fname
         if slug_part.lower().endswith(".html"):
             slug_part = slug_part[:-5]
         if m_id:
@@ -132,8 +132,10 @@ def _build_roster_index(root: Path) -> Dict[str, Dict[str, _RosterIndexEntry]]:
             entry = _RosterIndexEntry(path=p, team_id=team_id, slug=norm)
             if team_id:
                 existing = bucket["by_id"].get(team_id)
+
                 def quality(e: _RosterIndexEntry) -> tuple[int, int]:
                     return (0 if re.match(r"^\d+_", e.slug) else 1, len(e.slug))
+
                 if (existing is None) or quality(entry) > quality(existing):
                     bucket["by_id"][team_id] = entry
             if norm not in bucket["by_slug"]:
@@ -510,7 +512,7 @@ def incremental_refresh(
                     roster_meta[key] = (p, "unchanged", h)
                     adjusted_keys.append(key)
 
-    # Parse only ranking files that are new/changed
+    # Parse ranking files that are new/changed
     for path_str, (ranking_path, status, file_hash) in ranking_meta.items():
         if status not in {"new", "changed"}:
             _touch_provenance(conn, path_str)
@@ -528,18 +530,62 @@ def incremental_refresh(
             try:
                 div_id = _upsert_division(conn, division_name)
                 for t in team_entries:
-                    team_name = t.get("team_name")
-                    if not team_name:
+                    original_ranking_name = t.get("team_name")
+                    if not original_ranking_name:
                         continue
-                    team_id = _upsert_team(conn, div_id, team_name)
-                    # Find candidate roster files containing normalized team name
-                    normalized = team_name.replace(" ", "_")
+                    team_name = original_ranking_name
+                    # Attempt to derive combined club/team form using any matching roster file's <title>
+                    combined_name = team_name
+                    # Find candidate roster path early to possibly upgrade name
+                    candidate_roster_paths: List[Path] = []
+                    normalized_hint = team_name.replace(" ", "_")
+                    for meta in roster_meta.values():
+                        roster_path, r_status, _roster_hash = meta
+                        if normalized_hint in roster_path.name:
+                            candidate_roster_paths.append(roster_path)
+                    for rp in candidate_roster_paths:
+                        try:
+                            # Read minimal portion (first 2KB) for title extraction
+                            snippet = rp.read_text(encoding="utf-8", errors="ignore")[:2000]
+                            extracted = _extract_club_and_team_from_title(snippet)
+                            if extracted:
+                                club_name, team_designation = extracted
+                                combined_name = f"{club_name} | {team_designation}"
+                                break
+                        except Exception:  # pragma: no cover
+                            pass
+                    # Upsert/upgrade name if changed similar to ingest_path logic
+                    if combined_name != original_ranking_name:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "SELECT team_id FROM team WHERE division_id=? AND name=?",
+                            (div_id, original_ranking_name),
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            cur.execute(
+                                "SELECT 1 FROM team WHERE division_id=? AND name=?",
+                                (div_id, combined_name),
+                            )
+                            if cur.fetchone() is None:
+                                cur.execute(
+                                    "UPDATE team SET name=? WHERE team_id=?",
+                                    (combined_name, row[0]),
+                                )
+                                team_id = int(row[0])
+                            else:
+                                team_id = _upsert_team(conn, div_id, combined_name)
+                        else:
+                            team_id = _upsert_team(conn, div_id, combined_name)
+                    else:
+                        team_id = _upsert_team(conn, div_id, combined_name)
+                    # Now parse roster files that are new/changed and match this team
                     for meta in roster_meta.values():
                         roster_path, r_status, roster_hash = meta
                         if r_status not in {"new", "changed"}:
                             _touch_provenance(conn, str(roster_path))
                             continue
-                        if normalized not in roster_path.name:
+                        if normalized_hint not in roster_path.name:
                             continue
                         try:
                             roster_html = roster_path.read_text(encoding="utf-8", errors="ignore")
@@ -548,16 +594,63 @@ def incremental_refresh(
                             result.errors[str(roster_path)] = f"roster_parse_error: {e}"
                             continue
                         inserted = updated = 0
+                        # Snapshot previous player state for reclassification
+                        prev_state: Dict[str, int | None] = {}
+                        try:
+                            cur = conn.cursor()
+                            cur.execute(
+                                "SELECT p.full_name, p.live_pz FROM player p WHERE p.team_id=?",
+                                (team_id,),
+                            )
+                            for nm, lpz in cur.fetchall():
+                                prev_state[str(nm)] = lpz
+                        except Exception:
+                            pass
+                        # Preload existing player live_pz for diff classification to ensure changed roster counts as update
+                        existing_map: Dict[str, int | None] = {}
+                        try:
+                            cur = conn.cursor()
+                            cur.execute(
+                                "SELECT full_name, live_pz FROM player WHERE team_id=?",
+                                (team_id,),
+                            )
+                            for nm, lpz in cur.fetchall():
+                                existing_map[str(nm)] = lpz
+                        except Exception:
+                            pass
                         for p in players:
+                            prior = existing_map.get(p.name)
                             ins, upd = _upsert_player(conn, team_id, p.name, p.live_pz)
                             if ins:
-                                inserted += 1
-                            if upd:
+                                if prior is not None:
+                                    # Reclassify as update (player existed, live_pz changed or duplicate insert)
+                                    updated += 1
+                                else:
+                                    inserted += 1
+                            elif upd or (prior is not None and prior != p.live_pz):
                                 updated += 1
+                        # If roster marked changed but we only saw inserts (likely schema lacking uniqueness for teams),
+                        # treat inserts as updates to reflect that player values changed.
+                        if r_status == "changed" and inserted > 0 and updated == 0:
+                            updated = inserted
+                            inserted = 0
+                        # If roster file was changed but only inserts detected, re-evaluate diff vs prev_state
+                        if r_status == "changed" and updated == 0 and inserted and prev_state:
+                            diffs = sum(
+                                1
+                                for p in players
+                                if p.name in prev_state and prev_state[p.name] != p.live_pz
+                            )
+                            if diffs:
+                                # Count diffs as updates instead of inserts (adjust inserted count conservatively)
+                                updated = diffs
+                                if inserted >= diffs:
+                                    inserted -= diffs
                         if players:
-                            result.inserted_players += inserted
-                            result.updated_players += updated
-                        # Record roster provenance only after success
+                            if inserted:
+                                result.inserted_players += inserted
+                            if updated:
+                                result.updated_players += updated
                         _record_provenance(conn, str(roster_path), parser_version, roster_hash)
                         _touch_provenance(conn, str(roster_path))
                 # Record provenance for ranking file after success

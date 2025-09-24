@@ -142,6 +142,11 @@ class IngestionCoordinator:
         )
         if logger:
             logger.emit("ingest.complete", {**asdict(summary), "error_count": len(errors)})
+        # Post-pass cleanup (best effort): normalize any duplicated or legacy formatted team names.
+        try:
+            self._post_ingest_name_dedup()
+        except Exception:
+            pass
         try:  # pragma: no cover
             from .consistency_validation_service import ConsistencyValidationService
 
@@ -304,7 +309,9 @@ class IngestionCoordinator:
                     except Exception:
                         html_txt = ""
                     if html_txt:
-                        m = re.search(r" - Team ([^,<]+?),\s*([^<]+)</title>", html_txt, re.IGNORECASE)
+                        m = re.search(
+                            r" - Team ([^,<]+?),\s*([^<]+)</title>", html_txt, re.IGNORECASE
+                        )
                         club_team: tuple[str, str] | None = None
                         if m:
                             club = m.group(1).strip()
@@ -917,6 +924,54 @@ class IngestionCoordinator:
             "INSERT INTO provenance(path, sha1, last_ingested_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(path) DO UPDATE SET sha1=excluded.sha1, last_ingested_at=CURRENT_TIMESTAMP",
             (path, sha1),
         )
+
+    def _post_ingest_name_dedup(self):
+        """Collapse duplicated combined names and upgrade dash-separated pairs to pipe format.
+
+        Patterns handled:
+          - "Club | Team | Club | Team" -> "Club | Team"
+          - "Club – Team" or "Club - Team" -> "Club | Team" (only if clearly two segments)
+          - Repetitive four-part halves (A,B,A,B)
+        Safe no-op if schema/tables absent.
+        """
+        try:
+            cur = self.conn.cursor()
+            cur.execute("SELECT team_id, name FROM team")
+            rows = cur.fetchall()
+        except Exception:
+            return
+        updates: list[tuple[str, int]] = []
+        for team_id, name in rows:
+            if not name or not isinstance(name, str):
+                continue
+            original = name
+            work = name
+            # Normalize various separators temporarily to pipe for analysis
+            work = work.replace(" – ", " | ").replace(" -- ", " | ")
+            # Handle simple 'Club - Team' (with spaces) but avoid already piped names
+            if " | " not in work and " - " in work:
+                parts_dash = [p.strip() for p in work.split(" - ") if p.strip()]
+                if len(parts_dash) == 2:
+                    work = " | ".join(parts_dash)
+            # Collapse repeated halves
+            parts = [p.strip() for p in work.split("|") if p.strip()]
+            if len(parts) >= 4 and len(parts) % 2 == 0:
+                half = len(parts) // 2
+                if parts[:half] == parts[half:]:
+                    parts = parts[:half]
+            if len(parts) == 2:
+                candidate = f"{parts[0]} | {parts[1]}"
+                if candidate != original:
+                    updates.append((candidate, team_id))
+            # Guard against accidental explosion: limit to 200 updates per run
+            if len(updates) > 200:
+                break
+        if updates:
+            try:
+                self.conn.executemany("UPDATE team SET name=? WHERE team_id=?", updates)
+                self.conn.commit()
+            except Exception:
+                pass
 
     @staticmethod
     def _derive_team_id(team_name: str) -> str:
