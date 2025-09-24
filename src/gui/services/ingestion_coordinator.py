@@ -263,13 +263,63 @@ class IngestionCoordinator:
                     id_index.setdefault(numeric_id, p)
                 name_index.setdefault(_norm_name(team_name), p)
 
-            processed_team_names: set[str] = set()
+            # Map of normalized team key -> metadata about ingested team
+            # Used to collapse hyphen/space/diacritic variants and enrich already-created
+            # teams with roster player data when the variant roster file is discovered later.
+            processed_team_map: dict[str, dict] = {}
 
             def ingest_team(team_name: str, roster_path: Path | None):
                 nonlocal teams_ingested, players_ingested, skipped_files, processed_files
-                if team_name in processed_team_names:
+                norm_key = _norm_name(team_name)
+
+                # If we've already ingested a variant of this team and now have a roster file,
+                # parse players into the existing team instead of creating a duplicate.
+                if norm_key in processed_team_map:
+                    if roster_path and roster_path.exists():
+                        meta = processed_team_map[norm_key]
+                        if not meta[
+                            "players_added"
+                        ]:  # only enrich if we don't have real players yet
+                            # provenance recording for this roster file (may be a new variant filename)
+                            info = d.team_rosters.get(team_name)
+                            if info:
+                                if (not force) and self._is_unchanged(info.path, info.sha1):
+                                    skipped_files += 1
+                                else:
+                                    processed_files += 1
+                                    self._record_provenance(info.path, info.sha1)
+                            else:
+                                try:
+                                    content = roster_path.read_bytes()
+                                except Exception:
+                                    content = b""
+                                import hashlib as _hashlib
+
+                                sha1 = _hashlib.sha1(content).hexdigest()
+                                if (not force) and self._is_unchanged(str(roster_path), sha1):
+                                    skipped_files += 1
+                                else:
+                                    processed_files += 1
+                                    self._record_provenance(str(roster_path), sha1)
+                            try:
+                                added = self._parse_and_upsert_players(
+                                    meta["team_id"], meta["full_name"], roster_paths=[roster_path]
+                                )
+                            except Exception:
+                                added = 0
+                            if added > 0:
+                                players_ingested += added
+                                # Remove placeholder player if present
+                                try:
+                                    self.conn.execute(
+                                        "DELETE FROM player WHERE team_id=? AND full_name='Placeholder Player'",
+                                        (meta["team_id"],),
+                                    )
+                                except Exception:
+                                    pass
+                                meta["players_added"] = True
                     return
-                processed_team_names.add(team_name)
+
                 roster_paths: list[Path] | None = None
                 if roster_path and roster_path.exists():
                     # Provenance handling per roster file
@@ -296,15 +346,16 @@ class IngestionCoordinator:
                             self._record_provenance(str(roster_path), sha1)
                     roster_paths = [roster_path]
                 # Upsert (players parsed only if roster_paths provided) with resilience
+                players_added = 0
                 try:
-                    player_rows = self._upsert_team(
+                    players_added = self._upsert_team(
                         self._derive_team_id(team_name),
                         team_name,
                         d.division,
                         roster_paths=roster_paths,
                     )
                     teams_ingested += 1
-                    players_ingested += player_rows
+                    players_ingested += players_added
                 except Exception as te:  # noqa: BLE001
                     # Record error but continue with other teams
                     try:
@@ -317,6 +368,16 @@ class IngestionCoordinator:
                         )
                     except Exception:
                         pass
+                # Record normalized key metadata so later variants can enrich instead of duplicate
+                try:
+                    existing_team_id = self._assign_id("team", team_name)
+                except Exception:
+                    existing_team_id = -1
+                processed_team_map[norm_key] = {
+                    "team_id": existing_team_id,
+                    "full_name": team_name,
+                    "players_added": players_added > 0,
+                }
 
             # 1. Ingest teams from ranking navigation first (authoritative ordering)
             for entry in ranking_teams:
@@ -338,7 +399,9 @@ class IngestionCoordinator:
             # Duplicates are avoided via processed_team_names. This ensures that if the ranking
             # table parser missed a valid team (HTML variant) we still surface it from the roster set.
             for team_name, info in d.team_rosters.items():
-                if team_name in processed_team_names:
+                if _norm_name(team_name) in processed_team_map:
+                    # Either already ingested or will be enriched inside ingest_team
+                    ingest_team(team_name, Path(info.path))
                     continue
                 ingest_team(team_name, Path(info.path))
         return (
@@ -414,10 +477,35 @@ class IngestionCoordinator:
             team_id_assigned = self._assign_id("team", full_team_name)
             # Store full team name to ensure (division_id, name) uniqueness across clubs
             stored_team_name = full_team_name
-            self.conn.execute(
-                f"INSERT OR REPLACE INTO {self._table_team}(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
-                (team_id_assigned, club_id, division_id, stored_team_name),
-            )
+            # Attempt to add canonical_name column if not present (lazy migration assist)
+            try:
+                self.conn.execute(f"ALTER TABLE {self._table_team} ADD COLUMN canonical_name TEXT")
+            except Exception:
+                pass
+
+            # Compute canonical normalization (mirror of _norm_name logic used earlier)
+            def _canon(s: str) -> str:
+                import unicodedata, re as _re
+
+                s2 = unicodedata.normalize("NFKD", s)
+                s2 = "".join(c for c in s2 if not unicodedata.combining(c)).lower()
+                s2 = s2.replace("-", " ").replace("_", " ")
+                s2 = _re.sub(r"[^a-z0-9 ]+", " ", s2)
+                s2 = _re.sub(r"\s+", " ", s2).strip()
+                return s2
+
+            canonical_name = _canon(stored_team_name)
+            try:
+                self.conn.execute(
+                    f"INSERT OR REPLACE INTO {self._table_team}(team_id, club_id, division_id, name, canonical_name) VALUES(?,?,?,?,?)",
+                    (team_id_assigned, club_id, division_id, stored_team_name, canonical_name),
+                )
+            except Exception:
+                # Fallback if column not present (legacy) – earlier insert pattern
+                self.conn.execute(
+                    f"INSERT OR REPLACE INTO {self._table_team}(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
+                    (team_id_assigned, club_id, division_id, stored_team_name),
+                )
             added_players = self._parse_and_upsert_players(
                 team_id_assigned, full_team_name, roster_paths=roster_paths
             )
@@ -455,10 +543,22 @@ class IngestionCoordinator:
             team_id = base_prefix if suffix == "1" else f"{base_prefix}{suffix}"
         try:
             stored_name = full_team_name if force_full_name else team_suffix
-            self.conn.execute(
-                "INSERT OR IGNORE INTO teams(id, name, division_id, club_id) VALUES(?,?,?,?)",
-                (team_id, stored_name, div_row[0], club_id),
-            )
+            # Attempt to add canonical_name column for legacy plural path (if user manually added)
+            canonical_name = stored_name.lower().replace("-", " ")
+            try:
+                self.conn.execute("ALTER TABLE teams ADD COLUMN canonical_name TEXT")
+            except Exception:
+                pass
+            try:
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO teams(id, name, division_id, club_id, canonical_name) VALUES(?,?,?,?,?)",
+                    (team_id, stored_name, div_row[0], club_id, canonical_name),
+                )
+            except Exception:
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO teams(id, name, division_id, club_id) VALUES(?,?,?,?)",
+                    (team_id, stored_name, div_row[0], club_id),
+                )
         except Exception:
             pass
         return 0
@@ -577,6 +677,15 @@ class IngestionCoordinator:
                     seen.add(norm)
                 except Exception:
                     pass
+        # After successfully inserting real players, purge placeholder if present
+        if inserted > 0:
+            try:
+                self.conn.execute(
+                    "DELETE FROM player WHERE team_id=? AND full_name='Placeholder Player'",
+                    (team_numeric_id,),
+                )
+            except Exception:
+                pass
         return inserted
 
     def _ensure_ranking_table(self):

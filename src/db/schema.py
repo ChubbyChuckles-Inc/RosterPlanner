@@ -17,7 +17,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Iterable
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # DDL statements (ordered for FK dependencies)
 DDL: list[str] = [
@@ -57,6 +57,7 @@ DDL: list[str] = [
         club_id INTEGER REFERENCES club(club_id) ON DELETE CASCADE, -- nullable until club ingestion implemented
         division_id INTEGER NOT NULL REFERENCES division(division_id) ON DELETE CASCADE,
         name TEXT NOT NULL,
+        canonical_name TEXT, -- normalized (diacritic/punct/space-collapsed) key for de-dup & fast lookup
         code TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(division_id, name)

@@ -202,8 +202,21 @@ class LandingLoadWorker(QThread):
             for d in repos.divisions.list_divisions():
                 for t in repos.teams.list_teams_in_division(d.id):
                     club_name = club_map.get(t.club_id) if getattr(t, "club_id", None) else None
+                    # Detect roster_pending: team has 0 players or only placeholder player
+                    player_rows = repos.players.list_players_for_team(t.id)
+                    roster_pending = False
+                    if not player_rows:
+                        roster_pending = True
+                    elif len(player_rows) == 1 and player_rows[0].name == "Placeholder Player":
+                        roster_pending = True
                     teams.append(
-                        TeamEntry(team_id=t.id, name=t.name, division=d.name, club_name=club_name)
+                        TeamEntry(
+                            team_id=t.id,
+                            name=t.name,
+                            division=d.name,
+                            club_name=club_name,
+                            roster_pending=roster_pending,
+                        )
                     )
             if teams:
                 teams.sort(key=lambda t: (t.division, t.display_name.lower()))
@@ -229,9 +242,14 @@ class LandingLoadWorker(QThread):
                             ).fetchone()
                             if c_row:
                                 club_name = c_row[0]
+                        # Legacy fallback cannot detect players; leave roster_pending False
                         teams.append(
                             TeamEntry(
-                                team_id=t_id, name=t_name, division=div_name, club_name=club_name
+                                team_id=t_id,
+                                name=t_name,
+                                division=div_name,
+                                club_name=club_name,
+                                roster_pending=False,
                             )
                         )
                 teams.sort(key=lambda t: (t.division, t.display_name.lower()))

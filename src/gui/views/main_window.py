@@ -1587,6 +1587,18 @@ class MainWindow(QMainWindow):  # Dock-based
             # Open or update team detail tab with full bundle
             self.open_team_detail(bundle.team, bundle)
         self.table.load(bundle.players, bundle.match_dates)
+        # If real players (non-placeholder) now available, clear roster_pending and refresh tree label
+        if bundle.players and not (
+            len(bundle.players) == 1 and bundle.players[0].name == "Placeholder Player"
+        ):
+            try:
+                if hasattr(bundle.team, "roster_pending") and bundle.team.roster_pending:
+                    bundle.team.roster_pending = False
+                    # Force tree repaint by resetting model data for that index
+                    if hasattr(self, "team_tree"):
+                        self.team_tree.viewport().update()
+            except Exception:
+                pass
         team_id = bundle.team.team_id
         if team_id in self.av_state.teams:
             team_av = self.av_state.teams[team_id]

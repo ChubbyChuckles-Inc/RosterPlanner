@@ -147,12 +147,24 @@ class TeamDetailView(QWidget):
         bundle: TeamRosterBundle
             Parsed roster + matches for a given team.
         """
+        if bundle is None:  # defensive guard (should not happen)
+            return
         self._bundle = bundle
         # Use display_name (includes club + suffix) for clearer context
         try:
             display_name = bundle.team.display_name  # type: ignore[attr-defined]
         except Exception:
             display_name = bundle.team.name
+        # If roster has real players, clear roster_pending on the model to keep UI consistent
+        if hasattr(bundle.team, "roster_pending"):
+            if bundle.players and not (
+                len(bundle.players) == 1 and bundle.players[0].name == "Placeholder Player"
+            ):
+                try:
+                    bundle.team.roster_pending = False  # type: ignore[attr-defined]
+                    display_name = bundle.team.display_name
+                except Exception:
+                    pass
         self.title_label.setText(f"Team: {display_name}")
         self._populate_roster(bundle.players)
         self._populate_matches(bundle.match_dates)

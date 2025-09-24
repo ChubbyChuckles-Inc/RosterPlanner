@@ -11,12 +11,16 @@ class TeamEntry:
     name: str  # raw team name (without club prefix)
     division: str
     club_name: str | None = None
+    roster_pending: bool = False  # UI badge indicator when only placeholder/no real players yet
 
     @property
     def display_name(self) -> str:
+        base = self.name
         if self.club_name and self.club_name.strip():
-            return f"{self.club_name} – {self.name}"  # always prefix when available
-        return self.name
+            base = f"{self.club_name} – {self.name}"  # always prefix when available
+        if self.roster_pending:
+            return base + " (Roster Pending)"
+        return base
 
 
 @dataclass
