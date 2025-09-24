@@ -1072,6 +1072,47 @@ class MainWindow(QMainWindow):  # Dock-based
         except Exception:
             pass
 
+    def _toggle_reduced_color_mode(self):  # pragma: no cover - GUI toggle path
+        """Toggle reduced color (monochrome) mode and re-apply theme stylesheet.
+
+        Integrates with `ReducedColorModeService` (Milestone 5.10.61). When the
+        service is active a supplemental grayscale-biased QSS snippet is
+        appended inside `_apply_theme_stylesheet` and an object property
+        `reducedColor` is set to enable selectors. This method retrieves both
+        the reduced color mode service and the theme service; if either is
+        unavailable it fails silently (non-fatal developer tool behavior).
+        """
+        try:
+            from gui.services.service_locator import services as _services  # type: ignore
+
+            rc_mode = _services.try_get("reduced_color_mode")
+            theme_svc = _services.try_get("theme_service")
+            if not rc_mode or not theme_svc or not hasattr(theme_svc, "generate_qss"):
+                return
+            # Toggle state
+            try:
+                rc_mode.toggle()  # type: ignore[attr-defined]
+            except Exception:
+                return
+            # Rebuild theme QSS and apply (will append reduced color snippet if active)
+            try:
+                qss = theme_svc.generate_qss()  # type: ignore[attr-defined]
+                self._apply_theme_stylesheet(qss)
+            except Exception:
+                pass
+            # Sync QAction checked state if present
+            try:
+                if getattr(self, "_act_reduced_color", None):
+                    self._act_reduced_color.setChecked(rc_mode.is_active())  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            # Status bar feedback (best effort)
+            self._set_status(
+                "Reduced Color Mode: ON" if rc_mode.is_active() else "Reduced Color Mode: OFF"
+            )
+        except Exception:
+            return
+
     # Export helpers -------------------------------------------------
     def _current_document_widget(self):  # pragma: no cover - simple helper
         try:

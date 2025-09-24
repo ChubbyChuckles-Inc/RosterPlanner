@@ -5,3 +5,7 @@ feat(dev-tools): add developer color picker overlay with token suggestion + test
 
 feat(accessibility): add reduced color / monochrome mode toggle with grayscale service (Milestone 5.10.61)
 
+test(print): add print stylesheet parity test harness (Milestone 5.10.62)
+
+test(elevation): add shadow elevation visual regression hash harness (Milestone 5.10.63)
+
