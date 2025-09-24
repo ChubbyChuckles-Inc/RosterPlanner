@@ -703,6 +703,8 @@ class IngestionCoordinator:
         if not roster_files:
             return 0
         inserted = 0
+        # Collect matches found across roster files (deduplicate by match number)
+        match_records: dict[str, dict] = {}
         seen = set(
             r[0]
             for r in self.conn.execute(
@@ -715,6 +717,53 @@ class IngestionCoordinator:
             except Exception:
                 continue
             gathered: list[tuple[str, int | None]] = []
+            # --- Match table parsing ------------------------------------------------
+            # Look for rows containing a MidBigScreenCell pattern with date dd.mm.yy and a match number (digits)
+            for tr in soup.find_all("tr"):
+                cells = tr.find_all("td")
+                if len(cells) < 9:
+                    continue
+                try:
+                    raw_cells = [c.get_text(strip=True) for c in cells]
+                except Exception:
+                    continue
+                # Heuristic: second cell (index 1) numeric (match number) & date pattern present in cell index 4
+                match_no = raw_cells[1]
+                date_str = raw_cells[4]
+                weekday = raw_cells[3]
+                time_str = raw_cells[6]
+                home_team = raw_cells[7]
+                guest_team = raw_cells[8]
+                if not (
+                    match_no.isdigit()
+                    and len(date_str) == 8
+                    and date_str[2] == "."
+                    and date_str[5] == "."
+                ):
+                    continue
+                score_cell = cells[9] if len(cells) > 9 else None
+                score_text = ""
+                future_flag = False
+                if score_cell:
+                    # Detect 'Vorbericht' => future match
+                    st = score_cell.get_text(strip=True)
+                    if st:
+                        if "Vorbericht" in st:
+                            future_flag = True
+                            score_text = ""
+                        else:
+                            score_text = st
+                # Store match one time (by number) – last one wins if duplicates
+                match_records[match_no] = {
+                    "weekday": weekday,
+                    "date": date_str,
+                    "time": time_str or None,
+                    "home": home_team,
+                    "guest": guest_team,
+                    "score": score_text,
+                    "future": future_flag,
+                }
+            # -------------------------------------------------------------------------
             target_table = None
             for tbl in soup.find_all("table"):
                 text_sample = " ".join(c.get_text(" ").lower() for c in tbl.find_all("td")[:30])
@@ -798,7 +847,84 @@ class IngestionCoordinator:
                 )
             except Exception:
                 pass
+        # Upsert matches after processing all roster files
+        if match_records:
+            self._upsert_matches_for_team(
+                team_numeric_id, full_team_name, list(match_records.values())
+            )
         return inserted
+
+    def _upsert_matches_for_team(
+        self, team_numeric_id: int, full_team_name: str, matches: list[dict]
+    ):
+        """Insert or update matches referencing this team.
+
+        We attempt to map home/guest team names back to existing team_ids by fuzzy name containment.
+        Date format incoming: dd.mm.yy -> convert to yyyy-mm-dd (assume 20xx for yy < 70 else 19xx).
+        Score format '9:6' => home_score, away_score integers. Empty score => scheduled.
+        """
+        try:
+            cur = self.conn.cursor()
+        except Exception:
+            return
+        # Build name -> team_id map for quick lookup (case-insensitive)
+        name_rows = cur.execute("SELECT team_id, name FROM team").fetchall()
+        name_index = {r[1].lower(): r[0] for r in name_rows}
+
+        def resolve_team_id(label: str) -> int | None:
+            lbl = label.lower().strip()
+            if lbl in name_index:
+                return name_index[lbl]
+            for k, v in name_index.items():
+                if lbl in k or k in lbl:
+                    return v
+            return None
+
+        for rec in matches:
+            date_str = rec["date"]
+            try:
+                dd, mm, yy = date_str.split(".")
+                year = int(yy)
+                year += 2000 if year < 70 else 1900
+                iso_date = f"{year:04d}-{int(mm):02d}-{int(dd):02d}"
+            except Exception:
+                continue
+            home_id = resolve_team_id(rec["home"])
+            away_id = resolve_team_id(rec["guest"])
+            if home_id is None or away_id is None:
+                continue
+            home_score = away_score = None
+            status = "scheduled"
+            score = rec.get("score") or ""
+            if score and ":" in score:
+                parts = score.split(":", 1)
+                if all(p.strip().isdigit() for p in parts):
+                    home_score, away_score = int(parts[0]), int(parts[1])
+                    status = "completed"
+            try:
+                # Unique constraint (division_id, home_team_id, away_team_id, match_date) => need division id
+                div_row = cur.execute(
+                    "SELECT division_id FROM team WHERE team_id=?", (home_id,)
+                ).fetchone()
+                if not div_row:
+                    continue
+                division_id = div_row[0]
+                cur.execute(
+                    "INSERT OR IGNORE INTO match(division_id, home_team_id, away_team_id, match_date, home_score, away_score, status) VALUES(?,?,?,?,?,?,?)",
+                    (division_id, home_id, away_id, iso_date, home_score, away_score, status),
+                )
+                # If existing but now has score update
+                if status == "completed":
+                    cur.execute(
+                        "UPDATE match SET home_score=?, away_score=?, status='completed' WHERE division_id=? AND home_team_id=? AND away_team_id=? AND match_date=? AND (home_score IS NULL OR away_score IS NULL)",
+                        (home_score, away_score, division_id, home_id, away_id, iso_date),
+                    )
+            except Exception:
+                continue
+        try:
+            self.conn.commit()
+        except Exception:
+            pass
 
     def _ensure_ranking_table(self):
         try:

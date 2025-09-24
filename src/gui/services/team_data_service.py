@@ -89,7 +89,33 @@ class TeamDataService:
             if iso in seen:
                 continue
             seen.add(iso)
-            match_dates.append(MatchDate(iso_date=iso, display=iso, time=None))
+            # Derive a richer display: date [HH:MM] vs/opponent (score)
+            # Determine opponent + home/away marker
+            opponent = None
+            venue = ""
+            try:
+                if m.home_team_id == team.team_id:
+                    opponent = (
+                        repos.teams.get_team(m.away_team_id).name
+                        if repos.teams.get_team(m.away_team_id)
+                        else None
+                    )
+                    venue = "vs"
+                elif m.away_team_id == team.team_id:
+                    opponent = (
+                        repos.teams.get_team(m.home_team_id).name
+                        if repos.teams.get_team(m.home_team_id)
+                        else None
+                    )
+                    venue = "@"
+            except Exception:
+                opponent = None
+            display = iso
+            if opponent:
+                display = f"{iso} {venue} {opponent}"
+            if m.home_score is not None and m.away_score is not None:
+                display = f"{display} ({m.home_score}:{m.away_score})"
+            match_dates.append(MatchDate(iso_date=iso, display=display, time=None))
         bundle = TeamRosterBundle(team=team, players=players, match_dates=match_dates)
         if cache is None:
             # Re-attempt lookup (service may have been registered after initial check in some test setups)
