@@ -51,10 +51,6 @@ class RebuildProgressDialog(QDialog):  # pragma: no cover - GUI component
         super().__init__(parent)
         self.setWindowTitle("Rebuild Database")
         self.resize(420, 160)
-        try:
-            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
-        except Exception:
-            pass
         self._label = QLabel("Starting...")
         self._bar = QProgressBar()
         self._bar.setRange(0, 100)
@@ -71,6 +67,10 @@ class RebuildProgressDialog(QDialog):  # pragma: no cover - GUI component
         self._worker.finished_success.connect(self._on_success)
         self._worker.failed.connect(self._on_failed)
         self._worker.start()
+        try:
+            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
+        except Exception:
+            pass
 
     def _on_progress(self, evt: RebuildProgressEvent):
         self._label.setText(evt.message)

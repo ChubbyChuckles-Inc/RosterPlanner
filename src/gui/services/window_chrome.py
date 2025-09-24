@@ -28,6 +28,7 @@ from PyQt6.QtWidgets import (
     QToolButton,
     QSizeGrip,
     QDialog,
+    QMenuBar,
 )
 from PyQt6.QtCore import Qt, QPoint, QRect
 from PyQt6.QtGui import QMouseEvent, QCursor, QPixmap
@@ -35,16 +36,12 @@ from PyQt6.QtGui import QMouseEvent, QCursor, QPixmap
 _ACTIVE_ROLE = "--active"  # suffix for state classes (future theming hook)
 
 
-class _ChromeContainer(QWidget):
-    """Container hosting the custom title bar and the user's central widget.
+class _ChromeTitleBar(QWidget):
+    """Title bar widget inserted via setMenuWidget for QMainWindow.
 
-    Responsibilities:
-      - Provide title bar with window controls
-      - Facilitate drag move and double-click maximize
-      - Provide resize hit zones (simple heuristic 6px frame)
+    Keeps existing central widget & dock areas unchanged; only replaces native
+    OS chrome when the window is set to FramelessWindowHint.
     """
-
-    FRAME_WIDTH = 6
 
     def __init__(self, window: QMainWindow, icon_path: str | None = None):
         super().__init__(window)
@@ -52,106 +49,51 @@ class _ChromeContainer(QWidget):
         self._drag_pos: QPoint | None = None
         self._maximized = False
         self._pre_max_normal_geom: QRect | None = None
-        self.setObjectName("chromeRoot")
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
-
-        # Title bar
-        self.title_bar = QWidget()
-        self.title_bar.setObjectName("chromeTitleBar")
-        tb_layout = QHBoxLayout(self.title_bar)
-        tb_layout.setContentsMargins(10, 4, 6, 4)
-        tb_layout.setSpacing(6)
-
-        # Optional window icon
-        if icon_path:
-            try:
-                pm = QPixmap(icon_path)
-            except Exception:
-                pm = QPixmap()
-        else:
-            pm = QPixmap()
+        self.setObjectName("chromeTitleBar")
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(8, 3, 6, 3)
+        lay.setSpacing(6)
+        # Icon
+        pm = QPixmap(icon_path) if icon_path else QPixmap()
         if not pm.isNull():
-            self.icon_label = QLabel()
-            self.icon_label.setObjectName("chromeWindowIcon")
-            self.icon_label.setPixmap(
-                pm.scaled(
-                    16,
-                    16,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-            )
-            tb_layout.addWidget(self.icon_label, 0)
+            icon_lbl = QLabel()
+            icon_lbl.setObjectName("chromeWindowIcon")
+            icon_lbl.setPixmap(pm.scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            lay.addWidget(icon_lbl, 0)
         self.title_label = QLabel(window.windowTitle())
         self.title_label.setObjectName("chromeTitleLabel")
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         try:
             self.title_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         except Exception:
             pass
-        tb_layout.addWidget(self.title_label, 1)
-
-        # Window control buttons
+        lay.addWidget(self.title_label, 1)
+        # Min
         self.btn_min = QToolButton()
-        self.btn_min.setText("–")
         self.btn_min.setObjectName("chromeBtnMin")
+        self.btn_min.setText("–")
         self.btn_min.clicked.connect(window.showMinimized)  # type: ignore
-        tb_layout.addWidget(self.btn_min)
-
+        lay.addWidget(self.btn_min)
+        # Max
         self.btn_max = QToolButton()
-        self.btn_max.setText("□")
         self.btn_max.setObjectName("chromeBtnMax")
+        self.btn_max.setText("□")
         self.btn_max.clicked.connect(self._toggle_max_restore)  # type: ignore
-        tb_layout.addWidget(self.btn_max)
-
+        lay.addWidget(self.btn_max)
+        # Close
         self.btn_close = QToolButton()
-        self.btn_close.setText("✕")
         self.btn_close.setObjectName("chromeBtnClose")
+        self.btn_close.setText("✕")
         self.btn_close.clicked.connect(window.close)  # type: ignore
-        tb_layout.addWidget(self.btn_close)
+        lay.addWidget(self.btn_close)
+        # Track window title changes
+        try:
+            window.windowTitleChanged.connect(self._on_title_changed)  # type: ignore
+        except Exception:
+            pass
 
-        outer.addWidget(self.title_bar)
+    def _on_title_changed(self, title: str):  # pragma: no cover - UI
+        self.title_label.setText(title)
 
-        # Central content placeholder (real central widget will be re-parented)
-        self.content_host = QWidget()
-        self.content_host.setObjectName("chromeContentHost")
-        ch_layout = QVBoxLayout(self.content_host)
-        ch_layout.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(self.content_host, 1)
-
-        # Optional size grip (bottom right)
-        self.size_grip = QSizeGrip(self)
-        self.size_grip.setObjectName("chromeSizeGrip")
-        self.size_grip.setVisible(True)
-        grip_layout = QHBoxLayout()
-        grip_layout.setContentsMargins(0, 0, 0, 0)
-        grip_layout.addStretch(1)
-        grip_layout.addWidget(
-            self.size_grip, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom
-        )
-        outer.addLayout(grip_layout)
-
-        self._apply_styles()
-
-    # ---- Styling -------------------------------------------------
-    def _apply_styles(self):  # pragma: no cover - visual styling
-        self.setStyleSheet(
-            """
-      QWidget#chromeRoot { background: palette(Window); }
-      QWidget#chromeTitleBar { background: palette(AlternateBase); }
-      QLabel#chromeTitleLabel { font-weight: 500; }
-      QToolButton#chromeBtnClose { color: red; }
-      QToolButton#chromeBtnClose:hover { background: rgba(255,0,0,0.15); }
-      QToolButton#chromeBtnMin, QToolButton#chromeBtnMax { }
-      QToolButton#chromeBtnMin:hover, QToolButton#chromeBtnMax:hover { background: rgba(255,255,255,0.1); }
-      QWidget#chromeContentHost { background: palette(Base); }
-      QSizeGrip#chromeSizeGrip { width: 12px; height: 12px; }
-      """
-        )
-
-    # ---- Window control logic -----------------------------------
     def _toggle_max_restore(self):
         if self._maximized:
             self._window.showNormal()
@@ -165,73 +107,56 @@ class _ChromeContainer(QWidget):
             self._maximized = True
             self.btn_max.setText("❐")
 
-    # ---- Events --------------------------------------------------
-    def mousePressEvent(self, event: QMouseEvent):  # type: ignore[override]
-        if event.button() == Qt.MouseButton.LeftButton:
-            if self._in_title_bar(event.position().toPoint()):
-                self._drag_pos = (
-                    event.globalPosition().toPoint() - self._window.frameGeometry().topLeft()
-                )
-        super().mousePressEvent(event)
+    def mousePressEvent(self, e: QMouseEvent):  # type: ignore[override]
+        if e.button() == Qt.MouseButton.LeftButton:
+            self._drag_pos = e.globalPosition().toPoint() - self._window.frameGeometry().topLeft()
+        super().mousePressEvent(e)
 
-    def mouseMoveEvent(self, event: QMouseEvent):  # type: ignore[override]
-        if self._drag_pos is not None and event.buttons() & Qt.MouseButton.LeftButton:
-            self._window.move(event.globalPosition().toPoint() - self._drag_pos)
-            event.accept()
+    def mouseMoveEvent(self, e: QMouseEvent):  # type: ignore[override]
+        if self._drag_pos is not None and e.buttons() & Qt.MouseButton.LeftButton:
+            self._window.move(e.globalPosition().toPoint() - self._drag_pos)
+            e.accept()
             return
-        # Resize cursor feedback
-        if self._on_edge(event.position().toPoint()):
-            QCursor.setShape(Qt.CursorShape.SizeFDiagCursor)
-        else:
-            QCursor.setShape(Qt.CursorShape.ArrowCursor)
-        super().mouseMoveEvent(event)
+        super().mouseMoveEvent(e)
 
-    def mouseReleaseEvent(self, event: QMouseEvent):  # type: ignore[override]
+    def mouseReleaseEvent(self, e: QMouseEvent):  # type: ignore[override]
         self._drag_pos = None
-        super().mouseReleaseEvent(event)
+        super().mouseReleaseEvent(e)
 
-    def mouseDoubleClickEvent(self, event: QMouseEvent):  # type: ignore[override]
-        if self._in_title_bar(event.position().toPoint()):
-            self._toggle_max_restore()
-        super().mouseDoubleClickEvent(event)
-
-    # ---- Helpers -------------------------------------------------
-    def _in_title_bar(self, pt: QPoint) -> bool:
-        return 0 <= pt.y() <= self.title_bar.height()
-
-    def _on_edge(self, pt: QPoint) -> bool:
-        w = self.width()
-        h = self.height()
-        fw = self.FRAME_WIDTH
-        return (w - fw <= pt.x() <= w) and (h - fw <= pt.y() <= h)
+    def mouseDoubleClickEvent(self, e: QMouseEvent):  # type: ignore[override]
+        self._toggle_max_restore()
+        super().mouseDoubleClickEvent(e)
 
 
-def try_enable_custom_chrome(
-    window: QMainWindow, icon_path: str | None = None
-) -> None:  # pragma: no cover - UI integration
-    """Enable custom chrome if feasible.
+def try_enable_custom_chrome(window: QMainWindow, icon_path: str | None = None) -> None:  # pragma: no cover - UI integration
+    """Enable custom chrome (menuWidget title bar) if feasible.
 
-    Re-parents the existing central widget into a chrome container and sets
-    frameless window flags. If any error occurs, function returns silently.
+    Leaves central widget & dock layout intact; injects a custom title bar via
+    setMenuWidget so it spans the full width above docks.
     """
     try:
         if window.windowFlags() & Qt.WindowType.FramelessWindowHint:
-            return  # already applied
-        # Capture current central widget
-        current = window.centralWidget()
-        container = _ChromeContainer(window, icon_path=icon_path)
-        window.setCentralWidget(container)
-        if current is not None:
-            current.setParent(container.content_host)
-            # Insert into host layout
-            host_layout = container.content_host.layout()  # type: ignore
-            if host_layout:
-                host_layout.addWidget(current)
+            return
+        # Preserve existing menu bar (if any) inside the custom bar (optional).
+        existing_menu = None
+        try:
+            existing_menu = window.menuBar()  # returns QMenuBar or dummy
+            if existing_menu and existing_menu.isNativeMenuBar():
+                existing_menu.setNativeMenuBar(False)  # ensure embeddable on macOS
+        except Exception:
+            existing_menu = None
+        bar = _ChromeTitleBar(window, icon_path=icon_path)
+        # If there's an existing menu bar with actions, embed it just after title label.
+        if existing_menu and isinstance(existing_menu, QMenuBar) and existing_menu.actions():
+            # Remove it from the window so it can be reparented.
+            existing_menu.setParent(bar)
+            idx = bar.layout().indexOf(bar.title_label)
+            bar.layout().insertWidget(idx + 1, existing_menu)
+        window.setMenuWidget(bar)
         window.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
         window.show()
     except Exception:
-        # Fail silently to avoid disrupting normal window operation
         return
 
 

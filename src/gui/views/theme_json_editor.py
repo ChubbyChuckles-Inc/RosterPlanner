@@ -60,10 +60,6 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
             self.setWindowTitle("Theme JSON Editor")
         self.setModal(True)
         self.setObjectName("ThemeJsonEditorDialog")
-        try:
-            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
-        except Exception:
-            pass
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)  # type: ignore[attr-defined]
         self._theme: ThemeService = services.get_typed("theme_service", ThemeService)
         self._original = dict(self._theme.colors())  # deep copy snapshot
@@ -127,6 +123,11 @@ class ThemeJsonEditorDialog(QDialog):  # type: ignore[misc]
         self._reload_fs()
         self._populate_key_editors()
         self._load_current_theme_into_editor()
+        # Apply chrome AFTER content/layout established
+        try:
+            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
+        except Exception:
+            pass
 
     # Event handlers -------------------------------------------------
     def _on_preview(self):  # pragma: no cover - direct UI path

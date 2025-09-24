@@ -47,10 +47,6 @@ class CommandPaletteDialog(QDialog):  # type: ignore[misc]
             self.setWindowTitle("Command Palette")
         # Theming hooks -------------------------------------------------
         self.setObjectName("CommandPaletteDialog")
-        try:
-            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
-        except Exception:
-            pass
         # Use a consistent window flag style to avoid native title bar stylistic clash.
         try:
             from PyQt6.QtCore import Qt as _Qt  # type: ignore
@@ -75,6 +71,10 @@ class CommandPaletteDialog(QDialog):  # type: ignore[misc]
 
         self._refresh_list("")
         self.search_edit.setFocus()
+        try:
+            try_enable_dialog_chrome(self, icon_path="assets/icons/base/table-tennis.png")
+        except Exception:
+            pass
 
     # Internal -----------------------------------------------------
     def _on_text_changed(self, text: str):  # pragma: no cover trivial
