@@ -369,7 +369,10 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  QToolButton#chromeBtnClose:focus {{ background:rgba(255,0,0,0.55); color:#FFFFFF; outline:2px solid rgba(255,255,255,0.6); }}
  QToolButton#chromeBtnMin, QToolButton#chromeBtnMax {{ color:{txt_muted}; border:none; background:transparent; }}
  QToolButton#chromeBtnMin:hover, QToolButton#chromeBtnMax:hover {{ background:{accent}; color:{bg}; }}
- QWidget#chromeContentHost {{ background:{surf}; }}
+ QWidget#chromeContentHost {{ background:{surf}; border:1px solid {border}; border-top:none; }}
+ QDialog#ChromeDialog, QDialog[class~="ChromeDialog"] {{ border:1px solid {border}; background:{surf}; }}
+ QWidget#chromeTitleBar {{ border-top-left-radius:4px; border-top-right-radius:4px; }}
+ QDialog#ThemeJsonEditorDialog QWidget#chromeContentHost QWidget {{ background:transparent; }}
  /* Monospace editors */
  QPlainTextEdit#monospaceEditor {{ font-family: Consolas, 'Courier New', monospace; font-size:12px; }}
  /* Focus Ring Unification */

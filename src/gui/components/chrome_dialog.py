@@ -23,7 +23,7 @@ class makes the chrome explicit and stable from the outset.
 from __future__ import annotations
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QPoint, QEvent, QRect, QObject
+from PyQt6.QtCore import Qt, QPoint, QEvent, QRect, QObject, QSettings
 from PyQt6.QtWidgets import (
     QDialog,
     QWidget,
@@ -169,6 +169,15 @@ class ChromeDialog(QDialog):
             self.windowTitleChanged.connect(self._title_label.setText)  # type: ignore
         except Exception:
             pass
+        # Restore persisted geometry (identifier based on class name)
+        try:
+            settings = QSettings("RosterPlanner", "ChromeDialogs")
+            key = f"{self.__class__.__name__}/geometry"
+            geo = settings.value(key, None)
+            if isinstance(geo, bytes):
+                self.restoreGeometry(geo)
+        except Exception:
+            pass
 
     # API ----------------------------------------------------------
     def content_widget(self) -> QWidget:
@@ -199,6 +208,13 @@ class ChromeDialog(QDialog):
         try:
             if self._resizer:
                 self.removeEventFilter(self._resizer)
+        except Exception:
+            pass
+        # Persist geometry
+        try:
+            settings = QSettings("RosterPlanner", "ChromeDialogs")
+            key = f"{self.__class__.__name__}/geometry"
+            settings.setValue(key, self.saveGeometry())
         except Exception:
             pass
         super().closeEvent(e)
