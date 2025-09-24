@@ -11,4 +11,7 @@ test(elevation): add shadow elevation visual regression hash harness (Milestone 
 
 test(layout): implement layout shift monitor service + tests (Milestone 5.10.64)
 feat(accessibility): add focus order visual overlay service + tests (Milestone 5.10.65)
+feat(modal): add modal backdrop with auto-darken + reduced-motion aware zoom (Milestone 5.10.66)
+
+fix(modal): align reduced motion state via src.* import fallback + register pyqtProperty for backdropOpacity; all modal backdrop tests green
 
