@@ -78,3 +78,9 @@ feat(ingestion-rules): add rule inheritance & overrides (Milestone 7.10.8)
  - Cycle detection & unknown parent validation
  - Added unit tests for basic inheritance, field override/add, cycle & missing parent errors
 
+feat(ingestion-rules): add validation engine for selector coverage (Milestone 7.10.9)
+ - Added rule_validation.validate_rules producing counts & field coverage
+ - Generates warnings for zero-root, zero-items, and zero-field coverage
+ - Implemented simple dataclass report objects (JSON serializable)
+ - Added unit tests for positive coverage, missing field, zero root, and empty docs error
+
