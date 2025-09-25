@@ -19,8 +19,16 @@ def test_ingestion_lab_panel_basic():
     assert hasattr(panel, "log_area"), "log_area missing"
     # Trigger a refresh and ensure model row count is non-negative (sanity)
     panel.refresh_file_list()
-    rows = panel.file_list.count()
-    assert rows >= 0
+    # Count total file entries (children of phase nodes)
+    total_files = 0
+    for r in range(panel.file_tree.topLevelItemCount()):  # type: ignore[attr-defined]
+        total_files += panel.file_tree.topLevelItem(r).childCount()  # type: ignore[attr-defined]
+    assert total_files >= 0
+    # Grouping accessors should function
+    phases = panel.phases()
+    assert isinstance(phases, list)
+    listed = panel.listed_files()
+    assert isinstance(listed, list)
 
 
 def test_main_window_has_ingestion_lab_dock():

@@ -44,3 +44,5 @@ feat(charting): add plugin interface (ChartPluginProtocol, registrar, tests) (Mi
 feat(charting): add theme-aware chart palette manager + tests (Milestone 7.2)
 feat(charting): add player LivePZ progression chart + tests (Milestone 7.3)
 
+feat(ingestion-lab): add grouped file navigator tree (Milestone 7.10.2) with phase buckets and updated tests
+
