@@ -6,8 +6,11 @@ Allows registering logical chart types decoupled from concrete backend.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Any, List, Protocol, Optional
+from typing import Callable, Dict, Any, List, Protocol, Optional, Tuple
 from time import perf_counter
+import hashlib
+import json
+from collections import OrderedDict
 
 from .types import ChartRequest, ChartResult
 from .backends import MatplotlibChartBackend
@@ -69,6 +72,8 @@ class ChartRegistry:
         self._types: Dict[str, ChartType] = {}
         self._backend = MatplotlibChartBackend()
         self._plugins: Dict[str, str] = {}  # plugin_id -> version
+        self._snapshot_cache: "OrderedDict[str, Tuple[ChartResult, float]]" = OrderedDict()
+        self._snapshot_cache_limit = 32  # simple LRU size
 
     # ---------------- Core type registration ----------------------------
     def register(
@@ -107,6 +112,39 @@ class ChartRegistry:
     # ---------------- Lazy building -----------------------------------
     def build_lazy(self, req: ChartRequest) -> "LazyChartProxy":
         return LazyChartProxy(self, req)
+
+    # ---------------- Snapshot caching (Milestone 7.10) ---------------
+    def build_cached(self, req: ChartRequest) -> ChartResult:
+        """Return chart using snapshot cache if identical request seen.
+
+        Cache key derived from chart_type + JSON of data/options (stable sort keys).
+        Stores the ChartResult; widget reuse is acceptable for static charts.
+        """
+        key_material = {
+            "type": req.chart_type,
+            "data": req.data,
+            "options": req.options,
+        }
+        try:
+            payload = json.dumps(key_material, sort_keys=True, default=str)
+        except Exception:
+            # Fallback: non-serializable data; bypass cache
+            return self.build(req)
+        key = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        if key in self._snapshot_cache:
+            result, _ts = self._snapshot_cache[key]
+            # promote LRU
+            self._snapshot_cache.move_to_end(key)
+            # On a cache hit we explicitly mark (override) the flag so tests
+            # can distinguish the initial build (False) from subsequent reuse (True).
+            result.meta["cache_hit"] = True
+            return result
+        result = self.build(req)
+        result.meta.setdefault("cache_hit", False)
+        self._snapshot_cache[key] = (result, perf_counter())
+        if len(self._snapshot_cache) > self._snapshot_cache_limit:
+            self._snapshot_cache.popitem(last=False)  # evict LRU
+        return result
 
     def list_types(self) -> Dict[str, str]:
         return {k: v.description for k, v in self._types.items()}

@@ -7,12 +7,13 @@ Rules (initial simple set):
 Metadata is attached to the matplotlib Figure via a private attribute
 ``_rp_responsive`` so higher layers (registry) can merge it into ChartResult.meta.
 """
+
 from __future__ import annotations
 
 from typing import Any
 
 MIN_LEGEND_WIDTH = 450  # px; below this we hide legend to save space
-MAX_XTICKS_DENSE = 14   # if more than this and narrow figure, we thin ticks
+MAX_XTICKS_DENSE = 14  # if more than this and narrow figure, we thin ticks
 
 
 def apply_responsive_rules(fig: Any) -> None:  # pragma: no cover - logic hit via tests

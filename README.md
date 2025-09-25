@@ -286,6 +286,22 @@ The following internal milestones have been implemented to evolve the GUI/servic
 - 5.10.1: Initial design token application to DivisionTableView (color + typography via tokens, hex drift guard test)
 - 5.10.2: Elevation utility introduced (shadow layering), applied to initial docks, parameter integrity tests added (in progress for broader rollout)
 
+### Milestone 7 – Visualization Layer (Charts)
+
+Implemented progressive charting improvements culminating in snapshot caching:
+
+- 7.1 Core chart registry + basic line chart
+- 7.1.1 Plugin interface for external chart packs
+- 7.2 Theme-aware palette abstraction
+- 7.3 Player LivePZ progression line chart
+- 7.4 Team availability heatmap (provisional heuristic)
+- 7.5 Division standings evolution chart (reconstructed historical table positions)
+- 7.6 Match volume timeline & cumulative win % dual-series chart
+- 7.7 Interactive tooltips & PNG/SVG export utilities
+- 7.8 Performance: lazy chart proxy + build timing metadata
+- 7.9 Responsive layout adaptation (legend hiding, tick thinning)
+- 7.10 Snapshot caching for unchanged charts (completed)
+
 ### Milestone 1.5.1 – EventBus Tracing
 
 Adds lightweight, toggleable tracing for recently published GUI events to aid diagnostics and future debug overlays.

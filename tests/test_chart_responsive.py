@@ -1,4 +1,5 @@
 """Tests for responsive chart adjustments (Milestone 7.9)."""
+
 from __future__ import annotations
 
 from src.gui.charting import chart_registry, ChartRequest
