@@ -40,6 +40,7 @@ class MatplotlibChartBackend(ChartBackendProtocol):  # pragma: no cover - thin w
             ax.legend()
         canvas = FigureCanvasQTAgg(fig)
         return canvas
+
     # --- heatmap -------------------------------------------------------
     def create_heatmap(
         self,

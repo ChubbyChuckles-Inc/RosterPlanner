@@ -81,6 +81,7 @@ def _fetch_team_availability_matrix(
     try:
         import sqlite3
         from src.config import get_database_path  # type: ignore
+
         path = get_database_path()
         conn = sqlite3.connect(path)
         cur = conn.cursor()
@@ -142,7 +143,9 @@ def _team_availability_heatmap_builder(req: ChartRequest, backend) -> ChartResul
     dates, player_names, matrix = _fetch_team_availability_matrix(team_id, start_date, end_date)
     if not dates or not player_names or not matrix:
         # Provide a tiny empty placeholder widget (empty heatmap)
-        widget = backend.create_heatmap(matrix=[], x_labels=[], y_labels=[], title="Team Availability (empty)")
+        widget = backend.create_heatmap(
+            matrix=[], x_labels=[], y_labels=[], title="Team Availability (empty)"
+        )
         return ChartResult(widget=widget, meta={"status": "empty"})
 
     widget = backend.create_heatmap(
@@ -152,7 +155,9 @@ def _team_availability_heatmap_builder(req: ChartRequest, backend) -> ChartResul
         title="Team Availability",
         cmap="Blues",
     )
-    return ChartResult(widget=widget, meta={"status": "ok", "players": len(player_names), "dates": len(dates)})
+    return ChartResult(
+        widget=widget, meta={"status": "ok", "players": len(player_names), "dates": len(dates)}
+    )
 
 
 # Register chart type (provisional availability heatmap)

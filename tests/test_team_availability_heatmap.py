@@ -7,6 +7,7 @@ returns an "empty" metadata status and still yields a widget object.
 Once schema exists these tests can be extended to insert synthetic rows
 and assert matrix mapping.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -15,7 +16,9 @@ from src.gui.charting import chart_registry, ChartRequest
 
 
 def test_team_availability_heatmap_registered():
-    assert "team_availability_heatmap" in chart_registry.list_types().keys(), "Chart type should be registered"
+    assert (
+        "team_availability_heatmap" in chart_registry.list_types().keys()
+    ), "Chart type should be registered"
 
 
 def test_team_availability_heatmap_empty_when_no_schema():
