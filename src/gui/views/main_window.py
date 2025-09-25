@@ -98,6 +98,8 @@ class MainWindow(QMainWindow):  # Dock-based
         self.club_id = club_id
         self.season = season
         self.data_dir = data_dir
+        # Track if user explicitly cancelled current scrape so we can suppress failure dialogs
+        self._user_cancelled_scrape = False
         self.availability_path = os.path.join(data_dir, availability_store.DEFAULT_FILENAME)
         self.av_state = availability_store.load(self.availability_path)
         self.teams: List[TeamEntry] = []
@@ -1635,6 +1637,8 @@ class MainWindow(QMainWindow):  # Dock-based
 
     def _on_scrape_started(self):  # pragma: no cover
         self._set_status("Scrape running...")
+        # Reset cancellation flag on new run
+        self._user_cancelled_scrape = False
         try:
             if not hasattr(self, "_scrape_progress_widget"):
                 from PyQt6.QtWidgets import QDockWidget
@@ -1648,7 +1652,12 @@ class MainWindow(QMainWindow):  # Dock-based
             self._scrape_progress_widget.start()  # type: ignore[attr-defined]
             # Wire cancel -> runner.cancel (idempotent)
             try:
-                self._scrape_progress_widget.cancelled.connect(self._scrape_runner.cancel)  # type: ignore
+                # Route cancel through helper that sets flag then cancels runner
+                try:
+                    self._scrape_progress_widget.cancelled.disconnect(self._scrape_runner.cancel)  # type: ignore
+                except Exception:
+                    pass
+                self._scrape_progress_widget.cancelled.connect(self._on_user_cancel_scrape)  # type: ignore
                 self._scrape_progress_widget.closed.connect(self._on_scrape_progress_closed)  # type: ignore
                 # Pause / Resume wiring (only connect once)
                 if not getattr(self, "_scrape_pause_wired", False):
@@ -1681,8 +1690,12 @@ class MainWindow(QMainWindow):  # Dock-based
             pass
 
     def _on_scrape_failed(self, msg: str):  # pragma: no cover
-        QMessageBox.critical(self, "Scrape Failed", msg)
-        self._set_status("Scrape failed")
+        # If user initiated cancel, treat as clean cancellation and suppress dialog
+        if getattr(self, "_user_cancelled_scrape", False):
+            self._on_scrape_cancelled()
+            return
+        # Suppress popup per user request; show status bar only
+        self._set_status(f"Scrape failed: {msg}")
         try:
             self._act_scrape.setEnabled(True)  # type: ignore
         except Exception:
@@ -1692,6 +1705,13 @@ class MainWindow(QMainWindow):  # Dock-based
         self._set_status("Scrape cancelled")
         try:
             self._act_scrape.setEnabled(True)  # type: ignore
+        except Exception:
+            pass
+
+    def _on_user_cancel_scrape(self):  # pragma: no cover
+        self._user_cancelled_scrape = True
+        try:
+            self._scrape_runner.cancel()
         except Exception:
             pass
 
