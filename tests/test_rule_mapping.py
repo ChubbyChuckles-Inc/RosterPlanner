@@ -13,9 +13,18 @@ def build_rules():
                     "item_selector": "div.player",
                     "fields": {
                         "name": {"selector": ".name", "transforms": ["trim"]},
-                        "points": {"selector": ".pts", "transforms": ["trim", {"kind": "to_number"}]},
-                        "joined": {"selector": ".joined", "transforms": [{"kind": "parse_date", "formats": ["%Y-%m-%d"]}]},
-                        "calc": {"selector": ".raw", "transforms": [{"kind": "expr", "code": "len(value)"}]},
+                        "points": {
+                            "selector": ".pts",
+                            "transforms": ["trim", {"kind": "to_number"}],
+                        },
+                        "joined": {
+                            "selector": ".joined",
+                            "transforms": [{"kind": "parse_date", "formats": ["%Y-%m-%d"]}],
+                        },
+                        "calc": {
+                            "selector": ".raw",
+                            "transforms": [{"kind": "expr", "code": "len(value)"}],
+                        },
                     },
                 },
                 "ranking_table": {
@@ -23,7 +32,7 @@ def build_rules():
                     "selector": "table.ranking",
                     "columns": ["team", "points"],
                 },
-            }
+            },
         }
     )
 
@@ -31,7 +40,7 @@ def build_rules():
 def test_build_mapping_entries_types():
     rs = build_rules()
     entries = build_mapping_entries(rs)
-    by_name = { (e.resource, e.source_name): e for e in entries }
+    by_name = {(e.resource, e.source_name): e for e in entries}
     assert by_name[("team_roster", "points")].inferred_type == FieldType.NUMBER
     assert by_name[("team_roster", "joined")].inferred_type == FieldType.DATE
     assert by_name[("team_roster", "name")].inferred_type == FieldType.STRING

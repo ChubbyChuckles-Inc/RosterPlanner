@@ -96,3 +96,10 @@ feat(ingestion-rules): add mapping model backend (Milestone 7.10.11)
  - Provides MappingEntry dataclass for UI grid consumption
  - Unit tests validate inference, grouping, expr neutrality, table handling
 
+feat(ingestion-rules): add alternate target schema sandbox (Milestone 7.10.12)
+ - Introduces rule_sandbox with SandboxSchema / SandboxTable
+ - Builds in-memory CREATE TABLE DDL from mapping entries (resource -> sandbox_<resource>)
+ - Type overrides supported (resource, field) -> FieldType
+ - Applies schema to in-memory SQLite for preview ingestion
+ - Unit tests cover DDL generation, overrides, and basic insert round-trip
+
