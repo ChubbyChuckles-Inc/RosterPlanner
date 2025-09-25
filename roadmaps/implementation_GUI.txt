@@ -313,7 +313,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.7 Support chained transforms (trim, collapse whitespace, number parse, date parse, custom python expression sandbox – optional flag) with safety guard
  [x] 7.10.8 Rule inheritance & overrides (base rule set per phase with user layer overrides)
  [x] 7.10.9 Validation engine: static check of selectors against selected file(s) (counts, missing selectors warning)
- [ ] 7.10.10 Live rule documentation tooltip (auto-generated from schema with examples)
+ [x] 7.10.10 Live rule documentation tooltip (auto-generated from schema with examples)
 
  Mapping & Schema Customization
  [ ] 7.10.11 Visual mapping grid: extracted fields -> target table columns (with type inference & status icons)

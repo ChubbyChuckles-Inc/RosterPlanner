@@ -84,3 +84,9 @@ feat(ingestion-rules): add validation engine for selector coverage (Milestone 7.
  - Implemented simple dataclass report objects (JSON serializable)
  - Added unit tests for positive coverage, missing field, zero root, and empty docs error
 
+feat(ingestion-rules): add live documentation generation helpers (Milestone 7.10.10)
+ - Added rule_docs with generate_global_docs / generate_resource_docs (Markdown output)
+ - Includes resource index, transform kind listing, inheritance explanation
+ - Per-resource docs show selectors, inheritance parent, columns/fields & transform chains
+ - Unit tests cover presence of key sections and transform formatting
+
