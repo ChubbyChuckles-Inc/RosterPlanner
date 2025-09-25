@@ -1,4 +1,5 @@
 """Player-specific chart builders (Milestone 7.3: LivePZ progression)."""
+
 from __future__ import annotations
 
 from typing import List, Tuple
@@ -47,7 +48,9 @@ def _fetch_player_livepz_history(player_id: str) -> List[Tuple[str, int]]:
     return [(m[0], int(live_pz)) for m in matches]
 
 
-def _player_livepz_progression_builder(req: ChartRequest, backend: MatplotlibChartBackend) -> ChartResult:
+def _player_livepz_progression_builder(
+    req: ChartRequest, backend: MatplotlibChartBackend
+) -> ChartResult:
     data = req.data
     if not isinstance(data, dict):
         raise TypeError("Player progression chart expects dict with 'player_id'")
@@ -66,10 +69,14 @@ def _player_livepz_progression_builder(req: ChartRequest, backend: MatplotlibCha
         x = list(range(len(dates)))
         y = list(values)
         labels = None
-    widget = backend.create_line_chart([y], labels=labels, title=req.options.get("title") if req.options else None, x_values=x)
+    widget = backend.create_line_chart(
+        [y], labels=labels, title=req.options.get("title") if req.options else None, x_values=x
+    )
     return ChartResult(widget=widget, meta={"points": len(y)})
 
 
 register_chart_type(
-    "player.livepz.progression", _player_livepz_progression_builder, "Player LivePZ progression line chart"
+    "player.livepz.progression",
+    _player_livepz_progression_builder,
+    "Player LivePZ progression line chart",
 )

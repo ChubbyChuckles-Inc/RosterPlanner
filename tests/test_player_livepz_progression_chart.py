@@ -1,4 +1,5 @@
 """Tests for player LivePZ progression chart (Milestone 7.3)."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -31,7 +32,11 @@ def test_player_livepz_progression_series_points():
     conn = sqlite3.connect(":memory:")
     _seed(conn)
     services.register("sqlite_conn", conn, allow_override=True)
-    req = ChartRequest(chart_type="player.livepz.progression", data={"player_id": "P1"}, options={"title": "P1 LivePZ"})
+    req = ChartRequest(
+        chart_type="player.livepz.progression",
+        data={"player_id": "P1"},
+        options={"title": "P1 LivePZ"},
+    )
     result = chart_registry.build(req)
     assert result.meta["points"] == 3
 
