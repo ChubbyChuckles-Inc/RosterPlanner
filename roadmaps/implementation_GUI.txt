@@ -210,7 +210,7 @@ Milestone 5.10: Visual Polish & Design Integration (Leverage Milestone 0 Design 
 [x] 5.10.7 Density mode switch (comfortable ↔ compact) applying spacing scale; persistence
 [x] 5.10.8 Focus ring audit & unification across interactive widgets (ensure design token colors)
 [x] 5.10.9 Empty & error state components: replace plain labels with design templates (empty state registry) -- integrated into PlayerDetailView, DivisionTableView, ClubDetailView, HtmlSourceView; division empty state test added
-[~] 5.10.10 Skeleton loaders in Division Table & Team Detail while async data loads (remove instantaneous pop-in) -- component + basic integration added; pending shimmer animation & async hookup
+[x] 5.10.10 Skeleton loaders in Division Table & Team Detail while async data loads (remove instantaneous pop-in) -- integration + fade-out animation complete
 [x] 5.10.11 Toast / notification styling pass (stacking, color roles, motion) using notification guidelines -- toast host + manager, basic QSS; motion animations deferred
 [x] 5.10.12 Update & capture visual regression snapshot baseline (gallery + key views) [T]
 [x] 5.10.13 Theme hot-reload propagation to already open views (complete 0.8 pending UI propagation)
