@@ -1738,12 +1738,21 @@ class MainWindow(QMainWindow):  # Dock-based
                 w.append_error(payload.get("phase", "?"), payload.get("message", ""))
             elif event == "net_update":
                 phase = payload.get("phase")
-                total_latency = payload.get("total_latency")
+                total_latency = payload.get("total_latency") or payload.get("latency_total")
                 if phase and total_latency is not None:
                     try:
                         w.update_net_latency(phase, float(total_latency))
                     except Exception:
                         pass
+            elif event == "counts_update":
+                try:
+                    w.update_counts(
+                        int(payload.get("teams", 0)),
+                        int(payload.get("players", 0)),
+                        int(payload.get("matches", 0)),
+                    )
+                except Exception:
+                    pass
             elif event == "queue_update":
                 try:
                     w.update_queue(int(payload.get("queued", 0)))

@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QHBoxLayout,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QElapsedTimer, QPropertyAnimation, QEasingCurve, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QElapsedTimer, QPropertyAnimation, QEasingCurve, QTimer, QVariantAnimation
 from PyQt6.QtWidgets import QGraphicsOpacityEffect
 
 __all__ = ["ScrapeProgressWidget", "ScrapePhase"]
@@ -72,6 +72,9 @@ class ScrapeProgressWidget(QFrame):
         header.setContentsMargins(0, 0, 0, 0)
         header.setSpacing(6)
         header.addWidget(self.phase_label, 1)
+        self.eta_label = QLabel("ETA --:--")
+        self.eta_label.setObjectName("scrapeEtaLabel")
+        header.addWidget(self.eta_label)
         self.btn_pause = QPushButton("Pause")
         self.btn_pause.clicked.connect(self._on_pause_clicked)  # type: ignore
         header.addWidget(self.btn_pause)
@@ -91,9 +94,13 @@ class ScrapeProgressWidget(QFrame):
         self.error_badge = QLabel("")
         self.error_badge.setObjectName("scrapeErrorBadge")
         self.error_badge.setVisible(False)
+        self.queue_badge = QLabel("")
+        self.queue_badge.setObjectName("scrapeQueueBadge")
+        self.queue_badge.setVisible(False)
         df_lay.addWidget(self.detail_counts_label)
         df_lay.addWidget(self.net_label)
         df_lay.addWidget(self.error_badge)
+        df_lay.addWidget(self.queue_badge)
         lay.addWidget(self._detail_frame)
         # Phase list container
         self._phase_rows_container = QVBoxLayout()
@@ -129,6 +136,16 @@ class ScrapeProgressWidget(QFrame):
         self._errors: List[str] = []
         self._net_latency: Dict[str, float] = {}
         self._queued_jobs = 0
+        # ETA helpers
+        self._eta_window: Deque[float] = deque(maxlen=8)
+        # Accessibility labels
+        self.phase_label.setAccessibleName("Current Phase")
+        self.detail_label.setAccessibleName("Phase Detail")
+        self.bar_phase.setAccessibleName("Phase Progress")
+        self.bar_total.setAccessibleName("Overall Progress")
+        self.error_badge.setAccessibleName("Errors Badge")
+        self.queue_badge.setAccessibleName("Queue Badge")
+        self.eta_label.setAccessibleName("Estimated Time Remaining")
 
     # ---- Public update hooks (called by MainWindow) -----------------------
     def update_counts(self, teams: int, players: int, matches: int):  # pragma: no cover
@@ -147,7 +164,7 @@ class ScrapeProgressWidget(QFrame):
 
     def update_queue(self, count: int):  # pragma: no cover
         self._queued_jobs = count
-        self._update_error_badge()  # reuse layout for badge update
+        self._update_queue_badge()
         self.queue_count_changed.emit(count)
 
     def start(self):  # reset
@@ -196,6 +213,8 @@ class ScrapeProgressWidget(QFrame):
         self._refresh_phase_styles()
         self._phase_started_ms[key] = self._debounce_timer.elapsed()
         self._update_total()
+        self._animate_phase_label()
+        self._update_eta_label()
 
     def update_phase_progress(self, fraction: float, detail: str = ""):
         if not self._current_phase:
@@ -211,6 +230,7 @@ class ScrapeProgressWidget(QFrame):
         if detail:
             self.detail_label.setText(detail)
         self._update_total()
+        self._update_eta_label()
 
     def complete_phase(self):
         if not self._current_phase:
@@ -224,6 +244,7 @@ class ScrapeProgressWidget(QFrame):
         self._current_phase = None
         self._current_phase_progress = 0
         self._update_total()
+        self._update_eta_label(final=True)
 
     def _update_total(self):
         # Weighted total percent
@@ -278,14 +299,20 @@ class ScrapeProgressWidget(QFrame):
         parts = []
         if total_err:
             parts.append(f"Errors: {total_err}")
-        if self._queued_jobs:
-            parts.append(f"Queue: {self._queued_jobs}")
+        # queue now separate badge
         if parts:
             self.error_badge.setText(" | ".join(parts))
             self.error_badge.setVisible(True)
         else:
             self.error_badge.setVisible(False)
         self.error_count_changed.emit(total_err)
+
+    def _update_queue_badge(self):  # pragma: no cover
+        if self._queued_jobs:
+            self.queue_badge.setText(f"Queued: {self._queued_jobs}")
+            self.queue_badge.setVisible(True)
+        else:
+            self.queue_badge.setVisible(False)
 
     def _on_pause_clicked(self):  # pragma: no cover
         self._paused = not self._paused
@@ -298,6 +325,7 @@ class ScrapeProgressWidget(QFrame):
             "errors": self._errors,
             "net_latency_ms": {k: int(v * 1000) for k, v in self._net_latency.items()},
             "history_count": len(self._history),
+            "queued_jobs": self._queued_jobs,
         }
         try:
             return json.dumps(summary, indent=2)
@@ -367,6 +395,7 @@ class ScrapeProgressWidget(QFrame):
             """
 #scrapeProgressWidget { background: rgba(30,38,50,0.85); border:1px solid #3a4658; border-radius:10px; }
 #scrapeProgressWidget QLabel#scrapePhaseLabel { font-size:15px; font-weight:600; color:#E8F1FF; }
+#scrapeProgressWidget QLabel#scrapeEtaLabel { font-size:11px; color:#9db2c6; padding-left:6px; }
 #scrapeProgressWidget QLabel#scrapeDetailLabel { font-size:11px; color:#B8C4D2; }
 #scrapeProgressWidget QProgressBar { height:16px; border:1px solid #2d3642; border-radius:8px; background:#1e2530; text-align:center; font-size:10px; }
 #scrapeProgressWidget QProgressBar::chunk { border-radius:8px; background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 var(--accentStart, #3D8BFD), stop:1 var(--accentEnd, #6F4BFF)); }
@@ -378,6 +407,7 @@ class ScrapeProgressWidget(QFrame):
 #scrapeProgressWidget QLabel[phaseState="active"] { color:#FFFFFF; font-weight:600; }
 #scrapeProgressWidget QLabel[phaseState="done"] { color:#48c78e; font-weight:500; }
 #scrapeProgressWidget QLabel#scrapeErrorBadge { background:#7a3d2f; color:#ffddcc; padding:2px 6px; border-radius:8px; font-size:10px; }
+#scrapeProgressWidget QLabel#scrapeQueueBadge { background:#2f517a; color:#d6e9ff; padding:2px 6px; border-radius:8px; font-size:10px; }
 #scrapeProgressWidget QLabel#scrapeNetLabel { font-size:10px; color:#8aa0b5; }
 #scrapeProgressWidget QLabel#scrapeCountsLabel { font-size:10px; color:#8aa0b5; }
 """
@@ -404,3 +434,55 @@ class ScrapeProgressWidget(QFrame):
 
     def _emit_closed(self):  # pragma: no cover - simple signal
         self.closed.emit()
+
+    # ---- ETA + animation helpers -----------------------------------------
+    def _update_eta_label(self, final: bool = False):  # pragma: no cover
+        if final:
+            try:
+                duration_s = self._debounce_timer.elapsed() / 1000.0
+                self._eta_window.append(duration_s)
+            except Exception:
+                pass
+            self.eta_label.setText("Done")
+            return
+        if not self._eta_window:
+            # seed from stored history if available
+            if self._history:
+                avg = sum(self._history) / len(self._history)
+                self._eta_window.append(avg)
+            else:
+                self.eta_label.setText("ETA --:--")
+                return
+        avg_total = sum(self._eta_window) / len(self._eta_window)
+        overall_frac = self.bar_total.value() / 100.0
+        if overall_frac <= 0.01:
+            self.eta_label.setText("ETA --:--")
+            return
+        try:
+            elapsed_s = self._debounce_timer.elapsed() / 1000.0
+        except Exception:
+            return
+        remaining_s = max(0.0, avg_total - elapsed_s)
+        mins = int(remaining_s // 60)
+        secs = int(remaining_s % 60)
+        self.eta_label.setText(f"ETA {mins:02d}:{secs:02d}")
+
+    def _animate_phase_label(self):  # pragma: no cover
+        try:
+            anim = QVariantAnimation(self)
+            anim.setDuration(280)
+            anim.setStartValue(0.35)
+            anim.setEndValue(1.0)
+            anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+            def _apply(v):
+                eff = self.phase_label.graphicsEffect()
+                if not eff:
+                    eff = QGraphicsOpacityEffect(self.phase_label)
+                    self.phase_label.setGraphicsEffect(eff)
+                eff.setOpacity(float(v))  # type: ignore
+
+            anim.valueChanged.connect(_apply)  # type: ignore
+            anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        except Exception:
+            pass

@@ -66,6 +66,7 @@ def run_full(
         phase_complete: payload {key}
     """
     import time
+
     season = season or settings.DEFAULT_SEASON
     data_dir = data_dir or settings.DATA_DIR
     os.makedirs(data_dir, exist_ok=True)
@@ -90,15 +91,18 @@ def run_full(
             except Exception:
                 pass
 
-    net_latency: Dict[str, float] = {k: 0.0 for k in [
-        "landing",
-        "ranking_tables",
-        "division_rosters",
-        "club_overviews",
-        "club_team_pages",
-        "player_histories",
-        "tracking_state",
-    ]}
+    net_latency: Dict[str, float] = {
+        k: 0.0
+        for k in [
+            "landing",
+            "ranking_tables",
+            "division_rosters",
+            "club_overviews",
+            "club_team_pages",
+            "player_histories",
+            "tracking_state",
+        ]
+    }
 
     def _timed_fetch(phase: str, fetch_callable: Callable[[], str]):
         start = time.time()
@@ -234,6 +238,22 @@ def run_full(
                         "detail": f"{processed_teams}/{total_teams} rosters",
                     },
                 )
+                # Live counts update (teams, players, matches)
+                try:
+                    team_count = len(all_players)
+                    player_total = sum(len(v) for v in all_players.values())
+                    match_total = sum(len(v) for v in all_matches.values())
+                    progress(
+                        "counts_update",
+                        {
+                            "teams": team_count,
+                            "players": player_total,
+                            "matches": match_total,
+                            "phase": "division_rosters",
+                        },
+                    )
+                except Exception:
+                    pass
             if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
                 raise PipelineCancelled()
             _maybe_pause()
@@ -604,7 +624,10 @@ def run_full(
     _mark_end("tracking_state")
     total_duration = sum(phase_durations.values()) if phase_durations else 0.0
     if progress:
-        progress("phase_complete", {"key": "__all__", "durations": phase_durations, "errors": len(errors)})
+        progress(
+            "phase_complete",
+            {"key": "__all__", "durations": phase_durations, "errors": len(errors)},
+        )
 
     return {
         "landing_url": landing_url,

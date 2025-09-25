@@ -89,9 +89,10 @@ class ScrapeRunner(QObject):
             self._queue.append((club_id, season, data_dir))
             self.scrape_progress.emit("queue_update", {"queued": len(self._queue)})  # type: ignore
             return
+
         # Build pause token exposing is_paused()
         class _PauseToken:
-            def __init__(self, runner: 'ScrapeRunner'):
+            def __init__(self, runner: "ScrapeRunner"):
                 self._runner = runner
 
             def is_paused(self):  # pragma: no cover
