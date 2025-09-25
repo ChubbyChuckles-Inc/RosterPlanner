@@ -101,11 +101,7 @@ class ChartRegistry:
         return {k: v.description for k, v in self._types.items()}
 
     def list_types_by_plugin(self, plugin_id: str) -> Dict[str, str]:
-        return {
-            k: v.description
-            for k, v in self._types.items()
-            if v.plugin_id == plugin_id
-        }
+        return {k: v.description for k, v in self._types.items() if v.plugin_id == plugin_id}
 
     # ---------------- Plugin management --------------------------------
     def register_plugin(self, plugin: ChartPluginProtocol) -> None:

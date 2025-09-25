@@ -3,6 +3,7 @@
 Currently only a minimal Matplotlib backend is provided. We isolate the
 imports so tests that don't require GUI context can mock or skip them.
 """
+
 from __future__ import annotations
 
 from typing import Sequence

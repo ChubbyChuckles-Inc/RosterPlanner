@@ -101,4 +101,5 @@ def get_chart_palette_manager() -> ChartPaletteManager:
         services.register("chart_palette", mgr)
     return mgr
 
+
 __all__ = ["ChartPaletteManager", "get_chart_palette_manager"]

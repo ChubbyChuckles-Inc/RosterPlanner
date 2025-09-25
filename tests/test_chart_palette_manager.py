@@ -1,4 +1,5 @@
 """Tests for ChartPaletteManager (Milestone 7.2)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

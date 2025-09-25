@@ -222,9 +222,7 @@ def run_stats_profiling(
         "SELECT team_id, live_pz FROM player WHERE live_pz IS NOT NULL ORDER BY live_pz DESC"
     ):
         players_by_team.setdefault(row[0], []).append(int(row[1]))
-    for row in conn.execute(
-        "SELECT home_team_id, away_team_id FROM match ORDER BY match_date"
-    ):
+    for row in conn.execute("SELECT home_team_id, away_team_id FROM match ORDER BY match_date"):
         home, away = row
         predictor.predict(players_by_team.get(home, [])[:4], players_by_team.get(away, [])[:4])
     durations["predictor"] = time.perf_counter() - t0
