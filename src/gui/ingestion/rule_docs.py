@@ -64,9 +64,18 @@ def _resource_index(rule_set: RuleSet) -> str:
 
 
 def _transform_section(rule_set: RuleSet) -> str:
-    lines = ["### Transform Kinds", "", "* trim – strip leading/trailing whitespace", "* collapse_ws – collapse internal whitespace to single spaces", "* to_number – parse integer/float (comma→dot normalization)", "* parse_date – parse date string using supplied strptime formats"]
+    lines = [
+        "### Transform Kinds",
+        "",
+        "* trim – strip leading/trailing whitespace",
+        "* collapse_ws – collapse internal whitespace to single spaces",
+        "* to_number – parse integer/float (comma→dot normalization)",
+        "* parse_date – parse date string using supplied strptime formats",
+    ]
     if rule_set.allow_expressions:
-        lines.append("* expr – safe Python expression (value variable available; restricted builtins)")
+        lines.append(
+            "* expr – safe Python expression (value variable available; restricted builtins)"
+        )
     else:
         lines.append("* expr – (disabled; enable by setting allow_expressions: true)")
     lines.append("")

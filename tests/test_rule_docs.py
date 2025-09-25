@@ -8,19 +8,33 @@ def build_rules():
             "allow_expressions": True,
             "resources": {
                 "base_table": {"kind": "table", "selector": "table.base", "columns": ["a", "b"]},
-                "child_table": {"kind": "table", "extends": "base_table", "selector": "table.child", "columns": ["a", "b", "c"]},
+                "child_table": {
+                    "kind": "table",
+                    "extends": "base_table",
+                    "selector": "table.child",
+                    "columns": ["a", "b", "c"],
+                },
                 "team_roster": {
                     "kind": "list",
                     "selector": "div.roster",
                     "item_selector": "div.player",
                     "fields": {
                         "name": {"selector": ".name", "transforms": ["trim"]},
-                        "points": {"selector": ".pts", "transforms": ["trim", {"kind": "to_number"}]},
-                        "joined": {"selector": ".joined", "transforms": [{"kind": "parse_date", "formats": ["%Y-%m-%d"]}]},
-                        "calc": {"selector": ".raw", "transforms": [{"kind": "expr", "code": "value.strip()"}]},
+                        "points": {
+                            "selector": ".pts",
+                            "transforms": ["trim", {"kind": "to_number"}],
+                        },
+                        "joined": {
+                            "selector": ".joined",
+                            "transforms": [{"kind": "parse_date", "formats": ["%Y-%m-%d"]}],
+                        },
+                        "calc": {
+                            "selector": ".raw",
+                            "transforms": [{"kind": "expr", "code": "value.strip()"}],
+                        },
                     },
                 },
-            }
+            },
         }
     )
 
