@@ -316,7 +316,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.10 Live rule documentation tooltip (auto-generated from schema with examples)
 
  Mapping & Schema Customization
- [ ] 7.10.11 Visual mapping grid: extracted fields -> target table columns (with type inference & status icons)
+ [x] 7.10.11 Visual mapping grid: extracted fields -> target table columns (with type inference & status icons)
  [ ] 7.10.12 Alternate target schema sandbox (temp in-memory tables) for experimental structures
  [ ] 7.10.13 Auto-generate migration preview SQL when mapping diverges from current schema (non-destructive diff)
  [ ] 7.10.14 Constraint simulation: show potential FK / uniqueness violations before commit

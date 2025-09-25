@@ -90,3 +90,9 @@ feat(ingestion-rules): add live documentation generation helpers (Milestone 7.10
  - Per-resource docs show selectors, inheritance parent, columns/fields & transform chains
  - Unit tests cover presence of key sections and transform formatting
 
+feat(ingestion-rules): add mapping model backend (Milestone 7.10.11)
+ - Added rule_mapping.build_mapping_entries & group_by_resource
+ - Infers field types from transform kinds (to_number -> number, parse_date -> date)
+ - Provides MappingEntry dataclass for UI grid consumption
+ - Unit tests validate inference, grouping, expr neutrality, table handling
+
