@@ -1,0 +1,17 @@
+"""Charting abstraction layer (Milestone 7.1)
+
+Provides a thin wrapper API that hides the concrete plotting backend
+so higher level view models / views can request charts without
+coupling to matplotlib or PyQtGraph directly.
+
+Initial backend choice: matplotlib with its QtAgg backend, because
+it is already a dependency (present in pyproject) and sufficient for
+static + moderately interactive plots (pan/zoom, tooltips later).
+
+Future extension: add a PyQtGraph backend implementation for higher
+performance real-time scenarios; both must conform to ChartBackendProtocol.
+"""
+
+from .backends import MatplotlibChartBackend  # noqa: F401
+from .registry import chart_registry, register_chart_type  # noqa: F401
+from .types import ChartRequest, ChartResult  # noqa: F401
