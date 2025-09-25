@@ -14,7 +14,15 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QHBoxLayout,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QElapsedTimer, QPropertyAnimation, QEasingCurve, QTimer, QVariantAnimation
+from PyQt6.QtCore import (
+    Qt,
+    pyqtSignal,
+    QElapsedTimer,
+    QPropertyAnimation,
+    QEasingCurve,
+    QTimer,
+    QVariantAnimation,
+)
 from PyQt6.QtWidgets import QGraphicsOpacityEffect
 
 __all__ = ["ScrapeProgressWidget", "ScrapePhase"]
