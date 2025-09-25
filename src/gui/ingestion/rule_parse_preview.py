@@ -143,7 +143,9 @@ def _extract_list(
             # element itself when searching within that element, so without this
             # logic rules like fields: {text: {selector: 'span'}} on a span
             # item_selector would otherwise yield empty values.
-            if val_el is None and fmap.selector.lower() == el.name.lower():  # pragma: no cover - simple branch
+            if (
+                val_el is None and fmap.selector.lower() == el.name.lower()
+            ):  # pragma: no cover - simple branch
                 val_el = el
             raw_text = val_el.get_text(strip=True) if val_el else ""
             if apply_transforms and fmap.transforms:
