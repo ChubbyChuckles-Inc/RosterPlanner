@@ -50,6 +50,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from gui.components.theme_aware import ThemeAwareMixin
 import sqlite3
+import hashlib
+from dataclasses import dataclass
+from typing import Dict, Any
 
 # Lazy service locator import (optional; panel should degrade gracefully if unavailable)
 try:  # pragma: no cover - import guard
@@ -57,7 +60,33 @@ try:  # pragma: no cover - import guard
 except Exception:  # pragma: no cover - fallback when running isolated
     _services = None  # type: ignore
 
-__all__ = ["IngestionLabPanel"]
+__all__ = ["IngestionLabPanel", "HashImpactResult"]
+@dataclass
+class HashImpactResult:
+    """Result container for hash impact preview (Milestone 7.10.22).
+
+    Attributes
+    ----------
+    updated: list[str]
+        Existing provenance entries whose current file hash differs (would be re-ingested).
+    unchanged: list[str]
+        Files whose hash matches provenance (eligible for cached skip path).
+    new: list[str]
+        Files present on disk but absent from provenance table (first-time ingest).
+    missing: list[str]
+        Provenance entries referencing files no longer present on disk (stale rows).
+    """
+
+    updated: list[str]
+    unchanged: list[str]
+    new: list[str]
+    missing: list[str]
+
+    def summary(self) -> str:  # pragma: no cover - trivial
+        return (
+            f"Updated {len(self.updated)} | Unchanged {len(self.unchanged)} | New {len(self.new)} | Missing {len(self.missing)}"
+        )
+
 
 HTML_EXTENSIONS = {".html", ".htm"}
 
@@ -86,6 +115,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.setObjectName("ingestionLabPanel")
         self._base_dir = base_dir
         self._build_ui()
+        # Hash impact & provenance caches (populated on refresh)
+        self._last_provenance: dict[str, tuple[str, str, int]] = {}
+        self._last_hash_impact: HashImpactResult | None = None
         self.refresh_file_list()
         # Apply initial styling if theme/density services available
         try:
@@ -105,6 +137,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_refresh = QPushButton("Refresh")
         self.btn_preview = QPushButton("Preview")
         self.btn_preview.setEnabled(False)
+        self.btn_hash_impact = QPushButton("Hash Impact")
+        self.btn_hash_impact.setToolTip("Compute which files would trigger ingest (hash changes)")
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -145,6 +179,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.modified_within_hours.setToolTip("Show files modified within last N hours (0 = any)")
         actions.addWidget(self.btn_refresh)
         actions.addWidget(self.btn_preview)
+        actions.addWidget(self.btn_hash_impact)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -208,6 +243,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         # Connections
         self.btn_refresh.clicked.connect(self.refresh_file_list)  # type: ignore
         self.btn_preview.clicked.connect(self._on_preview_clicked)  # type: ignore
+        self.btn_hash_impact.clicked.connect(self._on_hash_impact_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -315,6 +351,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 self._all_file_items.append(child)
                 total_files += 1
             phase_item.setExpanded(True)
+        self._last_provenance = provenance
         self._append_log(
             f"Refreshed: {total_files} HTML files across {sum(1 for v in grouped.values() if v)} phases."
         )
@@ -384,6 +421,89 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
     # Logging helper
     def _append_log(self, line: str) -> None:
         self.log_area.appendPlainText(line)
+
+    # ------------------------------------------------------------------
+    # Hash Impact Preview (7.10.22)
+    def _on_hash_impact_clicked(self) -> None:
+        try:
+            res = self.compute_hash_impact()
+        except Exception as e:  # pragma: no cover - defensive
+            self._append_log(f"Hash Impact ERROR: {e}")
+            return
+        self._append_log(
+            f"Hash Impact: Updated {len(res.updated)} | Unchanged {len(res.unchanged)} | New {len(res.new)} | Missing {len(res.missing)}"
+        )
+        # Provide a concise listing (first few) to aid user
+        def _sample(label: str, items: list[str]):  # noqa: ANN001
+            if not items:
+                return
+            preview = ", ".join(os.path.basename(p) for p in items[:5])
+            more = "" if len(items) <= 5 else f" (+{len(items)-5} more)"
+            self._append_log(f"  {label}: {preview}{more}")
+
+        _sample("Updated", res.updated)
+        _sample("New", res.new)
+        _sample("Missing", res.missing)
+
+    def compute_hash_impact(self) -> HashImpactResult:
+        """Compute hash impact vs provenance and cache result.
+
+        Returns
+        -------
+        HashImpactResult
+            Categorization of files for potential ingest operations.
+        """
+        # Gather provenance (fresh if available)
+        prov = dict(self._last_provenance)
+        # Collect current files from navigator (absolute paths stored in user role)
+        current_paths: list[str] = []
+        for item in self._all_file_items:
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if isinstance(data, dict) and "file" in data:
+                current_paths.append(data["file"])  # type: ignore[index]
+        current_set = set(current_paths)
+        missing = [p for p in prov.keys() if p not in current_set]
+        updated: list[str] = []
+        unchanged: list[str] = []
+        new: list[str] = []
+        # Build hashes for current files
+        for path in current_paths:
+            try:
+                with open(path, "rb") as fh:
+                    content = fh.read()
+                sha1 = hashlib.sha1(content).hexdigest()
+            except Exception:
+                # Treat unreadable files as missing (skip)
+                if path in prov:
+                    missing.append(path)
+                continue
+            if path in prov:
+                old_sha, _ts, _pv = prov[path]
+                if old_sha != sha1:
+                    updated.append(path)
+                else:
+                    unchanged.append(path)
+            else:
+                new.append(path)
+        res = HashImpactResult(
+            updated=sorted(updated),
+            unchanged=sorted(unchanged),
+            new=sorted(new),
+            missing=sorted(set(missing)),
+        )
+        self._last_hash_impact = res
+        return res
+
+    def hash_impact_snapshot(self) -> Dict[str, Any]:  # for tests
+        if not self._last_hash_impact:
+            return {}
+        r = self._last_hash_impact
+        return {
+            "updated": list(r.updated),
+            "unchanged": list(r.unchanged),
+            "new": list(r.new),
+            "missing": list(r.missing),
+        }
 
     # ------------------------------------------------------------------
     # Accessors used in tests
