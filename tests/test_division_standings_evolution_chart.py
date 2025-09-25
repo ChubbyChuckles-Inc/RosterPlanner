@@ -6,6 +6,7 @@ when no division data is available. Later this can be expanded with
 fixtures inserting synthetic teams and matches to validate the ordering
 logic and evolution snapshots.
 """
+
 from __future__ import annotations
 
 from src.gui.charting import chart_registry, ChartRequest

@@ -130,7 +130,9 @@ def _division_standings_evolution_builder(
     snapshots, team_names, matrix = _reconstruct_standings_evolution(division_id)
     if not snapshots or not matrix:
         # empty placeholder (line chart with 0 series)
-        widget = backend.create_line_chart([], labels=None, title=req.options.get("title") if req.options else None)
+        widget = backend.create_line_chart(
+            [], labels=None, title=req.options.get("title") if req.options else None
+        )
         return ChartResult(widget=widget, meta={"status": "empty"})
 
     # Each row in matrix is a team's positions list per snapshot
