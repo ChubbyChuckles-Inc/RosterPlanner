@@ -1532,13 +1532,8 @@ class MainWindow(QMainWindow):  # Dock-based
         if self._scrape_runner.is_running():
             QMessageBox.information(self, "Scrape", "A scrape is already running.")
             return
-        confirm = QMessageBox.question(
-            self,
-            "Run Full Scrape",
-            f"Run full scrape for club {self.club_id} season {self.season}? This may take several minutes.",
-        )
-        if confirm != QMessageBox.StandardButton.Yes:  # type: ignore
-            return
+        # Removed confirmation dialog: start immediately
+        # (Original confirmation prompt removed per user request)
         self._scrape_runner.start(self.club_id, self.season, self.data_dir)
 
     def _trigger_force_reingest(self):  # pragma: no cover - GUI event
