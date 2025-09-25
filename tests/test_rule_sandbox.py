@@ -14,16 +14,25 @@ def build_rules():
                     "item_selector": "div.player",
                     "fields": {
                         "name": {"selector": ".name", "transforms": ["trim"]},
-                        "points": {"selector": ".pts", "transforms": ["trim", {"kind": "to_number"}]},
-                        "joined": {"selector": ".joined", "transforms": [{"kind": "parse_date", "formats": ["%Y-%m-%d"]}]},
+                        "points": {
+                            "selector": ".pts",
+                            "transforms": ["trim", {"kind": "to_number"}],
+                        },
+                        "joined": {
+                            "selector": ".joined",
+                            "transforms": [{"kind": "parse_date", "formats": ["%Y-%m-%d"]}],
+                        },
                     },
                 },
                 "ranking_table": {
                     "kind": "table",
                     "selector": "table.ranking",
-                    "columns": ["team", "points"],  # columns default STRING; sandbox test will coerce manually
+                    "columns": [
+                        "team",
+                        "points",
+                    ],  # columns default STRING; sandbox test will coerce manually
                 },
-            }
+            },
         }
     )
 

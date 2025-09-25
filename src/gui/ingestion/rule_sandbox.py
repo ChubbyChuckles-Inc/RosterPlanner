@@ -78,7 +78,9 @@ def _sqlite_type(ftype: FieldType) -> str:
 TypeOverrideMap = Mapping[Tuple[str, str], FieldType]
 
 
-def build_sandbox_schema(rule_set: RuleSet, overrides: Optional[TypeOverrideMap] = None) -> SandboxSchema:
+def build_sandbox_schema(
+    rule_set: RuleSet, overrides: Optional[TypeOverrideMap] = None
+) -> SandboxSchema:
     """Build a sandbox schema from a rule set.
 
     Parameters
@@ -95,7 +97,11 @@ def build_sandbox_schema(rule_set: RuleSet, overrides: Optional[TypeOverrideMap]
         table_name = f"sandbox_{resource}"
         cols: List[Tuple[str, FieldType]] = []
         for e in res_entries:
-            ftype = overrides.get((e.resource, e.source_name), e.inferred_type) if overrides else e.inferred_type
+            ftype = (
+                overrides.get((e.resource, e.source_name), e.inferred_type)
+                if overrides
+                else e.inferred_type
+            )
             cols.append((e.target_column, ftype))
         tables.append(SandboxTable(name=table_name, columns=cols))
     return SandboxSchema(tables=tables)
