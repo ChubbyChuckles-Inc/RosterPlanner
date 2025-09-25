@@ -124,6 +124,10 @@ class MainWindow(QMainWindow):  # Dock-based
             self._scrape_runner.scrape_progress.connect(self._on_scrape_progress)  # type: ignore
         except Exception:
             pass
+        try:
+            self._scrape_runner.scrape_cancelled.connect(self._on_scrape_cancelled)  # type: ignore
+        except Exception:
+            pass
         # Milestone 5.9.5: attach post-scrape ingestion hook (if bootstrap registered installer)
         try:  # pragma: no cover - defensive; integration exercised via separate test
             from gui.services.service_locator import services as _services
@@ -1645,7 +1649,14 @@ class MainWindow(QMainWindow):  # Dock-based
                 dock.setObjectName("dockScrapeProgress")
                 dock.setWidget(self._scrape_progress_widget)
                 self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)  # type: ignore
+                self._scrape_progress_dock = dock
             self._scrape_progress_widget.start()  # type: ignore[attr-defined]
+            # Wire cancel -> runner.cancel (idempotent)
+            try:
+                self._scrape_progress_widget.cancelled.connect(self._scrape_runner.cancel)  # type: ignore
+                self._scrape_progress_widget.closed.connect(self._on_scrape_progress_closed)  # type: ignore
+            except Exception:
+                pass
         except Exception:
             pass
         try:
@@ -1674,6 +1685,23 @@ class MainWindow(QMainWindow):  # Dock-based
         self._set_status("Scrape failed")
         try:
             self._act_scrape.setEnabled(True)  # type: ignore
+        except Exception:
+            pass
+
+    def _on_scrape_cancelled(self):  # pragma: no cover
+        self._set_status("Scrape cancelled")
+        try:
+            self._act_scrape.setEnabled(True)  # type: ignore
+        except Exception:
+            pass
+
+    def _on_scrape_progress_closed(self):  # pragma: no cover
+        try:
+            dock = getattr(self, "_scrape_progress_dock", None)
+            if dock:
+                dock.setParent(None)
+                delattr(self, "_scrape_progress_widget")
+                delattr(self, "_scrape_progress_dock")
         except Exception:
             pass
 

@@ -10,6 +10,17 @@ from typing import Callable, Optional, Any
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 
+class _CancelToken:
+    def __init__(self):
+        self._cancelled = False
+
+    def cancel(self):
+        self._cancelled = True
+
+    def is_cancelled(self):
+        return self._cancelled
+
+
 class ScrapeWorker(QThread):  # pragma: no cover - thread orchestration
     finished_ok = pyqtSignal(dict)
     failed = pyqtSignal(str)
@@ -23,6 +34,7 @@ class ScrapeWorker(QThread):  # pragma: no cover - thread orchestration
         self._season = season
         self._data_dir = data_dir
         self._runner = runner
+        self._cancel_token = _CancelToken()
 
     def run(self):  # noqa: D401
         try:
@@ -31,11 +43,18 @@ class ScrapeWorker(QThread):  # pragma: no cover - thread orchestration
                 self.progress_event.emit(event, payload)
 
             result = self._runner(
-                self._club_id, season=self._season, data_dir=self._data_dir, progress=_progress
+                self._club_id,
+                season=self._season,
+                data_dir=self._data_dir,
+                progress=_progress,
+                cancel_token=self._cancel_token,
             )
             self.finished_ok.emit(result)
         except Exception as e:  # pragma: no cover - defensive
             self.failed.emit(str(e))
+
+    def cancel(self):  # pragma: no cover - external call
+        self._cancel_token.cancel()
 
 
 class ScrapeRunner(QObject):
@@ -45,6 +64,7 @@ class ScrapeRunner(QObject):
     scrape_finished = pyqtSignal(dict)
     scrape_failed = pyqtSignal(str)
     scrape_progress = pyqtSignal(str, dict)  # (event, payload)
+    scrape_cancelled = pyqtSignal()
 
     def __init__(self, pipeline_func: Optional[Callable[..., dict]] = None):
         super().__init__()
@@ -67,6 +87,11 @@ class ScrapeRunner(QObject):
         self._worker.progress_event.connect(self._on_progress)  # type: ignore
         self.scrape_started.emit()
         self._worker.start()
+
+    def cancel(self):  # pragma: no cover
+        if self._worker and self._worker.isRunning():
+            self._worker.cancel()
+            self.scrape_cancelled.emit()
 
     def _on_ok(self, result: dict):  # pragma: no cover - signal path
         self.scrape_finished.emit(result)

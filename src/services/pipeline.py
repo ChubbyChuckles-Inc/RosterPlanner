@@ -1,7 +1,7 @@
 """High-level orchestration pipeline (extended)."""
 
 from __future__ import annotations
-from typing import Dict, List
+from typing import Dict, List, Callable, Any
 from datetime import datetime
 import os
 
@@ -43,12 +43,17 @@ def run_basic(club_id: int, season: int | None = None, data_dir: str | None = No
     }
 
 
+class PipelineCancelled(Exception):
+    """Raised internally to unwind run_full early when cancellation requested."""
+
+
 def run_full(
     club_id: int,
     season: int | None = None,
     data_dir: str | None = None,
     *,
-    progress: callable | None = None,
+    progress: Callable[[str, dict], Any] | None = None,
+    cancel_token: Any | None = None,
 ) -> dict:
     """Run full scrape pipeline writing HTML assets to data_dir (or default).
 
@@ -67,6 +72,8 @@ def run_full(
     # Step 1: Landing page fetch & initial extraction
     if progress:
         progress("phase_start", {"key": "landing"})
+    if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+        raise PipelineCancelled()
     landing_html = ranking_scraper.http_client.fetch(landing_url)  # type: ignore[attr-defined]
     # Snapshot archive of landing page for parity (timestamped)
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -78,12 +85,15 @@ def run_full(
 
     if progress:
         progress("phase_complete", {"key": "landing"})
+    if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+        raise PipelineCancelled()
     # Step 2: Fetch ranking tables & parse for division roster lists
     if progress:
         progress("phase_start", {"key": "ranking_tables"})
     division_team_lists: dict[str, list[dict]] = {}
     # Map team_id -> division_id (distinct) gathered from ranking tables for later repair of legacy incorrect files
     team_division_map: dict[str, str] = {}
+    total_ranking = len(ranking_links) or 1
     for idx, rlink in enumerate(ranking_links, start=1):
         # Fetch ranking table HTML directly (do not persist with generic name first)
         ranking_html = ranking_scraper.http_client.fetch(rlink)  # type: ignore[attr-defined]
@@ -101,15 +111,25 @@ def run_full(
             did = t.get("division_id") or None
             if tid and did and tid != did:
                 team_division_map[tid] = did
+        if progress:
+            frac = idx / total_ranking
+            progress("phase_progress", {"key": "ranking_tables", "fraction": frac})
+        if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+            raise PipelineCancelled()
 
     if progress:
         progress("phase_complete", {"key": "ranking_tables"})
+    if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+        raise PipelineCancelled()
     # Step 3: Fetch rosters for each team in divisions
     if progress:
         progress("phase_start", {"key": "division_rosters"})
     all_matches: dict[str, list[Match]] = {}
     all_players: dict[str, list[Player]] = {}
 
+    # Pre-compute total teams for fractional progress
+    total_teams = sum(len(v) for v in division_team_lists.values()) or 1
+    processed_teams = 0
     for division_name, teams in division_team_lists.items():
         for team in teams:
             roster_link = team["roster_link"]
@@ -138,13 +158,31 @@ def run_full(
             players = roster_parser.extract_players(roster_html, team_id=team_id)
             all_matches[team_id] = matches
             all_players[team_id] = players
+            processed_teams += 1
+            if progress:
+                progress(
+                    "phase_progress",
+                    {
+                        "key": "division_rosters",
+                        "fraction": processed_teams / total_teams,
+                        "detail": f"{processed_teams}/{total_teams} rosters",
+                    },
+                )
+            if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+                raise PipelineCancelled()
 
     if progress:
         progress("phase_complete", {"key": "division_rosters"})
+    if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+        raise PipelineCancelled()
     # Step 4: Extract club links from rosters
     if progress:
         progress("phase_start", {"key": "club_overviews"})
     club_links: dict[str, str] = {}
+    # We can emit coarse progress across division folders
+    div_folders = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
+    div_total = len(div_folders) or 1
+    div_processed = 0
     for division_name in os.listdir(data_dir):
         div_path = os.path.join(data_dir, division_name)
         if not os.path.isdir(div_path):
@@ -159,9 +197,23 @@ def run_full(
                     cid_match = re.search(r"L2P=([^&]+)", link)
                     if cid_match:
                         club_links[cid_match.group(1)] = link
+        div_processed += 1
+        if progress:
+            progress(
+                "phase_progress",
+                {
+                    "key": "club_overviews",
+                    "fraction": div_processed / div_total,
+                    "detail": f"{div_processed}/{div_total} divisions",
+                },
+            )
+        if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+            raise PipelineCancelled()
 
     if progress:
         progress("phase_complete", {"key": "club_overviews"})
+    if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+        raise PipelineCancelled()
     # Step 5: Fetch club overviews & extract additional teams
     if progress:
         progress("phase_start", {"key": "club_team_pages"})
@@ -176,7 +228,10 @@ def run_full(
     club_id_to_name: dict[str, str] = {}
     # Always ensure the primary club_id requested is included even if not discovered via roster links yet
     discovered_club_ids.add(str(club_id))
-    for club_id_key in sorted(discovered_club_ids):
+    sorted_clubs = sorted(discovered_club_ids)
+    club_total = len(sorted_clubs) or 1
+    club_processed = 0
+    for club_id_key in sorted_clubs:
         # If we already have a full club link use it; otherwise synthesize typical pattern (landing Verein page)
         club_link = club_links.get(club_id_key)
         if club_link:
@@ -194,6 +249,18 @@ def run_full(
             continue
         for tid, t in teams.items():
             club_extra_teams[tid] = t
+        club_processed += 1
+        if progress:
+            progress(
+                "phase_progress",
+                {
+                    "key": "club_team_pages",
+                    "fraction": club_processed / club_total,
+                    "detail": f"{club_processed}/{club_total} clubs",
+                },
+            )
+        if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+            raise PipelineCancelled()
 
     # Step 6: Merge teams (base + club extras)
     merged_teams = domain_mapping.merge_team_club_data(teams_overview, club_extra_teams)
@@ -226,6 +293,8 @@ def run_full(
 
     if progress:
         progress("phase_complete", {"key": "club_team_pages"})
+    if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+        raise PipelineCancelled()
     # Step 7b.1: Player history pages scraping (new)
     if progress:
         progress("phase_start", {"key": "player_histories"})
@@ -251,7 +320,12 @@ def run_full(
             results.append((href, name_txt))
         return results
 
-    for team_html_name in os.listdir(club_team_dir):
+    club_team_files = [
+        f for f in os.listdir(club_team_dir) if f.startswith("club_team_") and f.endswith(".html")
+    ]
+    total_hist_sets = len(club_team_files) or 1
+    processed_hist_sets = 0
+    for team_html_name in club_team_files:
         if not team_html_name.startswith("club_team_") or not team_html_name.endswith(".html"):
             continue
         # Derive subfolder name: strip prefix 'club_team_' and trailing '_<id>.html'
@@ -286,8 +360,22 @@ def run_full(
                 filesystem.write_text(out_path, hist_html)
             except Exception:
                 continue
+        processed_hist_sets += 1
+        if progress:
+            progress(
+                "phase_progress",
+                {
+                    "key": "player_histories",
+                    "fraction": processed_hist_sets / total_hist_sets,
+                    "detail": f"{processed_hist_sets}/{total_hist_sets} team sets",
+                },
+            )
+        if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+            raise PipelineCancelled()
     if progress:
         progress("phase_complete", {"key": "player_histories"})
+    if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+        raise PipelineCancelled()
 
     # Step 7c (updated): Deterministic primary club backfill ensuring club_team_* files exist.
     # Rationale: Earlier logic attempted to infer primary club teams from merged extras; this could fail in heavily mocked
@@ -412,6 +500,8 @@ def run_full(
     # Step 8: Build divisions structure for tracking state (used by GUI tree) and persist
     if progress:
         progress("phase_start", {"key": "tracking_state"})
+    if cancel_token and getattr(cancel_token, "is_cancelled", lambda: False)():
+        raise PipelineCancelled()
     divisions_map: dict[str, Division] = {}
     for team in merged_teams.values():
         div_name = team.division_name or "Unknown_Division"
