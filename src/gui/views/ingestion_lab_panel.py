@@ -41,6 +41,11 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QTreeWidget,
     QTreeWidgetItem,
+    QLineEdit,
+    QCheckBox,
+    QMenu,
+    QToolButton,
+    QSpinBox,
 )
 from PyQt6.QtCore import Qt
 import sqlite3
@@ -94,8 +99,53 @@ class IngestionLabPanel(QWidget):
         self.btn_refresh = QPushButton("Refresh")
         self.btn_preview = QPushButton("Preview")
         self.btn_preview.setEnabled(False)
+        # Search / filter controls (7.10.4)
+        self.search_box = QLineEdit()
+        self.search_box.setPlaceholderText("Search filename or hash…")
+        self.search_box.setClearButtonEnabled(True)
+        self.search_box.setObjectName("ingestionLabSearch")
+        # Phase filter popup (multi-select)
+        self.phase_filter_button = QToolButton()
+        self.phase_filter_button.setText("Phases ▾")
+        self.phase_filter_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._phase_menu = QMenu(self)
+        self._phase_checks: dict[str, QCheckBox] = {}
+        for pid, label, _ in PHASE_PATTERNS + [(OTHER_PHASE_ID, "Other", lambda *_: False)]:
+            cb = QCheckBox(label)
+            cb.setChecked(True)
+            act = self._phase_menu.addAction(label)
+
+            # Embed checkbox state via triggered connection; store mapping
+            def _toggle(checked: bool = False, box=cb):  # noqa: ANN001
+                box.setChecked(not box.isChecked())  # invert on each action trigger
+                self._apply_filters()
+
+            act.triggered.connect(_toggle)  # type: ignore
+            self._phase_checks[pid] = cb
+        self.phase_filter_button.setMenu(self._phase_menu)
+        # Size range (KB)
+        self.min_size = QSpinBox()
+        self.min_size.setPrefix(">= ")
+        self.min_size.setMaximum(10_000)
+        self.min_size.setToolTip("Minimum size (KB)")
+        self.max_size = QSpinBox()
+        self.max_size.setPrefix("<= ")
+        self.max_size.setMaximum(10_000)
+        self.max_size.setToolTip("Maximum size (KB; 0 = no limit)")
+        # Modified since (epoch seconds delta: last N hours) simple heuristic input
+        self.modified_within_hours = QSpinBox()
+        self.modified_within_hours.setPrefix("< ")
+        self.modified_within_hours.setMaximum(720)
+        self.modified_within_hours.setToolTip("Show files modified within last N hours (0 = any)")
         actions.addWidget(self.btn_refresh)
         actions.addWidget(self.btn_preview)
+        actions.addWidget(self.search_box, 1)
+        actions.addWidget(self.phase_filter_button)
+        actions.addWidget(QLabel("Size KB:"))
+        actions.addWidget(self.min_size)
+        actions.addWidget(self.max_size)
+        actions.addWidget(QLabel("Mod <h:"))
+        actions.addWidget(self.modified_within_hours)
         actions.addStretch(1)
         root.addLayout(actions)
 
@@ -152,6 +202,14 @@ class IngestionLabPanel(QWidget):
         # Connections
         self.btn_refresh.clicked.connect(self.refresh_file_list)  # type: ignore
         self.btn_preview.clicked.connect(self._on_preview_clicked)  # type: ignore
+        self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
+        self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
+        self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
+        self.modified_within_hours.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
+
+        # Internal cache of all file items for filtering without re-scanning
+        # Holds all leaf file items for filtering purposes
+        self._all_file_items = []  # type: list[QTreeWidgetItem]
 
     # ------------------------------------------------------------------
     # File Discovery
@@ -163,6 +221,7 @@ class IngestionLabPanel(QWidget):
         richer phase-aware operations in subsequent milestones (filtering, batch preview).
         """
         self.file_tree.clear()
+        self._all_file_items.clear()
         data_root = self._base_dir
         if not os.path.isdir(data_root):  # pragma: no cover - defensive
             return
@@ -247,11 +306,14 @@ class IngestionLabPanel(QWidget):
                     },
                 )
                 phase_item.addChild(child)
+                self._all_file_items.append(child)
                 total_files += 1
             phase_item.setExpanded(True)
         self._append_log(
             f"Refreshed: {total_files} HTML files across {sum(1 for v in grouped.values() if v)} phases."
         )
+        # Re-apply current filters after rebuild
+        self._apply_filters()
 
     # ------------------------------------------------------------------
     # Events & Actions
@@ -344,3 +406,77 @@ class IngestionLabPanel(QWidget):
 
     def base_dir(self) -> str:
         return self._base_dir
+
+    # ------------------------------------------------------------------
+    # Filtering logic (7.10.4)
+    def _apply_filters(self) -> None:
+        """Apply in-memory filters to existing tree items without re-scanning disk.
+
+        Filters:
+          - Search text (substring, case-insensitive) over relative filename & hash column.
+          - Phase inclusion checkboxes.
+          - Size range (KB) minimum / maximum (0 means no bound for max; min always enforced).
+          - Modified within last N hours (0 = any). Uses os.stat; best-effort.
+        Phase parent visibility auto-updates based on whether any children remain visible.
+        """
+        if not self._all_file_items:
+            return
+        text = (self.search_box.text() or "").lower()
+        min_kb = self.min_size.value()
+        max_kb = self.max_size.value() or None
+        hours = self.modified_within_hours.value()
+        allowed_phases = {pid for pid, cb in self._phase_checks.items() if cb.isChecked()}
+        now = None
+        if hours:
+            import time as _t
+
+            now = _t.time()
+        # Track parents needing visibility recompute
+        parents = []  # collect unique parent items preserving insertion order
+        for item in self._all_file_items:
+            data = item.data(0, Qt.ItemDataRole.UserRole) or {}
+            phase = data.get("phase") if isinstance(data, dict) else None
+            rel = item.text(1)
+            hash_short = item.text(3)
+            size_txt = item.text(2)
+            visible = True
+            # Phase filter
+            if phase and phase not in allowed_phases:
+                visible = False
+            # Search filter
+            if visible and text:
+                hay = f"{rel.lower()} {hash_short.lower()}"
+                if text not in hay:
+                    visible = False
+            # Size filter
+            if visible:
+                try:
+                    size_val = float(size_txt) if size_txt and size_txt != "?" else 0.0
+                except Exception:
+                    size_val = 0.0
+                if size_val < min_kb:
+                    visible = False
+                if max_kb is not None and max_kb > 0 and size_val > max_kb:
+                    visible = False
+            # Modified within filter
+            if visible and hours and rel:
+                # reconstruct absolute path
+                abs_path = os.path.join(self._base_dir, rel)
+                try:
+                    st = os.stat(abs_path)
+                    if now and (now - st.st_mtime) > hours * 3600:
+                        visible = False
+                except Exception:
+                    pass
+            item.setHidden(not visible)
+            parent = item.parent()
+            if parent and parent not in parents:
+                parents.append(parent)
+        # Update parent (phase) node visibility
+        for p in parents:
+            child_visible = any(not p.child(i).isHidden() for i in range(p.childCount()))
+            p.setHidden(not child_visible)
+
+    # For tests
+    def filtered_file_count(self) -> int:
+        return sum(1 for it in self._all_file_items if not it.isHidden())

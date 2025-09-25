@@ -47,3 +47,9 @@ feat(charting): add player LivePZ progression chart + tests (Milestone 7.3)
 
 feat(ingestion-lab): add grouped file navigator tree (Milestone 7.10.2) with phase buckets and updated tests
 
+feat(ingestion-lab): add search & filter (filename, phase, size range, modified within hours) (Milestone 7.10.4)
+ - UI: search box, phase multi-select menu, min/max size spin boxes, modified-within-hours spin box
+ - Logic: in-memory visibility toggling without disk rescan; parent phase auto-hide when empty
+ - Tests: substring search, phase disable, size threshold boundary
+ - Roadmap updated (hash delta filtering deferred until diff infra tasks 7.10.18/7.10.22)
+

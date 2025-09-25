@@ -305,7 +305,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.1 Create dockable "Ingestion Lab" panel (multi-pane: File Navigator | Rule Editor | Preview | Execution Log)
  [x] 7.10.2 File Navigator: tree/grid of HTML assets grouped by logical phase (landing, ranking_tables, division_rosters, club_overviews, club_team_pages, player_histories, tracking_state)
  [x] 7.10.3 Detect & display provenance metadata (hash, last parsed timestamp, size, parser version) per file
- [ ] 7.10.4 Provide search & filter (by filename, phase, size range, last modified, hash delta)
+ [x] 7.10.4 Provide search & filter (by filename, phase, size range, last modified) (hash delta deferred)
  [ ] 7.10.5 Integrate existing Theme / density / reduced-color modes for full style consistency
 
  Extraction Rule Model

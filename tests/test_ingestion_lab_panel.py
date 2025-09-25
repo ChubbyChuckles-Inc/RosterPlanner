@@ -96,3 +96,46 @@ def test_main_window_has_ingestion_lab_dock():
     # Basic smoke: widget inside dock should be IngestionLabPanel or placeholder
     inner = dock.widget()
     assert inner is not None
+
+
+def test_ingestion_lab_panel_search_and_phase_filter(tmp_path, qtbot):
+    from gui.views.ingestion_lab_panel import IngestionLabPanel, PHASE_PATTERNS
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    # Create representative files for different phases
+    (data_dir / "ranking_table_alpha.html").write_text("<html>alpha</html>")
+    (data_dir / "team_roster_beta.html").write_text("<html>beta</html>")
+    (data_dir / "misc_gamma.html").write_text("<html>gamma</html>")
+
+    panel = IngestionLabPanel(base_dir=str(data_dir))
+    qtbot.addWidget(panel)
+    panel.refresh_file_list()
+    assert panel.filtered_file_count() == 3
+
+    # Search filter (substring)
+    panel.search_box.setText("alpha")
+    qtbot.waitUntil(lambda: panel.filtered_file_count() == 1)
+    panel.search_box.clear()
+    qtbot.waitUntil(lambda: panel.filtered_file_count() == 3)
+
+    # Phase filter: disable ranking tables phase
+    ranking_phase_id = None
+    for pid, label, _ in PHASE_PATTERNS:
+        if "Ranking" in label:
+            ranking_phase_id = pid
+            break
+    assert ranking_phase_id is not None
+    cb = panel._phase_checks[ranking_phase_id]
+    cb.setChecked(False)
+    panel._apply_filters()
+    qtbot.waitUntil(lambda: panel.filtered_file_count() == 2)
+
+    # Size filter: set min size above current sizes (these are tiny ~0.0 KB)
+    panel.min_size.setValue(5)  # 5 KB threshold should hide all
+    panel._apply_filters()
+    qtbot.waitUntil(lambda: panel.filtered_file_count() == 0)
+    # Reset
+    panel.min_size.setValue(0)
+    panel._apply_filters()
+    qtbot.waitUntil(lambda: panel.filtered_file_count() == 2)
