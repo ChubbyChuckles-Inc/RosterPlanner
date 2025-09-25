@@ -277,14 +277,14 @@ Milestone 6: Advanced Statistics Engine
 [x] 6.1.1 KPI registry (declarative definitions + metadata)
 [x] 6.2 Time-series builder (date-indexed match density, availability coverage)
 [x] 6.3 Player strength distribution histograms (binning LivePZ)
-[ ] 6.4 Match outcome predictor (baseline heuristic: average top N player LivePZ vs opponent)
-[ ] 6.4.1 Add calibration metrics logging (Brier score placeholder)
-[ ] 6.5 Division strength index (ELO-like aggregate per division)
-[ ] 6.5.1 Expose rating history graph ready endpoint
-[ ] 6.6 Trend detection (rolling 5-match form per team)
-[ ] 6.7 Caching & invalidation for stats (inputs hashed, DB triggers or timestamp checks)
-[ ] 6.8 Unit tests for stats calculations (edge: empty team, partial season, missing LivePZ)
-[ ] 6.9 Stats profiling harness (time + memory, large synthetic dataset)
+[x] 6.4 Match outcome predictor (baseline heuristic: average top N player LivePZ vs opponent)
+[x] 6.4.1 Add calibration metrics logging (Brier score placeholder)
+[x] 6.5 Division strength index (ELO-like aggregate per division)
+[x] 6.5.1 Expose rating history graph ready endpoint
+[x] 6.6 Trend detection (rolling 5-match form per team)
+[x] 6.7 Caching & invalidation for stats (inputs hashed, DB triggers or timestamp checks)
+[x] 6.8 Unit tests for stats calculations (edge: empty team, partial season, missing LivePZ)
+[x] 6.9 Stats profiling harness (time + memory, large synthetic dataset)
 
 Milestone 7: Visualization Layer
 [ ] 7.1 Common charting wrapper (e.g., PyQtGraph or Matplotlib embed abstraction)

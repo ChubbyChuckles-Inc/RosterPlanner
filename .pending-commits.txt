@@ -25,3 +25,12 @@ feat(theme): add ThemeWarmLoader service for accent palette prefetch (Milestone 
 feat(stats): implement StatsService, KPI registry, time-series builder, and LivePZ histogram service with tests (Milestone 6.1-6.3)
 feat(stats-ui): add StatsViewModel, StatsDockView, and integrate KPIs + time-series + histogram into stats dock (Milestone 6 UI integration)
 
+feat(predictor): implement match outcome predictor with logistic probability model + calibration tracker (Milestone 6.4 & 6.4.1)
+feat(stats): add DivisionStrengthIndexService with ELO-like aggregation + tests (Milestone 6.5)
+feat(stats): expose division rating history endpoint with snapshots + tests (Milestone 6.5.1)
+feat(stats): add TrendDetectionService for rolling team form with tests (Milestone 6.6)
+feat(stats): introduce StatsCacheService with freshness-aware invalidation + tests (Milestone 6.7)
+test(stats): add edge case coverage (empty team, partial season, missing LivePZ, predictor neutral, single-team division) (Milestone 6.8)
+
+perf(stats): add profiling harness and performance baseline test (Milestone 6.9)
+
