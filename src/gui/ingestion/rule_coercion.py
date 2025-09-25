@@ -141,9 +141,7 @@ def generate_coercion_preview(rule_set: RuleSet, raw_samples: RawSamples) -> Coe
             for fname in sorted(res.fields.keys()):
                 values = per_field.get(fname, [])
                 stats.append(
-                    _coerce_list_field(
-                        rname, fname, values, res, rule_set.allow_expressions
-                    )
+                    _coerce_list_field(rname, fname, values, res, rule_set.allow_expressions)
                 )
         elif isinstance(res, TableRule):
             for col in res.columns:
