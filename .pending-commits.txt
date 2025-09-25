@@ -103,3 +103,5 @@ feat(ingestion-rules): add alternate target schema sandbox (Milestone 7.10.12)
  - Applies schema to in-memory SQLite for preview ingestion
  - Unit tests cover DDL generation, overrides, and basic insert round-trip
 
+feat(ingestion-lab): backend field coverage computation (Milestone 7.10.26 partial)
+
