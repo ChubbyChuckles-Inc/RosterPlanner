@@ -36,4 +36,5 @@ perf(stats): add profiling harness and performance baseline test (Milestone 6.9)
 feat(charting): add common charting wrapper with registry + basic line chart (Milestone 7.1)
 feat(charting): add plugin interface (ChartPluginProtocol, registrar, tests) (Milestone 7.1.1)
 feat(charting): add theme-aware chart palette manager + tests (Milestone 7.2)
+feat(charting): add player LivePZ progression chart + tests (Milestone 7.3)
 

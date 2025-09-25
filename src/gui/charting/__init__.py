@@ -15,3 +15,4 @@ performance real-time scenarios; both must conform to ChartBackendProtocol.
 from .backends import MatplotlibChartBackend  # noqa: F401
 from .registry import chart_registry, register_chart_type  # noqa: F401
 from .types import ChartRequest, ChartResult  # noqa: F401
+from . import player_charts  # noqa: F401  # registers player chart types
