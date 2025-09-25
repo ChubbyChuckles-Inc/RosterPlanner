@@ -192,6 +192,59 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
         fname = naming.club_team_by_name_filename(club_display, team.name, team.id)
         filesystem.write_text(os.path.join(club_team_dir, fname), html)
 
+    # Step 7b.1: Player history pages scraping (new)
+    # For each saved club team HTML, parse player profile links and fetch their history (EntwicklungTTR page).
+    player_history_root = os.path.join(data_dir, "club_players")
+    os.makedirs(player_history_root, exist_ok=True)
+    import re as _re_history
+    from html import unescape as _unescape
+
+    def _extract_player_links(html: str):
+        # Matches anchor tags with Spieler profile (L3=Spieler & L3P=<id>) capturing href and visible name
+        pattern = _re_history.compile(r'<a\s+href="(\?L1=[^"]*?L3=Spieler&L3P=\d+[^"#>]*)"[^>]*>(.*?)</a>', re.IGNORECASE)
+        results = []
+        for m in pattern.finditer(html):
+            href = m.group(1)
+            name_raw = m.group(2)
+            # Strip HTML entities & tags inside name if any
+            name_txt = _re_history.sub(r"<[^>]+>", "", _unescape(name_raw)).strip()
+            if not name_txt:
+                continue
+            results.append((href, name_txt))
+        return results
+
+    for team_html_name in os.listdir(club_team_dir):
+        if not team_html_name.startswith("club_team_") or not team_html_name.endswith(".html"):
+            continue
+        # Derive subfolder name: strip prefix 'club_team_' and trailing '_<id>.html'
+        base = team_html_name[len("club_team_") : -5]  # remove prefix and .html
+        # Remove the trailing _<digits> (team id) to form folder name
+        folder = _re_history.sub(r"_\d+$", "", base)
+        if not folder:
+            continue
+        folder_path = os.path.join(player_history_root, folder)
+        os.makedirs(folder_path, exist_ok=True)
+        team_html = filesystem.read_text(os.path.join(club_team_dir, team_html_name))
+        links = _extract_player_links(team_html)
+        for rel_link, player_name in links:
+            # Build history URL by replacing Page=Vorrunde (or any Page=...) with Page=EntwicklungTTR
+            if "Page=" in rel_link:
+                rel_history = _re_history.sub(r"Page=[A-Za-z0-9]+", "Page=EntwicklungTTR", rel_link)
+            else:
+                # Append if missing
+                sep = '&' if rel_link.endswith('&') or '?' in rel_link else '&'
+                rel_history = f"{rel_link}{sep}Page=EntwicklungTTR"
+            history_url = rel_history if rel_history.startswith("http") else f"{settings.ROOT_URL}{rel_history}"
+            safe_player = naming.sanitize(player_name.replace(" ", "_"))
+            out_path = os.path.join(folder_path, f"{safe_player}.html")
+            if os.path.exists(out_path):  # skip existing to avoid refetch noise
+                continue
+            try:
+                hist_html = ranking_scraper.http_client.fetch(history_url)  # type: ignore[attr-defined]
+                filesystem.write_text(out_path, hist_html)
+            except Exception:
+                continue
+
     # Step 7c (updated): Deterministic primary club backfill ensuring club_team_* files exist.
     # Rationale: Earlier logic attempted to infer primary club teams from merged extras; this could fail in heavily mocked
     # test environments where team.club_id mutation differs. We now always (re)fetch the primary club overview explicitly.
