@@ -104,4 +104,5 @@ feat(ingestion-rules): add alternate target schema sandbox (Milestone 7.10.12)
  - Unit tests cover DDL generation, overrides, and basic insert round-trip
 
 feat(ingestion-lab): backend field coverage computation (Milestone 7.10.26 partial)
+feat(ingestion-lab): field coverage UI integration button + logging (Milestone 7.10.26 complete)
 

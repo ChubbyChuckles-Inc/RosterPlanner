@@ -48,11 +48,19 @@ from PyQt6.QtWidgets import (
     QSpinBox,
 )
 from PyQt6.QtCore import Qt
+import json
 from gui.components.theme_aware import ThemeAwareMixin
 import sqlite3
 import hashlib
 from dataclasses import dataclass
 from typing import Dict, Any
+
+# Field coverage backend (Milestone 7.10.26)
+try:  # pragma: no cover - import guard if module missing in earlier migrations
+    from gui.ingestion.rule_field_coverage import compute_field_coverage, FieldCoverageReport
+except Exception:  # pragma: no cover
+    compute_field_coverage = None  # type: ignore
+    FieldCoverageReport = None  # type: ignore
 
 # Lazy service locator import (optional; panel should degrade gracefully if unavailable)
 try:  # pragma: no cover - import guard
@@ -139,6 +147,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_preview.setEnabled(False)
         self.btn_hash_impact = QPushButton("Hash Impact")
         self.btn_hash_impact.setToolTip("Compute which files would trigger ingest (hash changes)")
+        self.btn_field_coverage = QPushButton("Field Coverage")
+        self.btn_field_coverage.setToolTip(
+            "Compute per-field non-empty ratios across all visible files using current rules"
+        )
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -180,6 +192,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_refresh)
         actions.addWidget(self.btn_preview)
         actions.addWidget(self.btn_hash_impact)
+        actions.addWidget(self.btn_field_coverage)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -244,6 +257,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_refresh.clicked.connect(self.refresh_file_list)  # type: ignore
         self.btn_preview.clicked.connect(self._on_preview_clicked)  # type: ignore
         self.btn_hash_impact.clicked.connect(self._on_hash_impact_clicked)  # type: ignore
+        self.btn_field_coverage.clicked.connect(self._on_field_coverage_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -252,6 +266,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         # Internal cache of all file items for filtering without re-scanning
         # Holds all leaf file items for filtering purposes
         self._all_file_items = []  # type: list[QTreeWidgetItem]
+        # Cache last field coverage report for tests (Milestone 7.10.26)
+        self._last_field_coverage = None  # type: ignore[assignment]
 
     # ------------------------------------------------------------------
     # File Discovery
@@ -505,6 +521,84 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             "new": list(r.new),
             "missing": list(r.missing),
         }
+
+    # ------------------------------------------------------------------
+    # Field Coverage (7.10.26)
+    def _gather_visible_file_html(self) -> Dict[str, str]:
+        files: Dict[str, str] = {}
+        for item in self._all_file_items:
+            if item.isHidden():
+                continue
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if not (isinstance(data, dict) and "file" in data):
+                continue
+            path = data.get("file")  # type: ignore[index]
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                    files[path] = fh.read()
+            except Exception:
+                continue
+        return files
+
+    def _parse_ruleset_from_editor(self):  # type: ignore[override]
+        """Parse the current rule editor content into a RuleSet or raise.
+
+        Supports JSON first; if JSON parse fails, attempts very naive YAML fallback
+        (by leveraging json after replacing single quotes & ensuring braces). For
+        early milestones we keep implementation minimal.
+        """
+        from gui.ingestion.rule_schema import RuleSet, RuleError  # local import to avoid cycle
+
+        text = (self.rule_editor.toPlainText() or "").strip()
+        if not text:
+            raise ValueError("Rule editor is empty – cannot compute coverage")
+        try:
+            data = json.loads(text)
+        except Exception as e_json:
+            # Extremely naive YAML-ish fallback: reject for now to keep deterministic
+            raise ValueError(f"Failed to parse rules JSON: {e_json}")
+        try:
+            return RuleSet.from_mapping(data)
+        except RuleError as e:  # pragma: no cover - validation path
+            raise ValueError(f"Invalid rule set: {e}") from e
+
+    def _on_field_coverage_clicked(self) -> None:
+        if compute_field_coverage is None:  # pragma: no cover
+            self._append_log("Field Coverage backend unavailable")
+            return
+        try:
+            rs = self._parse_ruleset_from_editor()
+        except Exception as e:
+            self._append_log(f"Coverage ERROR (rules): {e}")
+            return
+        html_map = self._gather_visible_file_html()
+        if not html_map:
+            self._append_log("Coverage: No visible files to analyze")
+            return
+        try:
+            report = compute_field_coverage(rs, html_map)
+        except Exception as e:  # pragma: no cover - defensive
+            self._append_log(f"Coverage ERROR (compute): {e}")
+            return
+        self._last_field_coverage = report
+        # Summarize in log (compact for test assertions)
+        self._append_log(
+            f"Field Coverage Overall: {report.overall_ratio:.2%} across {report.total_target_columns} columns"
+        )
+        for res in report.resources:
+            miss = res.missing_columns()
+            miss_txt = f" missing={','.join(miss)}" if miss else ""
+            self._append_log(
+                f"  {res.resource}: avg={res.average_coverage:.2%} fields={len(res.fields)}{miss_txt}"
+            )
+        # Provide a trailing separator for readability
+        self._append_log("— end coverage —")
+
+    # For tests
+    def field_coverage_snapshot(self) -> Dict[str, Any]:
+        if not self._last_field_coverage:
+            return {}
+        return self._last_field_coverage.to_mapping()  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
     # Accessors used in tests
