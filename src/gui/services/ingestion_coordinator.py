@@ -17,6 +17,7 @@ import re
 
 from .data_audit import DataAuditService
 from .event_bus import EventBus, Event  # type: ignore
+import threading
 from .service_locator import services  # lazy access for metrics service
 
 __all__ = ["IngestionCoordinator", "IngestionSummary", "IngestError"]
@@ -184,20 +185,29 @@ class IngestionCoordinator:
             metrics.append_from_summary(summary, duration_ms)
         except Exception:
             pass
+        # Avoid publishing GUI-affecting events from a background thread.
+        # Crash context: QObject::setParent warnings followed by access violation (-1073741819)
+        # observed when IngestionCoordinator (run inside LandingLoadWorker QThread) emitted
+        # DATA_REFRESHED causing subscribers to create QWidgets off the main thread.
         if self.event_bus is not None:
-            try:  # pragma: no cover
-                self.event_bus.publish("DATA_REFRESHED", {"summary": summary})
-                for e in errors:
-                    self.event_bus.publish(
-                        "INGEST_ERROR",
-                        {
-                            "division": e.division,
-                            "message": e.message,
-                            "severity": e.severity,
-                            "file": e.file,
-                        },
-                    )
-            except Exception:
+            if threading.current_thread() is threading.main_thread():
+                try:  # pragma: no cover
+                    self.event_bus.publish("DATA_REFRESHED", {"summary": summary})
+                    for e in errors:
+                        self.event_bus.publish(
+                            "INGEST_ERROR",
+                            {
+                                "division": e.division,
+                                "message": e.message,
+                                "severity": e.severity,
+                                "file": e.file,
+                            },
+                        )
+                except Exception:
+                    pass
+            else:
+                # Defer: store events for optional later main-thread dispatch (future enhancement)
+                # For now, we silently skip to maintain stability.
                 pass
         return summary
 
