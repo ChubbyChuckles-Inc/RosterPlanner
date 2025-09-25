@@ -31,6 +31,60 @@ def test_ingestion_lab_panel_basic():
     assert isinstance(listed, list)
 
 
+def test_ingestion_lab_panel_provenance_columns():
+    """If provenance table exists, panel should populate hash / last ingested columns.
+
+    Test creates a temporary provenance row for one discovered file (if any) by
+    mocking a minimal in-memory sqlite connection registered under service locator.
+    Falls back to skip if no files present in data dir.
+    """
+    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.services.service_locator import services
+    import sqlite3
+    import glob
+
+    pattern = os.path.join("data", "**", "*.html")
+    files = glob.glob(pattern, recursive=True)
+    if not files:
+        pytest.skip("No HTML files available to test provenance display")
+    sample = files[0]
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE provenance(path TEXT PRIMARY KEY, sha1 TEXT, last_ingested_at TEXT, parser_version INTEGER)"
+    )
+    conn.execute(
+        "INSERT INTO provenance(path, sha1, last_ingested_at, parser_version) VALUES(?,?,datetime('now'),?)",
+        (sample, "deadbeefcafebabe", 2),
+    )
+    # Use override_context so global sqlite_conn service is restored after test
+    with services.override_context(sqlite_conn=conn):
+        panel = IngestionLabPanel(base_dir="data")
+        # Find the tree item matching the sample file and assert hash column populated
+        found = False
+        for r in range(panel.file_tree.topLevelItemCount()):  # type: ignore[attr-defined]
+            phase_item = panel.file_tree.topLevelItem(r)  # type: ignore[attr-defined]
+            for c in range(phase_item.childCount()):
+                child = phase_item.child(c)
+                if child.text(1) and child.text(1).endswith(os.path.basename(sample)):
+                    # Hash column index 3 should have short hash prefix
+                    hash_col = child.text(3)
+                    assert (
+                        hash_col.startswith("deadbeef"[: len(hash_col)])
+                        or hash_col == "deadbeefcaf"[: len(hash_col)]
+                    )
+                    found = True
+                    # Trigger preview to ensure provenance metadata surfaces
+                    panel.file_tree.setCurrentItem(child)  # select
+                    panel._on_preview_clicked()  # directly invoke
+                    preview = panel.preview_area.toPlainText()
+                    assert "deadbeefcafe"[:6] in preview or "deadbeef" in preview
+                    assert "Parser Version" in preview
+                    break
+            if found:
+                break
+        assert found, "Expected provenance-enriched file row not found"
+
+
 def test_main_window_has_ingestion_lab_dock():
     from gui.views.main_window import MainWindow
 

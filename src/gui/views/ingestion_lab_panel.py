@@ -43,6 +43,13 @@ from PyQt6.QtWidgets import (
     QTreeWidgetItem,
 )
 from PyQt6.QtCore import Qt
+import sqlite3
+
+# Lazy service locator import (optional; panel should degrade gracefully if unavailable)
+try:  # pragma: no cover - import guard
+    from gui.services.service_locator import services as _services  # type: ignore
+except Exception:  # pragma: no cover - fallback when running isolated
+    _services = None  # type: ignore
 
 __all__ = ["IngestionLabPanel"]
 
@@ -98,8 +105,15 @@ class IngestionLabPanel(QWidget):
         # Left: File Navigator (grouped). Replace flat list with tree (phase -> files)
         self.file_tree = QTreeWidget()
         self.file_tree.setObjectName("ingestionLabFileTree")
-        self.file_tree.setHeaderLabels(["Phase", "File", "Size (KB)"])
+        # Columns (Milestone 7.10.3): Phase | File | Size (KB) | Hash (short) | Last Ingested | Parser Ver
+        self.file_tree.setHeaderLabels(
+            ["Phase", "File", "Size (KB)", "Hash", "Last Ingested", "Parser Ver"]
+        )
         self.file_tree.setColumnWidth(0, 140)
+        self.file_tree.setColumnWidth(2, 70)
+        self.file_tree.setColumnWidth(3, 110)
+        self.file_tree.setColumnWidth(4, 120)
+        self.file_tree.setColumnWidth(5, 70)
         self.file_tree.itemSelectionChanged.connect(self._on_file_selection_changed)  # type: ignore
         splitter.addWidget(self.file_tree)
         # Backward compatibility alias used in early tests (treat tree as list-like)
@@ -159,6 +173,25 @@ class IngestionLabPanel(QWidget):
         grouped[OTHER_PHASE_ID] = []
         label_map = {pid: lbl for pid, lbl, _ in PHASE_PATTERNS}
         label_map[OTHER_PHASE_ID] = "Other"
+
+        # Provenance map: path -> (sha1, last_ingested_at, parser_version)
+        provenance: dict[str, tuple[str, str, int]] = {}
+        conn: sqlite3.Connection | None = None
+        if _services is not None:
+            try:
+                conn = _services.try_get("sqlite_conn")  # type: ignore[attr-defined]
+            except Exception:  # pragma: no cover - defensive
+                conn = None
+        if conn is not None:
+            try:
+                cur = conn.execute(
+                    "SELECT path, sha1, COALESCE(last_ingested_at,'') as ts, COALESCE(parser_version,1) FROM provenance"
+                )
+                for row in cur.fetchall():
+                    provenance[str(row[0])] = (str(row[1]), str(row[2]), int(row[3]))
+            except Exception:  # pragma: no cover - provenance optional
+                provenance = {}
+
         for fpath in files:
             rel = os.path.relpath(fpath, data_root)
             fn = os.path.basename(rel).lower()
@@ -178,7 +211,7 @@ class IngestionLabPanel(QWidget):
         for pid, files_in_phase in grouped.items():
             if not files_in_phase:
                 continue
-            phase_item = QTreeWidgetItem([label_map.get(pid, pid), "", ""])
+            phase_item = QTreeWidgetItem([label_map.get(pid, pid), "", "", "", "", ""])
             phase_item.setData(0, Qt.ItemDataRole.UserRole, {"phase": pid})
             self.file_tree.addTopLevelItem(phase_item)
             for fpath in sorted(files_in_phase):
@@ -188,9 +221,31 @@ class IngestionLabPanel(QWidget):
                     size_kb = f"{stat.st_size/1024:.1f}"
                 except Exception:
                     size_kb = "?"
-                child = QTreeWidgetItem(["", rel, size_kb])
+                prov = provenance.get(fpath)
+                if prov:
+                    sha1, ts, parser_ver = prov
+                    short_hash = sha1[:10]
+                else:
+                    short_hash = ""  # Not yet ingested
+                    ts = ""
+                    parser_ver = 0
+                child = QTreeWidgetItem(
+                    ["", rel, size_kb, short_hash, ts, str(parser_ver) if parser_ver else "-"]
+                )
                 child.setData(0, Qt.ItemDataRole.UserRole, {"file": fpath, "phase": pid})
                 child.setData(1, Qt.ItemDataRole.UserRole, {"file": fpath, "phase": pid})
+                # Store full provenance metadata in role for later preview enrichment
+                child.setData(
+                    2,
+                    Qt.ItemDataRole.UserRole,
+                    {
+                        "file": fpath,
+                        "phase": pid,
+                        "hash": prov[0] if prov else None,
+                        "last_ingested_at": ts if prov else None,
+                        "parser_version": parser_ver if prov else None,
+                    },
+                )
                 phase_item.addChild(child)
                 total_files += 1
             phase_item.setExpanded(True)
@@ -223,13 +278,26 @@ class IngestionLabPanel(QWidget):
             stat = os.stat(fpath)
             with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
                 snippet = fh.read(800)
+            # Retrieve provenance metadata we stashed in column 2 user role
+            prov_payload = target.data(2, Qt.ItemDataRole.UserRole) or {}
+            if isinstance(prov_payload, dict):
+                hash_full = prov_payload.get("hash")
+                last_ingested = prov_payload.get("last_ingested_at")
+                parser_ver = prov_payload.get("parser_version")
+            else:  # pragma: no cover - defensive
+                hash_full = last_ingested = parser_ver = None
             meta = [
                 f"File: {fpath}",
-                f"Size: {stat.st_size} bytes",
+                f"Size: {stat.st_size} bytes",  # raw bytes
                 f"Modified: {int(stat.st_mtime)} (epoch)",
-                "--- Snippet ---",
-                snippet,
             ]
+            if hash_full:
+                meta.append(f"Hash: {hash_full}")
+            if last_ingested:
+                meta.append(f"Last Ingested: {last_ingested}")
+            if parser_ver:
+                meta.append(f"Parser Version: {parser_ver}")
+            meta.extend(["--- Snippet ---", snippet])
             self.preview_area.setPlainText("\n".join(meta))
             try:
                 rel_name = target.text(1) or target.text(0)

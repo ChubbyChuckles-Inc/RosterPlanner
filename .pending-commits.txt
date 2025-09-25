@@ -1,3 +1,4 @@
+feat: ingestion lab shows provenance metadata (hash, last_ingested_at, parser version) per file (7.10.3)
 feat(charting): add team availability heatmap (provisional) and heatmap backend support (Milestone 7.4)
 feat(charting): add division standings evolution chart (Milestone 7.5)
 feat(charting): add match volume & cumulative win % chart (Milestone 7.6)

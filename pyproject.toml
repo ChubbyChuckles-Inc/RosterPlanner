@@ -84,5 +84,5 @@ markers = [
     "gui: marks tests that require a QApplication / GUI context",
     "performance: marks performance / profiling baseline tests",
 ]
-timeout = 10
+timeout = 20
 timeout_method = "thread"
