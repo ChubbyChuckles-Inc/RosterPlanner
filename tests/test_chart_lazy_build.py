@@ -1,4 +1,5 @@
 """Tests for lazy chart building & build timing (Milestone 7.8 partial)."""
+
 from __future__ import annotations
 
 from src.gui.charting import chart_registry, ChartRequest
@@ -12,11 +13,13 @@ def test_lazy_proxy_defers_build(monkeypatch):
         calls["count"] += 1
         w = backend.create_line_chart([[0, 1]], labels=["A"], title=None)
         from src.gui.charting.types import ChartResult
+
         return ChartResult(widget=w, meta={"ok": True})
 
     name = "test.lazy.temp"
     if name not in chart_registry.list_types():
         from src.gui.charting.registry import register_chart_type
+
         register_chart_type(name, _builder, "temp")
 
     req = ChartRequest(chart_type=name, data={"series": [[0, 1]], "labels": ["A"]})
@@ -34,7 +37,9 @@ def test_lazy_proxy_defers_build(monkeypatch):
 
 
 def test_eager_build_has_build_ms():
-    req = ChartRequest(chart_type="line.basic", data={"series": [[1, 2, 3]], "labels": ["L"], "x": [0, 1, 2]})
+    req = ChartRequest(
+        chart_type="line.basic", data={"series": [[1, 2, 3]], "labels": ["L"], "x": [0, 1, 2]}
+    )
     result = chart_registry.build(req)
     assert "build_ms" in result.meta
     assert result.meta["build_ms"] >= 0

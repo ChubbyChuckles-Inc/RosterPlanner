@@ -296,7 +296,7 @@ Milestone 7: Visualization Layer
 [x] 7.6 Implement charts: Match volume timeline & cumulative win %
 [x] 7.7 Interactive tooltips + export as PNG/SVG
 [x] 7.8 Performance tuning (lazy loading large datasets)
-[ ] 7.9 Responsive layout adaptation (minimum sizes, hide secondary legends)
+[x] 7.9 Responsive layout adaptation (minimum sizes, hide secondary legends)
 [ ] 7.10 Snapshot caching for unchanged charts
 
 Milestone 8: Availability & Match Planning Module

@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover - headless fallback
     FigureCanvasQTAgg = object  # type: ignore
 
 from .types import ChartBackendProtocol
+from .responsive import apply_responsive_rules
 
 
 class MatplotlibChartBackend(ChartBackendProtocol):  # pragma: no cover - thin wrapper
@@ -38,6 +39,7 @@ class MatplotlibChartBackend(ChartBackendProtocol):  # pragma: no cover - thin w
             ax.set_title(title)
         if labels:
             ax.legend()
+        apply_responsive_rules(fig)
         canvas = FigureCanvasQTAgg(fig)
         return canvas
 
@@ -68,6 +70,7 @@ class MatplotlibChartBackend(ChartBackendProtocol):  # pragma: no cover - thin w
             ax.set_title(title)
         ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         fig.tight_layout()
+        apply_responsive_rules(fig)
         return canvas
 
     # --- interactive helpers -----------------------------------------
