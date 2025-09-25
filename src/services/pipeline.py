@@ -192,48 +192,7 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
         fname = naming.club_team_by_name_filename(club_display, team.name, team.id)
         filesystem.write_text(os.path.join(club_team_dir, fname), html)
 
-    # Step 7c: Generate flat team_rosters/ team_roster_L2P_<id>.html pages (legacy parity)
-    flat_team_roster_dir = os.path.join(data_dir, "team_rosters")
-    os.makedirs(flat_team_roster_dir, exist_ok=True)
-    produced_flat_ids: set[str] = set()
-    # Reconstruct from division_team_lists first
-    import re as _re
-
-    for division_name, teams in division_team_lists.items():
-        for t in teams:
-            m = _re.search(r"L3P=(\d+)", t.get("roster_link", ""))
-            if m:
-                tid = m.group(1)
-                if tid in produced_flat_ids:
-                    continue
-                # Use captured division id if available in parsed ranking entry
-                division_id = t.get("division_id")
-                url = club_parser.build_roster_link(tid, division_id)
-                full_url = url if url.startswith("http") else f"{settings.ROOT_URL}{url}"
-                try:
-                    html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
-                except Exception:
-                    continue
-                filesystem.write_text(
-                    os.path.join(flat_team_roster_dir, f"team_roster_L2P_{tid}.html"), html
-                )
-                produced_flat_ids.add(tid)
-    # Include extra club teams not already in division list
-    for tid, team in club_extra_teams.items():
-        if tid in produced_flat_ids:
-            continue
-        url = club_parser.build_roster_link(tid, getattr(team, "division_id", None))
-        full_url = url if url.startswith("http") else f"{settings.ROOT_URL}{url}"
-        try:
-            html = ranking_scraper.http_client.fetch(full_url)  # type: ignore[attr-defined]
-        except Exception:
-            continue
-        filesystem.write_text(
-            os.path.join(flat_team_roster_dir, f"team_roster_L2P_{tid}.html"), html
-        )
-        produced_flat_ids.add(tid)
-
-    # Step 7d (rewritten): Deterministic primary club backfill ensuring BOTH club_team_* and division-style team_roster_* files
+    # Step 7c (updated): Deterministic primary club backfill ensuring club_team_* files exist.
     # Rationale: Earlier logic attempted to infer primary club teams from merged extras; this could fail in heavily mocked
     # test environments where team.club_id mutation differs. We now always (re)fetch the primary club overview explicitly.
     try:
@@ -310,8 +269,7 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
             except Exception:  # pragma: no cover
                 pass
 
-    # Step 8: Persist tracking state
-    # Step 7e: Repair previously fetched incorrect roster files where L2P (division) and L3P (team) were the same
+    # Step 7d: Repair previously fetched incorrect roster files where L2P (division) and L3P (team) were the same
     # (Only when we have a distinct division id captured for that team.)
     for team_id, division_id in team_division_map.items():
         if team_id == division_id:
@@ -354,7 +312,7 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
                     except Exception:
                         continue
 
-    # Build divisions structure for tracking state (used by GUI tree)
+    # Step 8: Build divisions structure for tracking state (used by GUI tree) and persist
     divisions_map: dict[str, Division] = {}
     for team in merged_teams.values():
         div_name = team.division_name or "Unknown_Division"
