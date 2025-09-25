@@ -53,6 +53,7 @@ from gui.views.dock_manager import DockManager
 from gui.views.document_area import DocumentArea
 from gui.views import dock_registry
 from gui.workers import LandingLoadWorker, RosterLoadWorker
+from gui.widgets.scrape_progress import ScrapeProgressWidget
 from gui.models import TeamEntry, TeamRosterBundle
 from gui.models import PlayerEntry, PlayerHistoryEntry, DivisionStandingEntry
 from gui.navigation_tree_model import NavigationTreeModel
@@ -119,6 +120,10 @@ class MainWindow(QMainWindow):  # Dock-based
         self._scrape_runner.scrape_started.connect(self._on_scrape_started)  # type: ignore
         self._scrape_runner.scrape_finished.connect(self._on_scrape_finished)  # type: ignore
         self._scrape_runner.scrape_failed.connect(self._on_scrape_failed)  # type: ignore
+        try:
+            self._scrape_runner.scrape_progress.connect(self._on_scrape_progress)  # type: ignore
+        except Exception:
+            pass
         # Milestone 5.9.5: attach post-scrape ingestion hook (if bootstrap registered installer)
         try:  # pragma: no cover - defensive; integration exercised via separate test
             from gui.services.service_locator import services as _services
@@ -1632,12 +1637,29 @@ class MainWindow(QMainWindow):  # Dock-based
     def _on_scrape_started(self):  # pragma: no cover
         self._set_status("Scrape running...")
         try:
+            if not hasattr(self, "_scrape_progress_widget"):
+                from PyQt6.QtWidgets import QDockWidget
+
+                self._scrape_progress_widget = ScrapeProgressWidget()
+                dock = QDockWidget("Scrape Progress", self)
+                dock.setObjectName("dockScrapeProgress")
+                dock.setWidget(self._scrape_progress_widget)
+                self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)  # type: ignore
+            self._scrape_progress_widget.start()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        try:
             self._act_scrape.setEnabled(False)  # type: ignore
         except Exception:
             pass
 
     def _on_scrape_finished(self, result: dict):  # pragma: no cover
         self._set_status("Scrape complete. Reloading teams...")
+        try:
+            if hasattr(self, "_scrape_progress_widget"):
+                self._scrape_progress_widget.finish()  # type: ignore[attr-defined]
+        except Exception:
+            pass
         try:
             self._load_landing()
         except Exception as e:
@@ -1652,6 +1674,33 @@ class MainWindow(QMainWindow):  # Dock-based
         self._set_status("Scrape failed")
         try:
             self._act_scrape.setEnabled(True)  # type: ignore
+        except Exception:
+            pass
+
+    def _on_scrape_progress(self, event: str, payload: dict):  # pragma: no cover
+        try:
+            w = getattr(self, "_scrape_progress_widget", None)
+            if not w:
+                return
+            if event == "phase_start":
+                key = payload.get("key")
+                if key and key != "__all__":
+                    w.begin_phase(key)
+            elif event == "phase_progress":
+                key = payload.get("key")
+                if key and key == getattr(getattr(w, "_current_phase", None), "key", None):
+                    frac = payload.get("fraction", 0.0)
+                    detail = payload.get("detail", "")
+                    w.update_phase_progress(frac, detail)
+            elif event == "phase_complete":
+                key = payload.get("key")
+                if key == "__all__":
+                    w.finish()
+                else:
+                    # Only complete if matches current phase
+                    cur = getattr(w, "_current_phase", None)
+                    if cur and cur.key == key:
+                        w.complete_phase()
         except Exception:
             pass
 

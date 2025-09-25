@@ -13,6 +13,7 @@ from PyQt6.QtCore import QObject, QThread, pyqtSignal
 class ScrapeWorker(QThread):  # pragma: no cover - thread orchestration
     finished_ok = pyqtSignal(dict)
     failed = pyqtSignal(str)
+    progress_event = pyqtSignal(str, dict)
 
     def __init__(
         self, club_id: int, season: int | None, data_dir: str, runner: Callable[..., dict]
@@ -25,7 +26,13 @@ class ScrapeWorker(QThread):  # pragma: no cover - thread orchestration
 
     def run(self):  # noqa: D401
         try:
-            result = self._runner(self._club_id, season=self._season, data_dir=self._data_dir)
+
+            def _progress(event: str, payload: dict):
+                self.progress_event.emit(event, payload)
+
+            result = self._runner(
+                self._club_id, season=self._season, data_dir=self._data_dir, progress=_progress
+            )
             self.finished_ok.emit(result)
         except Exception as e:  # pragma: no cover - defensive
             self.failed.emit(str(e))
@@ -37,6 +44,7 @@ class ScrapeRunner(QObject):
     scrape_started = pyqtSignal()
     scrape_finished = pyqtSignal(dict)
     scrape_failed = pyqtSignal(str)
+    scrape_progress = pyqtSignal(str, dict)  # (event, payload)
 
     def __init__(self, pipeline_func: Optional[Callable[..., dict]] = None):
         super().__init__()
@@ -56,6 +64,7 @@ class ScrapeRunner(QObject):
         self._worker = ScrapeWorker(club_id, season, data_dir, self._pipeline)
         self._worker.finished_ok.connect(self._on_ok)  # type: ignore
         self._worker.failed.connect(self._on_failed)  # type: ignore
+        self._worker.progress_event.connect(self._on_progress)  # type: ignore
         self.scrape_started.emit()
         self._worker.start()
 
@@ -71,6 +80,9 @@ class ScrapeRunner(QObject):
         if self._worker:
             self._worker.wait(100)
         self._worker = None
+
+    def _on_progress(self, event: str, payload: dict):  # pragma: no cover
+        self.scrape_progress.emit(event, payload)
 
 
 __all__ = ["ScrapeRunner"]

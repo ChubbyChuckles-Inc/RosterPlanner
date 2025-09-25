@@ -43,14 +43,30 @@ def run_basic(club_id: int, season: int | None = None, data_dir: str | None = No
     }
 
 
-def run_full(club_id: int, season: int | None = None, data_dir: str | None = None) -> dict:
-    """Run full scrape pipeline writing HTML assets to data_dir (or default)."""
+def run_full(
+    club_id: int,
+    season: int | None = None,
+    data_dir: str | None = None,
+    *,
+    progress: callable | None = None,
+) -> dict:
+    """Run full scrape pipeline writing HTML assets to data_dir (or default).
+
+    Parameters
+    ----------
+    progress: Optional callback with signature (event:str, payload:dict). Events:
+        phase_start: payload {key}
+        phase_progress: payload {key, fraction, detail?}
+        phase_complete: payload {key}
+    """
     season = season or settings.DEFAULT_SEASON
     data_dir = data_dir or settings.DATA_DIR
     os.makedirs(data_dir, exist_ok=True)
     landing_url = LANDING_URL_TEMPLATE.format(club_id=club_id, season=season)
 
     # Step 1: Landing page fetch & initial extraction
+    if progress:
+        progress("phase_start", {"key": "landing"})
     landing_html = ranking_scraper.http_client.fetch(landing_url)  # type: ignore[attr-defined]
     # Snapshot archive of landing page for parity (timestamped)
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -60,7 +76,11 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
     ranking_links = link_extractor.derive_ranking_table_links(initial_roster_links)
     teams_overview = ranking_parser.extract_team_overview(landing_html)
 
+    if progress:
+        progress("phase_complete", {"key": "landing"})
     # Step 2: Fetch ranking tables & parse for division roster lists
+    if progress:
+        progress("phase_start", {"key": "ranking_tables"})
     division_team_lists: dict[str, list[dict]] = {}
     # Map team_id -> division_id (distinct) gathered from ranking tables for later repair of legacy incorrect files
     team_division_map: dict[str, str] = {}
@@ -82,7 +102,11 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
             if tid and did and tid != did:
                 team_division_map[tid] = did
 
+    if progress:
+        progress("phase_complete", {"key": "ranking_tables"})
     # Step 3: Fetch rosters for each team in divisions
+    if progress:
+        progress("phase_start", {"key": "division_rosters"})
     all_matches: dict[str, list[Match]] = {}
     all_players: dict[str, list[Player]] = {}
 
@@ -115,7 +139,11 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
             all_matches[team_id] = matches
             all_players[team_id] = players
 
+    if progress:
+        progress("phase_complete", {"key": "division_rosters"})
     # Step 4: Extract club links from rosters
+    if progress:
+        progress("phase_start", {"key": "club_overviews"})
     club_links: dict[str, str] = {}
     for division_name in os.listdir(data_dir):
         div_path = os.path.join(data_dir, division_name)
@@ -132,7 +160,11 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
                     if cid_match:
                         club_links[cid_match.group(1)] = link
 
+    if progress:
+        progress("phase_complete", {"key": "club_overviews"})
     # Step 5: Fetch club overviews & extract additional teams
+    if progress:
+        progress("phase_start", {"key": "club_team_pages"})
     # Additionally, include any club ids derivable from teams_overview (ensures broader coverage than only roster-derived links)
     club_extra_teams: dict[str, Team] = {}
     discovered_club_ids = set(club_links.keys())
@@ -192,7 +224,11 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
         fname = naming.club_team_by_name_filename(club_display, team.name, team.id)
         filesystem.write_text(os.path.join(club_team_dir, fname), html)
 
+    if progress:
+        progress("phase_complete", {"key": "club_team_pages"})
     # Step 7b.1: Player history pages scraping (new)
+    if progress:
+        progress("phase_start", {"key": "player_histories"})
     # For each saved club team HTML, parse player profile links and fetch their history (EntwicklungTTR page).
     player_history_root = os.path.join(data_dir, "club_players")
     os.makedirs(player_history_root, exist_ok=True)
@@ -201,7 +237,9 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
 
     def _extract_player_links(html: str):
         # Matches anchor tags with Spieler profile (L3=Spieler & L3P=<id>) capturing href and visible name
-        pattern = _re_history.compile(r'<a\s+href="(\?L1=[^"]*?L3=Spieler&L3P=\d+[^"#>]*)"[^>]*>(.*?)</a>', re.IGNORECASE)
+        pattern = _re_history.compile(
+            r'<a\s+href="(\?L1=[^"]*?L3=Spieler&L3P=\d+[^"#>]*)"[^>]*>(.*?)</a>', re.IGNORECASE
+        )
         results = []
         for m in pattern.finditer(html):
             href = m.group(1)
@@ -232,9 +270,13 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
                 rel_history = _re_history.sub(r"Page=[A-Za-z0-9]+", "Page=EntwicklungTTR", rel_link)
             else:
                 # Append if missing
-                sep = '&' if rel_link.endswith('&') or '?' in rel_link else '&'
+                sep = "&" if rel_link.endswith("&") or "?" in rel_link else "&"
                 rel_history = f"{rel_link}{sep}Page=EntwicklungTTR"
-            history_url = rel_history if rel_history.startswith("http") else f"{settings.ROOT_URL}{rel_history}"
+            history_url = (
+                rel_history
+                if rel_history.startswith("http")
+                else f"{settings.ROOT_URL}{rel_history}"
+            )
             safe_player = naming.sanitize(player_name.replace(" ", "_"))
             out_path = os.path.join(folder_path, f"{safe_player}.html")
             if os.path.exists(out_path):  # skip existing to avoid refetch noise
@@ -244,6 +286,8 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
                 filesystem.write_text(out_path, hist_html)
             except Exception:
                 continue
+    if progress:
+        progress("phase_complete", {"key": "player_histories"})
 
     # Step 7c (updated): Deterministic primary club backfill ensuring club_team_* files exist.
     # Rationale: Earlier logic attempted to infer primary club teams from merged extras; this could fail in heavily mocked
@@ -366,6 +410,8 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
                         continue
 
     # Step 8: Build divisions structure for tracking state (used by GUI tree) and persist
+    if progress:
+        progress("phase_start", {"key": "tracking_state"})
     divisions_map: dict[str, Division] = {}
     for team in merged_teams.values():
         div_name = team.division_name or "Unknown_Division"
@@ -380,6 +426,10 @@ def run_full(club_id: int, season: int | None = None, data_dir: str | None = Non
         last_scrape=datetime.utcnow(), divisions=divisions_map, upcoming_matches=upcoming
     )
     tracking_store.save_state(state, data_dir)
+    if progress:
+        progress("phase_complete", {"key": "tracking_state"})
+        # Also mark final overall complete
+        progress("phase_complete", {"key": "__all__"})
 
     return {
         "landing_url": landing_url,
