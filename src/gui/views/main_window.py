@@ -1655,6 +1655,11 @@ class MainWindow(QMainWindow):  # Dock-based
             try:
                 self._scrape_progress_widget.cancelled.connect(self._scrape_runner.cancel)  # type: ignore
                 self._scrape_progress_widget.closed.connect(self._on_scrape_progress_closed)  # type: ignore
+                # Pause / Resume wiring (only connect once)
+                if not getattr(self, "_scrape_pause_wired", False):
+                    self._scrape_progress_widget.pause_requested.connect(self._on_progress_pause_requested)  # type: ignore
+                    self._scrape_progress_widget.copy_summary_requested.connect(self._on_progress_copy_summary)  # type: ignore
+                    self._scrape_pause_wired = True
             except Exception:
                 pass
         except Exception:
@@ -1713,7 +1718,7 @@ class MainWindow(QMainWindow):  # Dock-based
             if event == "phase_start":
                 key = payload.get("key")
                 if key and key != "__all__":
-                    w.begin_phase(key)
+                    w.begin_phase(key, payload.get("detail", ""))
             elif event == "phase_progress":
                 key = payload.get("key")
                 if key and key == getattr(getattr(w, "_current_phase", None), "key", None):
@@ -1729,6 +1734,56 @@ class MainWindow(QMainWindow):  # Dock-based
                     cur = getattr(w, "_current_phase", None)
                     if cur and cur.key == key:
                         w.complete_phase()
+            elif event == "recoverable_error":
+                w.append_error(payload.get("phase", "?"), payload.get("message", ""))
+            elif event == "net_update":
+                phase = payload.get("phase")
+                total_latency = payload.get("total_latency")
+                if phase and total_latency is not None:
+                    try:
+                        w.update_net_latency(phase, float(total_latency))
+                    except Exception:
+                        pass
+            elif event == "queue_update":
+                try:
+                    w.update_queue(int(payload.get("queued", 0)))
+                except Exception:
+                    pass
+            elif event == "paused":
+                # Reflect paused state in button if pause was external
+                try:
+                    w._paused = True  # type: ignore
+                    w.btn_pause.setText("Resume")  # type: ignore
+                except Exception:
+                    pass
+            elif event == "resumed":
+                try:
+                    w._paused = False  # type: ignore
+                    w.btn_pause.setText("Pause")  # type: ignore
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    # --- Progress widget auxiliary slots ----------------------------------
+    def _on_progress_pause_requested(self, paused: bool):  # pragma: no cover
+        try:
+            if paused:
+                self._scrape_runner.pause()
+                self._set_status("Scrape paused")
+            else:
+                self._scrape_runner.resume()
+                self._set_status("Scrape resumed")
+        except Exception:
+            pass
+
+    def _on_progress_copy_summary(self, text: str):  # pragma: no cover
+        try:
+            from PyQt6.QtGui import QGuiApplication
+
+            cb = QGuiApplication.clipboard()
+            cb.setText(text)
+            self._set_status("Scrape summary copied to clipboard")
         except Exception:
             pass
 

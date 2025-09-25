@@ -6,7 +6,7 @@ lightly (placeholder) and completion signals.
 """
 
 from __future__ import annotations
-from typing import Callable, Optional, Any
+from typing import Callable, Optional, Any, List, Tuple
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 
@@ -74,14 +74,37 @@ class ScrapeRunner(QObject):
             pipeline_func = pipeline.run_full
         self._pipeline = pipeline_func
         self._worker: ScrapeWorker | None = None
+        self._queue: List[Tuple[int, int | None, str]] = []
+        self._pause = False
+
+    # Queue management -------------------------------------------------
+    def queued_job_count(self) -> int:
+        return len(self._queue)
 
     def is_running(self) -> bool:
         return self._worker is not None and self._worker.isRunning()
 
     def start(self, club_id: int, season: int | None, data_dir: str):
-        if self.is_running():  # pragma: no cover - guard
+        if self.is_running():  # already running; queue next
+            self._queue.append((club_id, season, data_dir))
+            self.scrape_progress.emit("queue_update", {"queued": len(self._queue)})  # type: ignore
             return
-        self._worker = ScrapeWorker(club_id, season, data_dir, self._pipeline)
+        # Build pause token exposing is_paused()
+        class _PauseToken:
+            def __init__(self, runner: 'ScrapeRunner'):
+                self._runner = runner
+
+            def is_paused(self):  # pragma: no cover
+                return self._runner._pause
+
+        pause_token = _PauseToken(self)
+
+        # Wrap pipeline to inject pause_token
+        def _runner_wrapper(club_id: int, season: int | None, data_dir: str, **kwargs):
+            kwargs.setdefault("pause_token", pause_token)
+            return self._pipeline(club_id, season=season, data_dir=data_dir, **kwargs)
+
+        self._worker = ScrapeWorker(club_id, season, data_dir, _runner_wrapper)
         self._worker.finished_ok.connect(self._on_ok)  # type: ignore
         self._worker.failed.connect(self._on_failed)  # type: ignore
         self._worker.progress_event.connect(self._on_progress)  # type: ignore
@@ -92,14 +115,32 @@ class ScrapeRunner(QObject):
         if self._worker and self._worker.isRunning():
             self._worker.cancel()
             self.scrape_cancelled.emit()
+        # Clear queued jobs on cancel
+        self._queue.clear()
+        self.scrape_progress.emit("queue_update", {"queued": 0})  # type: ignore
+
+    # Pause / Resume ---------------------------------------------------
+    def pause(self):  # pragma: no cover
+        self._pause = True
+        self.scrape_progress.emit("paused", {})  # type: ignore
+
+    def resume(self):  # pragma: no cover
+        self._pause = False
+        self.scrape_progress.emit("resumed", {})  # type: ignore
 
     def _on_ok(self, result: dict):  # pragma: no cover - signal path
         self.scrape_finished.emit(result)
         self._cleanup()
+        # Dequeue next job if present
+        if self._queue:
+            next_club, next_season, next_dir = self._queue.pop(0)
+            self.scrape_progress.emit("queue_update", {"queued": len(self._queue)})  # type: ignore
+            self.start(next_club, next_season, next_dir)
 
     def _on_failed(self, msg: str):  # pragma: no cover - signal path
         self.scrape_failed.emit(msg)
         self._cleanup()
+        # On failure, keep queued jobs (user can retry)
 
     def _cleanup(self):  # pragma: no cover - thread lifecycle
         if self._worker:

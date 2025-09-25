@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Dict
+from typing import Optional, Dict, Deque, List
+from collections import deque
+import json
 import os
 from PyQt6.QtWidgets import (
     QWidget,
@@ -41,6 +43,10 @@ _phase_index = {p.key: i for i, p in enumerate(PHASES)}
 class ScrapeProgressWidget(QFrame):
     cancelled = pyqtSignal()
     closed = pyqtSignal()
+    pause_requested = pyqtSignal(bool)  # True=pause, False=resume
+    copy_summary_requested = pyqtSignal(str)
+    error_count_changed = pyqtSignal(int)
+    queue_count_changed = pyqtSignal(int)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -66,10 +72,29 @@ class ScrapeProgressWidget(QFrame):
         header.setContentsMargins(0, 0, 0, 0)
         header.setSpacing(6)
         header.addWidget(self.phase_label, 1)
+        self.btn_pause = QPushButton("Pause")
+        self.btn_pause.clicked.connect(self._on_pause_clicked)  # type: ignore
+        header.addWidget(self.btn_pause)
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.clicked.connect(self._on_cancel_clicked)  # type: ignore
         header.addWidget(self.btn_cancel)
         lay.addLayout(header)
+        # Detail panel
+        self._detail_frame = QFrame()
+        df_lay = QVBoxLayout(self._detail_frame)
+        df_lay.setContentsMargins(4, 4, 4, 4)
+        df_lay.setSpacing(2)
+        self.detail_counts_label = QLabel("Teams: 0 | Players: 0 | Matches: 0")
+        self.detail_counts_label.setObjectName("scrapeCountsLabel")
+        self.net_label = QLabel("Net: -- ms")
+        self.net_label.setObjectName("scrapeNetLabel")
+        self.error_badge = QLabel("")
+        self.error_badge.setObjectName("scrapeErrorBadge")
+        self.error_badge.setVisible(False)
+        df_lay.addWidget(self.detail_counts_label)
+        df_lay.addWidget(self.net_label)
+        df_lay.addWidget(self.error_badge)
+        lay.addWidget(self._detail_frame)
         # Phase list container
         self._phase_rows_container = QVBoxLayout()
         self._phase_rows_container.setContentsMargins(0, 0, 0, 0)
@@ -93,6 +118,37 @@ class ScrapeProgressWidget(QFrame):
         self._fx = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self._fx)
         self._fx.setOpacity(1.0)
+        # History & diagnostics state
+        self._history_path = os.path.join(
+            os.getenv("ROSTERPLANNER_DATA_DIR", "data"), "scrape_history.json"
+        )
+        self._history: Deque[float] = deque(maxlen=20)
+        self._load_history()
+        self._phase_started_ms: Dict[str, int] = {}
+        self._paused = False
+        self._errors: List[str] = []
+        self._net_latency: Dict[str, float] = {}
+        self._queued_jobs = 0
+
+    # ---- Public update hooks (called by MainWindow) -----------------------
+    def update_counts(self, teams: int, players: int, matches: int):  # pragma: no cover
+        self.detail_counts_label.setText(
+            f"Teams: {teams} | Players: {players} | Matches: {matches}"
+        )
+
+    def update_net_latency(self, phase: str, total_latency: float):  # pragma: no cover
+        self._net_latency[phase] = total_latency
+        agg_ms = int(sum(self._net_latency.values()) * 1000)
+        self.net_label.setText(f"Net: {agg_ms} ms")
+
+    def append_error(self, phase: str, message: str):  # pragma: no cover
+        self._errors.append(f"[{phase}] {message}")
+        self._update_error_badge()
+
+    def update_queue(self, count: int):  # pragma: no cover
+        self._queued_jobs = count
+        self._update_error_badge()  # reuse layout for badge update
+        self.queue_count_changed.emit(count)
 
     def start(self):  # reset
         self._current_phase = None
@@ -103,6 +159,8 @@ class ScrapeProgressWidget(QFrame):
         self.bar_phase.setValue(0)
         self.bar_total.setValue(0)
         self.btn_cancel.setEnabled(True)
+        self.btn_pause.setEnabled(True)
+        self.btn_pause.setText("Pause")
         self._debounce_timer.restart()
         # Force first progress update immediately (set last update negative)
         self._last_update_ms = -10_000
@@ -110,6 +168,11 @@ class ScrapeProgressWidget(QFrame):
         for p in PHASES:
             self._phase_status[p.key] = "pending"
         self._refresh_phase_styles()
+        self._phase_started_ms.clear()
+        self._errors.clear()
+        self._net_latency.clear()
+        self._queued_jobs = 0
+        self._update_error_badge()
 
     def begin_phase(self, key: str, detail: str = ""):
         phase = _phase_index.get(key)
@@ -131,6 +194,7 @@ class ScrapeProgressWidget(QFrame):
                 self._phase_status[k] = "pending"
         self._phase_status[key] = "active"
         self._refresh_phase_styles()
+        self._phase_started_ms[key] = self._debounce_timer.elapsed()
         self._update_total()
 
     def update_phase_progress(self, fraction: float, detail: str = ""):
@@ -181,7 +245,64 @@ class ScrapeProgressWidget(QFrame):
             self._phase_status[self._current_phase.key] = "done"
             self._current_phase = None
         self._refresh_phase_styles()
+        self._save_history()
+        # Emit summary JSON for copy convenience
+        summary = self._build_summary_json()
+        self.copy_summary_requested.emit(summary)
         self._schedule_close()
+
+    # ---- Internal helpers -------------------------------------------------
+    def _load_history(self):  # pragma: no cover
+        try:
+            if os.path.exists(self._history_path):
+                with open(self._history_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                for v in data.get("durations", [])[-20:]:
+                    try:
+                        self._history.append(float(v))
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    def _save_history(self):  # pragma: no cover
+        try:
+            os.makedirs(os.path.dirname(self._history_path), exist_ok=True)
+            with open(self._history_path, "w", encoding="utf-8") as f:
+                json.dump({"durations": list(self._history)}, f)
+        except Exception:
+            pass
+
+    def _update_error_badge(self):  # pragma: no cover
+        total_err = len(self._errors)
+        parts = []
+        if total_err:
+            parts.append(f"Errors: {total_err}")
+        if self._queued_jobs:
+            parts.append(f"Queue: {self._queued_jobs}")
+        if parts:
+            self.error_badge.setText(" | ".join(parts))
+            self.error_badge.setVisible(True)
+        else:
+            self.error_badge.setVisible(False)
+        self.error_count_changed.emit(total_err)
+
+    def _on_pause_clicked(self):  # pragma: no cover
+        self._paused = not self._paused
+        self.btn_pause.setText("Resume" if self._paused else "Pause")
+        self.pause_requested.emit(self._paused)
+
+    def _build_summary_json(self) -> str:
+        summary = {
+            "phases": [p.key for p in PHASES],
+            "errors": self._errors,
+            "net_latency_ms": {k: int(v * 1000) for k, v in self._net_latency.items()},
+            "history_count": len(self._history),
+        }
+        try:
+            return json.dumps(summary, indent=2)
+        except Exception:
+            return "{}"
 
     def _on_cancel_clicked(self):  # pragma: no cover
         self.btn_cancel.setEnabled(False)
@@ -248,7 +369,7 @@ class ScrapeProgressWidget(QFrame):
 #scrapeProgressWidget QLabel#scrapePhaseLabel { font-size:15px; font-weight:600; color:#E8F1FF; }
 #scrapeProgressWidget QLabel#scrapeDetailLabel { font-size:11px; color:#B8C4D2; }
 #scrapeProgressWidget QProgressBar { height:16px; border:1px solid #2d3642; border-radius:8px; background:#1e2530; text-align:center; font-size:10px; }
-#scrapeProgressWidget QProgressBar::chunk { border-radius:8px; background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #3D8BFD, stop:1 #6F4BFF); }
+#scrapeProgressWidget QProgressBar::chunk { border-radius:8px; background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 var(--accentStart, #3D8BFD), stop:1 var(--accentEnd, #6F4BFF)); }
 #scrapeProgressWidget QPushButton { background:#2e3a48; color:#E8F1FF; border:1px solid #415064; padding:4px 10px; border-radius:6px; }
 #scrapeProgressWidget QPushButton:hover:enabled { background:#384758; }
 #scrapeProgressWidget QPushButton:disabled { background:#1f272f; color:#55616e; }
@@ -256,6 +377,9 @@ class ScrapeProgressWidget(QFrame):
 #scrapeProgressWidget QLabel[phaseState="pending"] { color:#6d7a8a; font-size:11px; }
 #scrapeProgressWidget QLabel[phaseState="active"] { color:#FFFFFF; font-weight:600; }
 #scrapeProgressWidget QLabel[phaseState="done"] { color:#48c78e; font-weight:500; }
+#scrapeProgressWidget QLabel#scrapeErrorBadge { background:#7a3d2f; color:#ffddcc; padding:2px 6px; border-radius:8px; font-size:10px; }
+#scrapeProgressWidget QLabel#scrapeNetLabel { font-size:10px; color:#8aa0b5; }
+#scrapeProgressWidget QLabel#scrapeCountsLabel { font-size:10px; color:#8aa0b5; }
 """
         )
 
