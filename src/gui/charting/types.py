@@ -44,3 +44,14 @@ class ChartBackendProtocol(Protocol):  # pragma: no cover - structural only
         x_values: Sequence[float] | None = None,
     ) -> Any:  # QWidget
         ...
+
+    def create_heatmap(
+        self,
+        matrix: Sequence[Sequence[float]],
+        *,
+        x_labels: Sequence[str] | None = None,
+        y_labels: Sequence[str] | None = None,
+        title: str | None = None,
+        cmap: str = "Blues",
+    ) -> Any:  # QWidget
+        ...

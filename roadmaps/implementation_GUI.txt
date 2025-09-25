@@ -291,7 +291,7 @@ Milestone 7: Visualization Layer
 [x] 7.1.1 Chart plugin interface (register new chart types dynamically)
 [x] 7.2 Theme-aware color palette manager for charts
 [x] 7.3 Implement charts: Player LivePZ progression line chart
-[ ] 7.4 Implement charts: Team availability heatmap (player vs date)
+[x] 7.4 Implement charts: Team availability heatmap (player vs date)
 [ ] 7.5 Implement charts: Division standings evolution (round-based positions)
 [ ] 7.6 Implement charts: Match volume timeline & cumulative win %
 [ ] 7.7 Interactive tooltips + export as PNG/SVG

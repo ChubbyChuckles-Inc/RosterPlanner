@@ -16,3 +16,4 @@ from .backends import MatplotlibChartBackend  # noqa: F401
 from .registry import chart_registry, register_chart_type  # noqa: F401
 from .types import ChartRequest, ChartResult  # noqa: F401
 from . import player_charts  # noqa: F401  # registers player chart types
+from . import team_charts  # noqa: F401  # registers team chart types (availability heatmap)
