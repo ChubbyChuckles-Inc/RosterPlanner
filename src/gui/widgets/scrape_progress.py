@@ -21,7 +21,6 @@ from PyQt6.QtCore import (
     QPropertyAnimation,
     QEasingCurve,
     QTimer,
-    QVariantAnimation,
 )
 from PyQt6.QtWidgets import QGraphicsOpacityEffect
 
@@ -133,6 +132,12 @@ class ScrapeProgressWidget(QFrame):
         self._fx = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self._fx)
         self._fx.setOpacity(1.0)
+        # Dedicated opacity effect for phase label animation (avoid recreating during animation)
+        from PyQt6.QtWidgets import QGraphicsOpacityEffect as _QOE
+
+        self._phase_opacity_effect = _QOE(self.phase_label)
+        self.phase_label.setGraphicsEffect(self._phase_opacity_effect)
+        self._phase_label_anim: QPropertyAnimation | None = None
         # History & diagnostics state
         self._history_path = os.path.join(
             os.getenv("ROSTERPLANNER_DATA_DIR", "data"), "scrape_history.json"
@@ -264,6 +269,15 @@ class ScrapeProgressWidget(QFrame):
 
     def finish(self):
         # finalize to 100%
+        # Stop any running phase label animation to prevent painter errors during fade-out
+        try:
+            if (
+                self._phase_label_anim
+                and self._phase_label_anim.state() != QPropertyAnimation.State.Stopped
+            ):
+                self._phase_label_anim.stop()
+        except Exception:
+            pass
         self._completed_weights = _total_weight
         self.bar_total.setValue(100)
         self.phase_label.setText("Complete")
@@ -477,20 +491,20 @@ class ScrapeProgressWidget(QFrame):
 
     def _animate_phase_label(self):  # pragma: no cover
         try:
-            anim = QVariantAnimation(self)
+            # Cancel previous animation if still running
+            if (
+                self._phase_label_anim
+                and self._phase_label_anim.state() != QPropertyAnimation.State.Stopped
+            ):
+                self._phase_label_anim.stop()
+            # Reset starting opacity
+            self._phase_opacity_effect.setOpacity(0.35)
+            anim = QPropertyAnimation(self._phase_opacity_effect, b"opacity", self)
             anim.setDuration(280)
             anim.setStartValue(0.35)
             anim.setEndValue(1.0)
             anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-
-            def _apply(v):
-                eff = self.phase_label.graphicsEffect()
-                if not eff:
-                    eff = QGraphicsOpacityEffect(self.phase_label)
-                    self.phase_label.setGraphicsEffect(eff)
-                eff.setOpacity(float(v))  # type: ignore
-
-            anim.valueChanged.connect(_apply)  # type: ignore
             anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+            self._phase_label_anim = anim
         except Exception:
             pass
