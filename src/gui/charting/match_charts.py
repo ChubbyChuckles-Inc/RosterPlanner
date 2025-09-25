@@ -57,9 +57,7 @@ def _fetch_team_completed_matches(team_id: int) -> List[Tuple[str, int, int]]:
     return result
 
 
-def _match_volume_winpct_builder(
-    req: ChartRequest, backend: MatplotlibChartBackend
-) -> ChartResult:
+def _match_volume_winpct_builder(req: ChartRequest, backend: MatplotlibChartBackend) -> ChartResult:
     if not isinstance(req.data, dict):
         raise TypeError("match volume timeline expects dict data with 'team_id'")
     try:
@@ -69,7 +67,11 @@ def _match_volume_winpct_builder(
 
     matches = _fetch_team_completed_matches(team_id)
     if not matches:
-        widget = backend.create_line_chart([], labels=None, title=req.options.get("title") if req.options else "Match Volume & Win %")
+        widget = backend.create_line_chart(
+            [],
+            labels=None,
+            title=req.options.get("title") if req.options else "Match Volume & Win %",
+        )
         return ChartResult(widget=widget, meta={"status": "empty"})
 
     cumulative_matches: List[float] = []

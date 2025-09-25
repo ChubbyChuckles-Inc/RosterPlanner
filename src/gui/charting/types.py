@@ -55,3 +55,23 @@ class ChartBackendProtocol(Protocol):  # pragma: no cover - structural only
         cmap: str = "Blues",
     ) -> Any:  # QWidget
         ...
+
+    def enable_basic_line_tooltips(
+        self, canvas: Any, series: Sequence[Sequence[float]], x_values: Sequence[float] | None, labels: Sequence[str] | None
+    ) -> None:
+        """Optional: attach simple hover tooltips for a line chart.
+
+        Implementations may no-op if interactive backend not available.
+        """
+        ...
+
+    def export_widget(self, canvas: Any, path: str, *, format: str = "png", dpi: int = 120) -> None:
+        """Export the underlying figure to disk.
+
+        Args:
+            canvas: Backend-specific canvas / widget.
+            path: Output path (directory must exist).
+            format: 'png' or 'svg'.
+            dpi: Resolution for raster formats.
+        """
+        ...

@@ -69,3 +69,80 @@ class MatplotlibChartBackend(ChartBackendProtocol):  # pragma: no cover - thin w
         ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         fig.tight_layout()
         return canvas
+
+    # --- interactive helpers -----------------------------------------
+    def enable_basic_line_tooltips(
+        self, canvas, series: Sequence[Sequence[float]], x_values: Sequence[float] | None, labels: Sequence[str] | None
+    ) -> None:  # pragma: no cover - interactive GUI feature
+        try:
+            import math
+            fig = canvas.figure  # type: ignore[attr-defined]
+            ax = fig.axes[0]
+            if x_values is None and series and series[0]:
+                x_values = list(range(len(series[0])))
+            scatters = []
+            for idx, ys in enumerate(series):
+                xs = x_values if x_values is not None else list(range(len(ys)))
+                scatter = ax.scatter(xs, ys, s=10, alpha=0)  # invisible hit targets
+                scatters.append((scatter, ys, xs, labels[idx] if labels and idx < len(labels) else f"Series {idx+1}"))
+            annot = ax.annotate(
+                "",
+                xy=(0, 0),
+                xytext=(10, 10),
+                textcoords="offset points",
+                bbox={"boxstyle": "round", "fc": "w", "alpha": 0.8},
+                arrowprops={"arrowstyle": "->"},
+            )
+            annot.set_visible(False)
+
+            def _update(event):  # noqa: D401
+                vis = annot.get_visible()
+                if event.inaxes != ax:
+                    if vis:
+                        annot.set_visible(False)
+                        canvas.draw_idle()
+                    return
+                # simple nearest-point search
+                best = None
+                best_dist = 12  # pixels threshold
+                for scatter, ys, xs, label in scatters:
+                    cont, ind = scatter.contains(event)
+                    if not cont:
+                        # compute nearest manually (fallback)
+                        if not xs:
+                            continue
+                        # rough pixel distance via data coords approximation
+                        for i, (xv, yv) in enumerate(zip(xs, ys)):
+                            dx = event.xdata - xv
+                            dy = event.ydata - yv
+                            d = math.hypot(dx, dy)
+                            if d < best_dist:
+                                best_dist = d
+                                best = (xv, yv, label, i)
+                        continue
+                    # use first index
+                    i = ind["ind"][0]
+                    best = (xs[i], ys[i], label, i)
+                    best_dist = 0
+                if best:
+                    xv, yv, label, i = best
+                    annot.xy = (xv, yv)
+                    annot.set_text(f"{label}\nIndex {i}: {yv}")
+                    annot.set_visible(True)
+                    canvas.draw_idle()
+                elif vis:
+                    annot.set_visible(False)
+                    canvas.draw_idle()
+
+            fig.canvas.mpl_connect("motion_notify_event", _update)
+        except Exception:  # silent fallback
+            return
+
+    def export_widget(self, canvas, path: str, *, format: str = "png", dpi: int = 120) -> None:
+        try:
+            fig = canvas.figure  # type: ignore[attr-defined]
+        except Exception as e:  # pragma: no cover - invalid canvas
+            raise ValueError("Unsupported canvas type for export") from e
+        if format.lower() not in {"png", "svg"}:
+            raise ValueError("format must be 'png' or 'svg'")
+        fig.savefig(path, format=format.lower(), dpi=dpi if format.lower() == "png" else None)

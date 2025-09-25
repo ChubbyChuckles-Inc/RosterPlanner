@@ -3,6 +3,7 @@
 Validates registration and graceful empty behavior when schema/data is absent.
 Further enhancements can inject synthetic matches to assert series math.
 """
+
 from __future__ import annotations
 
 from src.gui.charting import chart_registry, ChartRequest
