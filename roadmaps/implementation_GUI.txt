@@ -334,7 +334,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  Testing & Verification Hooks
  [x] 7.10.23 Inline assertion editor: user can define expected extracted values for specific selectors; run asserts per preview
  [x] 7.10.24 Snapshot test generator: capture current extraction result set -> store under tests/ingestion_snapshots for regression
- [ ] 7.10.25 Quick diff tool: run old vs new rule set over same file set -> side-by-side metrics & row diff counts
+ [x] 7.10.25 Quick diff tool: run old vs new rule set over same file set -> side-by-side metrics & row diff counts
  [ ] 7.10.26 Field coverage heatmap: which DB columns populated by current rule set (percentage & missing list)
  [ ] 7.10.27 Orphan field detector: extracted fields not mapped anywhere (suggest actions)
  [ ] 7.10.28 Data quality gates: min non-null ratio thresholds configurable per column (warn/fail)

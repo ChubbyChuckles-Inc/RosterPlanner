@@ -137,6 +137,14 @@ def _extract_list(
                 val_el = el.select_one(fmap.selector)
             except Exception:
                 warnings.append(f"Field '{fname}' selector error")
+            # If no descendant matched and the selector equals the item's own tag
+            # name (common shorthand to mean "use the item element itself"), fall
+            # back to the item. BeautifulSoup's select_one does not match the
+            # element itself when searching within that element, so without this
+            # logic rules like fields: {text: {selector: 'span'}} on a span
+            # item_selector would otherwise yield empty values.
+            if val_el is None and fmap.selector.lower() == el.name.lower():  # pragma: no cover - simple branch
+                val_el = el
             raw_text = val_el.get_text(strip=True) if val_el else ""
             if apply_transforms and fmap.transforms:
                 try:
