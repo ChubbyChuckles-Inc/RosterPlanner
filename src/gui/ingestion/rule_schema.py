@@ -189,7 +189,11 @@ class TableRule:
             raise RuleError(f"Duplicate column names: {', '.join(sorted(set(dups)))}")
 
     def to_mapping(self) -> Mapping[str, Any]:
-        data: Dict[str, Any] = {"kind": "table", "selector": self.selector, "columns": list(self.columns)}
+        data: Dict[str, Any] = {
+            "kind": "table",
+            "selector": self.selector,
+            "columns": list(self.columns),
+        }
         if self.extends:
             data["extends"] = self.extends
         return data
@@ -304,7 +308,9 @@ class RuleSet:
                 if columns is None and isinstance(parent, TableRule):
                     columns = list(parent.columns)
                 if not isinstance(columns, list):
-                    raise RuleError(f"Resource '{rname}' table 'columns' must be a list (after inheritance)")
+                    raise RuleError(
+                        f"Resource '{rname}' table 'columns' must be a list (after inheritance)"
+                    )
                 rule = TableRule(selector=selector, columns=columns, extends=parent_name)  # type: ignore[arg-type]
             elif kind == "list":
                 selector = spec.get("selector")
@@ -316,17 +322,23 @@ class RuleSet:
                 merged_fields: Dict[str, FieldMapping] = {}
                 if parent is not None:
                     if not isinstance(parent, ListRule):
-                        raise RuleError(f"Resource '{rname}' extends non-list parent '{parent_name}'")
+                        raise RuleError(
+                            f"Resource '{rname}' extends non-list parent '{parent_name}'"
+                        )
                     # copy parent fields
                     for fname, fval in parent.fields.items():
-                        merged_fields[fname] = FieldMapping(selector=fval.selector, transforms=list(fval.transforms))
+                        merged_fields[fname] = FieldMapping(
+                            selector=fval.selector, transforms=list(fval.transforms)
+                        )
                     if selector is None:
                         selector = parent.selector
                     if item_sel is None:
                         item_sel = parent.item_selector
                 # Apply overrides / additions
                 for fname, fval in raw_fields.items():
-                    merged_fields[fname] = FieldMapping.from_value(fval, allow_expressions=allow_expr)
+                    merged_fields[fname] = FieldMapping.from_value(
+                        fval, allow_expressions=allow_expr
+                    )
                 rule = ListRule(selector=selector, item_selector=item_sel, fields=merged_fields, extends=parent_name)  # type: ignore[arg-type]
             else:
                 raise RuleError(f"Resource '{rname}' missing or unsupported kind: {kind!r}")

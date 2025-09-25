@@ -116,7 +116,12 @@ def test_table_inheritance_basic():
         "version": RULESET_VERSION,
         "resources": {
             "base_table": {"kind": "table", "selector": "table.base", "columns": ["a", "b"]},
-            "child_table": {"kind": "table", "extends": "base_table", "selector": "table.child", "columns": ["a", "b", "c"]},
+            "child_table": {
+                "kind": "table",
+                "extends": "base_table",
+                "selector": "table.child",
+                "columns": ["a", "b", "c"],
+            },
         },
     }
     rs = RuleSet.from_mapping(payload)
@@ -143,8 +148,14 @@ def test_list_inheritance_field_override_and_add():
                 "kind": "list",
                 "extends": "base_list",
                 "fields": {
-                    "value": {"selector": ".override", "transforms": ["trim", {"kind": "to_number"}]},
-                    "extra": {"selector": ".extra", "transforms": [{"kind": "expr", "code": "2+2"}]},
+                    "value": {
+                        "selector": ".override",
+                        "transforms": ["trim", {"kind": "to_number"}],
+                    },
+                    "extra": {
+                        "selector": ".extra",
+                        "transforms": [{"kind": "expr", "code": "2+2"}],
+                    },
                 },
             },
         },
