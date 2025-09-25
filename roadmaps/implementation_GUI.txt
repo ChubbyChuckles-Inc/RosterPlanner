@@ -306,7 +306,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.2 File Navigator: tree/grid of HTML assets grouped by logical phase (landing, ranking_tables, division_rosters, club_overviews, club_team_pages, player_histories, tracking_state)
  [x] 7.10.3 Detect & display provenance metadata (hash, last parsed timestamp, size, parser version) per file
  [x] 7.10.4 Provide search & filter (by filename, phase, size range, last modified) (hash delta deferred)
- [ ] 7.10.5 Integrate existing Theme / density / reduced-color modes for full style consistency
+ [x] 7.10.5 Integrate existing Theme / density / reduced-color modes for full style consistency
 
  Extraction Rule Model
  [ ] 7.10.6 Define declarative rule schema (YAML/JSON) supporting: CSS selectors, attribute extraction, text normalization, regex capture groups, table extraction configs

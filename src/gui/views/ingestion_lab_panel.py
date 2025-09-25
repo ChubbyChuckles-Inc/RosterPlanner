@@ -48,6 +48,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
 )
 from PyQt6.QtCore import Qt
+from gui.components.theme_aware import ThemeAwareMixin
 import sqlite3
 
 # Lazy service locator import (optional; panel should degrade gracefully if unavailable)
@@ -71,7 +72,7 @@ PHASE_PATTERNS = [
 OTHER_PHASE_ID = "other"
 
 
-class IngestionLabPanel(QWidget):
+class IngestionLabPanel(QWidget, ThemeAwareMixin):
     """Dockable panel container for the Ingestion Lab.
 
     Parameters
@@ -86,6 +87,11 @@ class IngestionLabPanel(QWidget):
         self._base_dir = base_dir
         self._build_ui()
         self.refresh_file_list()
+        # Apply initial styling if theme/density services available
+        try:
+            self._apply_density_and_theme()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # UI Construction
@@ -406,6 +412,73 @@ class IngestionLabPanel(QWidget):
 
     def base_dir(self) -> str:
         return self._base_dir
+
+    # ------------------------------------------------------------------
+    # Theme & Density Integration (7.10.5)
+    def _apply_density_and_theme(self) -> None:
+        """Apply spacing & palette driven styles.
+
+        Pulls current theme colors & density spacing tokens (if services registered)
+        and updates object stylesheet & layout paddings. Reduced color mode sets
+        a dynamic widget property consumed by global QSS overrides.
+        """
+        try:
+            from gui.services.service_locator import services as _svc
+
+            theme = _svc.try_get("theme_service")
+            density = _svc.try_get("density_service")
+            rc_mode = _svc.try_get("reduced_color_mode")
+        except Exception:  # pragma: no cover - fallback
+            theme = density = rc_mode = None
+        # Spacing adjustments
+        base_margin = 6
+        if density:
+            try:
+                sp_map = density.spacing()
+                base_margin = sp_map.get("md", sp_map.get("base", base_margin))  # type: ignore
+            except Exception:
+                pass
+        lay = self.layout()
+        if isinstance(lay, QVBoxLayout):  # type: ignore
+            lay.setContentsMargins(base_margin, base_margin, base_margin, base_margin)
+            lay.setSpacing(max(4, base_margin - 2))
+        # Theme colors
+        bg = fg = accent = None
+        if theme:
+            try:
+                colors = theme.colors()  # type: ignore[attr-defined]
+                bg = colors.get("background.secondary" or "background.primary")
+                fg = colors.get("text.primary")
+                accent = colors.get("accent.base")
+            except Exception:
+                pass
+        parts = []
+        if bg:
+            parts.append(f"#ingestionLabPanel {{ background: {bg}; }}")
+        if fg:
+            parts.append(
+                "#ingestionLabPanel QLabel, #ingestionLabPanel QTreeWidget, #ingestionLabPanel QPlainTextEdit, #ingestionLabPanel QTextEdit { color: %s; }"
+                % fg
+            )
+        if accent:
+            parts.append(
+                "#ingestionLabPanel QLineEdit { border:1px solid %s; } #ingestionLabPanel QPushButton { border:1px solid %s; }"
+                % (accent, accent)
+            )
+        # Reduced color toggle property
+        if rc_mode and getattr(rc_mode, "is_active", lambda: False)():  # type: ignore
+            self.setProperty("reducedColor", "1")
+        else:
+            self.setProperty("reducedColor", "0")
+        if parts:
+            self.setStyleSheet("\n".join(parts))
+
+    def on_theme_changed(self, theme, changed_keys):  # type: ignore[override]
+        # Re-apply full styling (cheap) on any theme change
+        try:
+            self._apply_density_and_theme()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Filtering logic (7.10.4)
