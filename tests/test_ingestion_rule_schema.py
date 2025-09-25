@@ -7,6 +7,7 @@ from gui.ingestion.rule_schema import (
     FieldMapping,
     RuleError,
     TransformSpec,
+    RULESET_VERSION,
 )
 
 
@@ -108,6 +109,80 @@ def test_expression_transform_requires_flag():
     assert back["allow_expressions"] is True
     expr_spec = back["resources"]["team_roster"]["fields"]["norm"]["transforms"][0]
     assert expr_spec["kind"] == "expr" and "code" in expr_spec
+
+
+def test_table_inheritance_basic():
+    payload = {
+        "version": RULESET_VERSION,
+        "resources": {
+            "base_table": {"kind": "table", "selector": "table.base", "columns": ["a", "b"]},
+            "child_table": {"kind": "table", "extends": "base_table", "selector": "table.child", "columns": ["a", "b", "c"]},
+        },
+    }
+    rs = RuleSet.from_mapping(payload)
+    assert isinstance(rs.resources["child_table"], TableRule)
+    assert rs.resources["child_table"].extends == "base_table"
+    assert rs.resources["child_table"].columns == ["a", "b", "c"]
+
+
+def test_list_inheritance_field_override_and_add():
+    payload = {
+        "version": RULESET_VERSION,
+        "allow_expressions": True,
+        "resources": {
+            "base_list": {
+                "kind": "list",
+                "selector": "ul.base",
+                "item_selector": "li",
+                "fields": {
+                    "name": {"selector": ".name", "transforms": ["trim"]},
+                    "value": {"selector": ".val"},
+                },
+            },
+            "child_list": {
+                "kind": "list",
+                "extends": "base_list",
+                "fields": {
+                    "value": {"selector": ".override", "transforms": ["trim", {"kind": "to_number"}]},
+                    "extra": {"selector": ".extra", "transforms": [{"kind": "expr", "code": "2+2"}]},
+                },
+            },
+        },
+    }
+    rs = RuleSet.from_mapping(payload)
+    child = rs.resources["child_list"]
+    assert isinstance(child, ListRule)
+    assert child.extends == "base_list"
+    assert set(child.fields.keys()) == {"name", "value", "extra"}
+    # inherited field
+    assert child.fields["name"].selector == ".name"
+    # overridden field
+    assert child.fields["value"].selector == ".override"
+    # new field
+    assert child.fields["extra"].selector == ".extra"
+
+
+def test_inheritance_cycle_detection():
+    payload = {
+        "version": RULESET_VERSION,
+        "resources": {
+            "a": {"kind": "table", "extends": "b", "selector": "t", "columns": ["x"]},
+            "b": {"kind": "table", "extends": "a", "selector": "t", "columns": ["x"]},
+        },
+    }
+    with pytest.raises(RuleError):
+        RuleSet.from_mapping(payload)
+
+
+def test_inheritance_unknown_parent():
+    payload = {
+        "version": RULESET_VERSION,
+        "resources": {
+            "child": {"kind": "table", "extends": "missing", "selector": "t", "columns": ["x"]},
+        },
+    }
+    with pytest.raises(RuleError):
+        RuleSet.from_mapping(payload)
 
 
 @pytest.mark.parametrize(

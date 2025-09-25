@@ -71,3 +71,10 @@ feat(ingestion-rules): implement chained transforms execution engine & schema su
  - Supports trim, collapse_ws, to_number, parse_date, expr (flag-gated)
  - Added unit tests for transform parsing, execution, numeric/date coercion & security constraints
 
+feat(ingestion-rules): add rule inheritance & overrides (Milestone 7.10.8)
+ - Introduces 'extends' attribute for table & list resources
+ - Supports deep merge of list fields with override + addition semantics
+ - Inherits missing selectors/columns when not re-declared
+ - Cycle detection & unknown parent validation
+ - Added unit tests for basic inheritance, field override/add, cycle & missing parent errors
+

@@ -41,7 +41,7 @@ Example (YAML):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Mapping, Any, Optional, Union
+from typing import Dict, List, Mapping, Any, Optional, Union, Set
 
 RULESET_VERSION = 1
 
@@ -174,6 +174,7 @@ class TableRule:
 
     selector: str
     columns: List[str]
+    extends: Optional[str] = None  # parent resource name (table)
 
     def __post_init__(self) -> None:
         if not self.selector or not self.selector.strip():
@@ -188,7 +189,10 @@ class TableRule:
             raise RuleError(f"Duplicate column names: {', '.join(sorted(set(dups)))}")
 
     def to_mapping(self) -> Mapping[str, Any]:
-        return {"kind": "table", "selector": self.selector, "columns": list(self.columns)}
+        data: Dict[str, Any] = {"kind": "table", "selector": self.selector, "columns": list(self.columns)}
+        if self.extends:
+            data["extends"] = self.extends
+        return data
 
 
 @dataclass
@@ -201,6 +205,7 @@ class ListRule:
     selector: str
     item_selector: str
     fields: Dict[str, FieldMapping]
+    extends: Optional[str] = None  # parent resource name (list)
 
     def __post_init__(self) -> None:
         if not self.selector.strip():
@@ -216,12 +221,15 @@ class ListRule:
                 raise RuleError("ListRule.fields values must be FieldMapping instances")
 
     def to_mapping(self) -> Mapping[str, Any]:
-        return {
+        data: Dict[str, Any] = {
             "kind": "list",
             "selector": self.selector,
             "item_selector": self.item_selector,
             "fields": {k: v.to_mapping() for k, v in self.fields.items()},
         }
+        if self.extends:
+            data["extends"] = self.extends
+        return data
 
 
 RuleResource = Union[TableRule, ListRule]
@@ -258,33 +266,78 @@ class RuleSet:
         raw_resources = payload.get("resources", {})
         if not isinstance(raw_resources, Mapping):
             raise RuleError("RuleSet 'resources' must be a mapping")
-        parsed: Dict[str, RuleResource] = {}
+
+        # Store raw specs for second-pass inheritance resolution
+        raw_specs: Dict[str, Mapping[str, Any]] = {}
         for name, spec in raw_resources.items():
             if not isinstance(name, str) or not name.strip():
                 raise RuleError("Resource names must be non-empty strings")
             if not isinstance(spec, Mapping):
                 raise RuleError(f"Resource '{name}' must be a mapping")
+            raw_specs[name] = spec
+
+        building: Set[str] = set()
+        built: Dict[str, RuleResource] = {}
+
+        def build_resource(rname: str) -> RuleResource:
+            if rname in built:
+                return built[rname]
+            if rname in building:
+                raise RuleError(f"Cyclic inheritance detected at resource '{rname}'")
+            if rname not in raw_specs:
+                raise RuleError(f"Unknown resource referenced in extends: '{rname}'")
+            building.add(rname)
+            spec = raw_specs[rname]
             kind = spec.get("kind")
+            parent_name = spec.get("extends")
+            parent: RuleResource | None = None
+            if parent_name:
+                if not isinstance(parent_name, str) or not parent_name.strip():
+                    raise RuleError(f"Resource '{rname}' has invalid 'extends' value")
+                parent = build_resource(parent_name)
+
             if kind == "table":
                 selector = spec.get("selector")
                 columns = spec.get("columns")
+                if parent is not None and not isinstance(parent, TableRule):
+                    raise RuleError(f"Resource '{rname}' extends non-table parent '{parent_name}'")
+                if columns is None and isinstance(parent, TableRule):
+                    columns = list(parent.columns)
                 if not isinstance(columns, list):
-                    raise RuleError(f"Resource '{name}' table 'columns' must be a list")
-                rule = TableRule(selector=selector, columns=columns)  # type: ignore[arg-type]
+                    raise RuleError(f"Resource '{rname}' table 'columns' must be a list (after inheritance)")
+                rule = TableRule(selector=selector, columns=columns, extends=parent_name)  # type: ignore[arg-type]
             elif kind == "list":
                 selector = spec.get("selector")
                 item_sel = spec.get("item_selector")
-                raw_fields = spec.get("fields")
+                raw_fields = spec.get("fields") or {}
                 if not isinstance(raw_fields, Mapping):
-                    raise RuleError(f"Resource '{name}' list 'fields' must be a mapping")
-                fields: Dict[str, FieldMapping] = {}
+                    raise RuleError(f"Resource '{rname}' list 'fields' must be a mapping")
+                # Start with parent fields (shallow copy)
+                merged_fields: Dict[str, FieldMapping] = {}
+                if parent is not None:
+                    if not isinstance(parent, ListRule):
+                        raise RuleError(f"Resource '{rname}' extends non-list parent '{parent_name}'")
+                    # copy parent fields
+                    for fname, fval in parent.fields.items():
+                        merged_fields[fname] = FieldMapping(selector=fval.selector, transforms=list(fval.transforms))
+                    if selector is None:
+                        selector = parent.selector
+                    if item_sel is None:
+                        item_sel = parent.item_selector
+                # Apply overrides / additions
                 for fname, fval in raw_fields.items():
-                    fields[fname] = FieldMapping.from_value(fval, allow_expressions=allow_expr)
-                rule = ListRule(selector=selector, item_selector=item_sel, fields=fields)  # type: ignore[arg-type]
+                    merged_fields[fname] = FieldMapping.from_value(fval, allow_expressions=allow_expr)
+                rule = ListRule(selector=selector, item_selector=item_sel, fields=merged_fields, extends=parent_name)  # type: ignore[arg-type]
             else:
-                raise RuleError(f"Resource '{name}' missing or unsupported kind: {kind!r}")
-            parsed[name] = rule
-        return RuleSet(resources=parsed, version=version, allow_expressions=allow_expr)
+                raise RuleError(f"Resource '{rname}' missing or unsupported kind: {kind!r}")
+            built[rname] = rule
+            building.remove(rname)
+            return rule
+
+        for rname in list(raw_specs.keys()):
+            build_resource(rname)
+
+        return RuleSet(resources=built, version=version, allow_expressions=allow_expr)
 
     def to_mapping(self) -> Mapping[str, Any]:
         data = {

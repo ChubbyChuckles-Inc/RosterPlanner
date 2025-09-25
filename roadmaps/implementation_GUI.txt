@@ -311,7 +311,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  Extraction Rule Model
  [x] 7.10.6 Define declarative rule schema (YAML/JSON) core: table & list rules, field selectors (attr/text/regex transformations deferred)
  [x] 7.10.7 Support chained transforms (trim, collapse whitespace, number parse, date parse, custom python expression sandbox – optional flag) with safety guard
- [ ] 7.10.8 Rule inheritance & overrides (base rule set per phase with user layer overrides)
+ [x] 7.10.8 Rule inheritance & overrides (base rule set per phase with user layer overrides)
  [ ] 7.10.9 Validation engine: static check of selectors against selected file(s) (counts, missing selectors warning)
  [ ] 7.10.10 Live rule documentation tooltip (auto-generated from schema with examples)
 
