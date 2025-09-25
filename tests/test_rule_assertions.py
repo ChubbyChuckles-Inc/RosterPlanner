@@ -45,7 +45,9 @@ def test_assertions_basic_pass_and_fail():
     specs = [
         AssertionSpec(resource="ranking", field="team", expect="Alpha", index=0),  # pass
         AssertionSpec(resource="ranking", field="team", expect="Gamma", index=1),  # fail
-        AssertionSpec(resource="players", field="name", expect="Ali", index=0, op="contains"),  # pass contains
+        AssertionSpec(
+            resource="players", field="name", expect="Ali", index=0, op="contains"
+        ),  # pass contains
         AssertionSpec(resource="players", field="name", expect="Carl", index=2),  # index oob
         AssertionSpec(resource="missing", field="x", expect="y"),  # missing resource
     ]

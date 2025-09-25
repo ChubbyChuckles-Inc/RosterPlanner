@@ -61,6 +61,8 @@ except Exception:  # pragma: no cover - fallback when running isolated
     _services = None  # type: ignore
 
 __all__ = ["IngestionLabPanel", "HashImpactResult"]
+
+
 @dataclass
 class HashImpactResult:
     """Result container for hash impact preview (Milestone 7.10.22).
@@ -83,9 +85,7 @@ class HashImpactResult:
     missing: list[str]
 
     def summary(self) -> str:  # pragma: no cover - trivial
-        return (
-            f"Updated {len(self.updated)} | Unchanged {len(self.unchanged)} | New {len(self.new)} | Missing {len(self.missing)}"
-        )
+        return f"Updated {len(self.updated)} | Unchanged {len(self.unchanged)} | New {len(self.new)} | Missing {len(self.missing)}"
 
 
 HTML_EXTENSIONS = {".html", ".htm"}
@@ -433,6 +433,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._append_log(
             f"Hash Impact: Updated {len(res.updated)} | Unchanged {len(res.unchanged)} | New {len(res.new)} | Missing {len(res.missing)}"
         )
+
         # Provide a concise listing (first few) to aid user
         def _sample(label: str, items: list[str]):  # noqa: ANN001
             if not items:

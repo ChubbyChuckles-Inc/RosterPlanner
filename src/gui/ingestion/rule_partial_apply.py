@@ -86,7 +86,10 @@ def partial_apply(
     # Filter to existing resources only; silently ignore unknown names (caller may pass stale list)
     selected = [r for r in resources if r in rule_set.resources]
     # Build a trimmed RuleSet containing only selected resources to keep extraction fast
-    trimmed = RuleSet(resources={r: rule_set.resources[r] for r in selected}, allow_expressions=rule_set.allow_expressions)
+    trimmed = RuleSet(
+        resources={r: rule_set.resources[r] for r in selected},
+        allow_expressions=rule_set.allow_expressions,
+    )
     # Build sandbox schema (type inference & table naming handled inside)
     schema = build_sandbox_schema(trimmed)
     conn = apply_sandbox_schema(schema)

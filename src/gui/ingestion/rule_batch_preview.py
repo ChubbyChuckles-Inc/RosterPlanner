@@ -105,6 +105,7 @@ class BatchPreviewResult:
     total_parse_time_ms: float
     total_node_count: int
     peak_memory_kb: float
+    errors: List[Mapping[str, Any]]
 
     def to_mapping(self) -> Mapping[str, Any]:  # pragma: no cover - trivial
         return {
@@ -148,6 +149,7 @@ def generate_batch_preview(
     peak_mem = 0.0
     if capture_performance:
         tracemalloc.start()
+    aggregated_errors: List[Mapping[str, Any]] = []
     for file_id, html in html_by_file.items():
         preview = generate_parse_preview(
             rule_set,
@@ -160,6 +162,10 @@ def generate_batch_preview(
         if capture_performance:
             current, peak = tracemalloc.get_traced_memory()
             peak_mem = max(peak_mem, peak / 1024.0)
+        for err in preview.errors:
+            enriched = dict(err)
+            enriched["file"] = file_id
+            aggregated_errors.append(enriched)
         # Build lookup from summaries for quick record counts
         rec_map = preview.extracted_records
         # Ensure all resources present even if empty
@@ -210,4 +216,5 @@ def generate_batch_preview(
         total_parse_time_ms=total_time,
         total_node_count=total_nodes,
         peak_memory_kb=peak_mem,
+        errors=aggregated_errors,
     )

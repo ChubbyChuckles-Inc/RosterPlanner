@@ -68,6 +68,7 @@ class ParsePreview:
     parse_time_ms: float
     node_count: int
     memory_delta_kb: float
+    errors: List[Mapping[str, Any]]  # structured errors for error channel integration
 
     def to_mapping(self) -> Mapping[str, object]:  # pragma: no cover - trivial
         return {
@@ -89,7 +90,7 @@ def _extract_table(
     except Exception as e:  # pragma: no cover - selector error path
         return [], [f"Selector error for table '{rule_name}': {e}"], []
     if not table_el:
-        return [], [], []
+        return [], [f"Table selector matched 0 nodes ({rule.selector})"], []
     # Naive row extraction: <tr> children; cells as text.
     trs = table_el.find_all("tr")
     for tr in trs:
@@ -123,7 +124,7 @@ def _extract_list(
     except Exception as e:  # pragma: no cover
         return [], [f"Selector error for list '{rule_name}': {e}"], []
     if not root:
-        return [], [], []
+        return [], [f"List selector matched 0 nodes ({rule.selector})"], []
     try:
         items = root.select(rule.item_selector)
     except Exception as e:  # pragma: no cover
@@ -183,6 +184,7 @@ def generate_parse_preview(
     flattened: Dict[str, List[Mapping[str, Any]]] = {}
     match_spans: Dict[str, List[Mapping[str, Any]]] = {}
 
+    errors: List[Mapping[str, Any]] = []
     for rname, res in rule_set.resources.items():
         if isinstance(res, TableRule):
             rows, warns, matches = _extract_table(rname, res, soup)
@@ -194,6 +196,15 @@ def generate_parse_preview(
                     resource=rname, kind="table", record_count=len(rows), warnings=warns
                 )
             )
+            for w in warns:
+                errors.append(
+                    {
+                        "resource": rname,
+                        "kind": "table",
+                        "message": w,
+                        "severity": "warning" if "error" not in w.lower() else "error",
+                    }
+                )
         elif isinstance(res, ListRule):
             rows, warns, matches = _extract_list(
                 rname, res, soup, rule_set.allow_expressions, apply_transforms
@@ -204,6 +215,15 @@ def generate_parse_preview(
             summaries.append(
                 ResourceSummary(resource=rname, kind="list", record_count=len(rows), warnings=warns)
             )
+            for w in warns:
+                errors.append(
+                    {
+                        "resource": rname,
+                        "kind": "list",
+                        "message": w,
+                        "severity": "warning" if "error" not in w.lower() else "error",
+                    }
+                )
         else:  # pragma: no cover
             continue
     if capture_performance:
@@ -221,4 +241,5 @@ def generate_parse_preview(
         parse_time_ms=elapsed_ms,
         node_count=node_count,
         memory_delta_kb=mem_delta_kb,
+        errors=errors,
     )

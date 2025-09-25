@@ -85,7 +85,9 @@ def generate_snapshot(
     return SnapshotCapture(name=name, metadata=metadata, aggregated=aggregated, per_file=per_file)
 
 
-def save_snapshot(capture: SnapshotCapture, root_dir: str, *, include_per_file: bool = False) -> str:
+def save_snapshot(
+    capture: SnapshotCapture, root_dir: str, *, include_per_file: bool = False
+) -> str:
     target_dir = os.path.join(root_dir, capture.name)
     os.makedirs(target_dir, exist_ok=True)
     manifest_path = os.path.join(target_dir, "snapshot.json")
