@@ -66,12 +66,13 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
         self._index_thread: Optional[QThread] = None
         self._label_index: List[Tuple[str, str]] | None = None  # (original, lower)
         self._index_ready = False
+        self._index_build_attempted = False  # guard against repeated failed launches
 
         # Chip-based filters (Milestone 4.3)
         # Accept empty sets meaning: no restriction
-        self._division_types: set[str] = set()  # e.g., {"Erwachsene", "Jugend"}
-        self._levels: set[str] = set()  # e.g., {"Bezirksliga", "Stadtliga", "Stadtklasse"}
-        self._active_only: bool = False
+        self._division_types = set()  # e.g., {"Erwachsene", "Jugend"}
+        self._levels = set()  # e.g., {"Bezirksliga", "Stadtliga", "Stadtklasse"}
+        self._active_only = False
 
     def __del__(self):  # pragma: no cover - defensive cleanup
         try:
@@ -106,6 +107,23 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
         self._pending_pattern = pattern
         self._debounce.start()
 
+    # Test Support / Diagnostics -------------------------------------------------
+    def setDebounceInterval(self, ms: int):  # pragma: no cover - used by tests
+        """Allow tests to shorten the debounce for speed or set to 0 for immediate.
+
+        A 0 interval forces immediate application (no timer single-shot wait),
+        avoiding potential hangs if the Qt event loop is starved. This is safe
+        because production code never calls this method.
+        """
+        if ms <= 0:
+            self._debounce.stop()
+            self._debounce.setInterval(0)
+            # Apply any pending pattern synchronously
+            if self._pending_pattern is not None:
+                self._apply_pending_pattern()
+        else:
+            self._debounce.setInterval(ms)
+
     def setFilterPattern(self, pattern: str):
         pattern = pattern.strip()
         if pattern == self._pattern:
@@ -122,6 +140,13 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
 
     def _ensure_index(self):
         if self._index_ready or self.sourceModel() is None:
+            return
+        if self._index_build_attempted and (
+            self._index_thread is None or not self._index_thread.isRunning()
+        ):
+            # Previous attempt already ran (or failed); avoid endless retries that could
+            # starve the event loop in pathological cases. Fall back to on-the-fly label
+            # matching without precomputed index.
             return
         # Snapshot team nodes
         snapshot: List[Tuple[str, object]] = []
@@ -140,6 +165,7 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
         worker.built.connect(worker.deleteLater)  # type: ignore
         worker.built.connect(self._index_thread.quit)  # type: ignore
         self._index_thread.finished.connect(self._index_thread.deleteLater)  # type: ignore
+        self._index_build_attempted = True
         self._index_thread.start()
 
     def _on_index_built(self, processed: List[Tuple[str, str]]):
@@ -237,6 +263,9 @@ class NavigationFilterProxyModel(QSortFilterProxyModel):  # pragma: no cover - t
     def _match_team_label(self, label: str) -> bool:
         if not self._pattern:
             return True
+        # If the background index hasn't completed (or was skipped), still attempt
+        # a direct score evaluation. This keeps UI responsive even if the thread
+        # was unable to start in certain constrained test environments.
         score = score_match(self._pattern, label)
         return score > 0
 

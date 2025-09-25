@@ -59,3 +59,9 @@ feat(ingestion-lab): integrate theme, density & reduced-color styling (Milestone
  - Sets reducedColor property for global monochrome QSS overrides
  - Added regression test ensuring stylesheet presence and callback resilience
 
+feat(ingestion-rules): add core declarative rule schema (Milestone 7.10.6)
+ - Introduces rule_schema.py with RuleSet, TableRule, ListRule, FieldMapping, RuleError
+ - Supports round-trip serialization and validation for table/list resources
+ - Unit tests cover round-trip, field mapping variants, and validation errors
+ - Defers transforms, attribute extraction & regex capture to later milestone tasks
+
