@@ -320,7 +320,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.12 Alternate target schema sandbox (temp in-memory tables) for experimental structures
  [x] 7.10.13 Auto-generate migration preview SQL when mapping diverges from current schema (non-destructive diff)
  [x] 7.10.14 Constraint simulation: show potential FK / uniqueness violations before commit
- [ ] 7.10.15 Data type coercion preview (raw -> coerced) with highlighting of failures
+ [x] 7.10.15 Data type coercion preview (raw -> coerced) with highlighting of failures
 
  Preview & Execution Sandbox
  [ ] 7.10.16 Single-file parse preview: raw HTML snippet (highlight matched nodes), extracted JSON tree, tabular flattening
