@@ -70,9 +70,11 @@ class ScrapeProgressWidget(QFrame):
         self.bar_phase = QProgressBar()
         self.bar_phase.setRange(0, 100)
         self.bar_phase.setValue(0)
+        self.bar_phase.setObjectName("phaseBar")
         self.bar_total = QProgressBar()
         self.bar_total.setRange(0, 100)
         self.bar_total.setValue(0)
+        self.bar_total.setObjectName("totalBar")
         self.bar_total.setFormat("Overall %p%")
         self.bar_phase.setFormat("Phase %p%")
         header = QHBoxLayout()
@@ -412,28 +414,92 @@ class ScrapeProgressWidget(QFrame):
             lbl.style().polish(lbl)
 
     def _install_styles(self):
-        # Local modern styling (scoped by parent object names)
-        self.setStyleSheet(
-            """
-#scrapeProgressWidget { background: rgba(30,38,50,0.85); border:1px solid #3a4658; border-radius:10px; }
-#scrapeProgressWidget QLabel#scrapePhaseLabel { font-size:15px; font-weight:600; color:#E8F1FF; }
-#scrapeProgressWidget QLabel#scrapeEtaLabel { font-size:11px; color:#9db2c6; padding-left:6px; }
-#scrapeProgressWidget QLabel#scrapeDetailLabel { font-size:11px; color:#B8C4D2; }
-#scrapeProgressWidget QProgressBar { height:16px; border:1px solid #2d3642; border-radius:8px; background:#1e2530; text-align:center; font-size:10px; }
-#scrapeProgressWidget QProgressBar::chunk { border-radius:8px; background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 var(--accentStart, #3D8BFD), stop:1 var(--accentEnd, #6F4BFF)); }
-#scrapeProgressWidget QPushButton { background:#2e3a48; color:#E8F1FF; border:1px solid #415064; padding:4px 10px; border-radius:6px; }
-#scrapeProgressWidget QPushButton:hover:enabled { background:#384758; }
-#scrapeProgressWidget QPushButton:disabled { background:#1f272f; color:#55616e; }
+        # Base stylesheet with token placeholders; replaced in _apply_theme_colors.
+        base_qss = """
+#scrapeProgressWidget { background: rgba(30,38,50,0.90); border:1px solid #364250; border-radius:10px; }
+#scrapeProgressWidget QLabel#scrapePhaseLabel { font-size:15px; font-weight:600; color:__FG_PRIMARY__; }
+#scrapeProgressWidget QLabel#scrapeEtaLabel { font-size:11px; color:__FG_SUBTLE__; padding-left:6px; }
+#scrapeProgressWidget QLabel#scrapeDetailLabel { font-size:11px; color:__FG_SUBTLE__; }
+#scrapeProgressWidget QProgressBar { height:18px; border:1px solid __BORDER__; border-radius:9px; background:__BAR_BG__; text-align:center; font-size:11px; color:__BAR_TEXT__; }
+#scrapeProgressWidget QProgressBar#phaseBar::chunk { border-radius:9px; background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 __ACCENT_START__, stop:1 __ACCENT_END__); }
+#scrapeProgressWidget QProgressBar#totalBar::chunk { border-radius:9px; background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 __ACCENT_ALT_START__, stop:1 __ACCENT_ALT_END__); }
+#scrapeProgressWidget QPushButton { background:__BTN_BG__; color:__FG_PRIMARY__; border:1px solid __BORDER__; padding:4px 10px; border-radius:6px; }
+#scrapeProgressWidget QPushButton:hover:enabled { background:__BTN_BG_HOVER__; }
+#scrapeProgressWidget QPushButton:disabled { background:__BTN_BG_DISABLED__; color:__FG_DISABLED__; }
 #scrapeProgressWidget QFrame#phaseRow { background:transparent; }
-#scrapeProgressWidget QLabel[phaseState="pending"] { color:#6d7a8a; font-size:11px; }
-#scrapeProgressWidget QLabel[phaseState="active"] { color:#FFFFFF; font-weight:600; }
-#scrapeProgressWidget QLabel[phaseState="done"] { color:#48c78e; font-weight:500; }
+#scrapeProgressWidget QLabel[phaseState="pending"] { color:__PHASE_PENDING__; font-size:11px; }
+#scrapeProgressWidget QLabel[phaseState="active"] { color:__PHASE_ACTIVE__; font-weight:600; }
+#scrapeProgressWidget QLabel[phaseState="done"] { color:__PHASE_DONE__; font-weight:500; }
 #scrapeProgressWidget QLabel#scrapeErrorBadge { background:#7a3d2f; color:#ffddcc; padding:2px 6px; border-radius:8px; font-size:10px; }
 #scrapeProgressWidget QLabel#scrapeQueueBadge { background:#2f517a; color:#d6e9ff; padding:2px 6px; border-radius:8px; font-size:10px; }
-#scrapeProgressWidget QLabel#scrapeNetLabel { font-size:10px; color:#8aa0b5; }
-#scrapeProgressWidget QLabel#scrapeCountsLabel { font-size:10px; color:#8aa0b5; }
+#scrapeProgressWidget QLabel#scrapeNetLabel { font-size:10px; color:__FG_SUBTLE__; }
+#scrapeProgressWidget QLabel#scrapeCountsLabel { font-size:10px; color:__FG_SUBTLE__; }
 """
-        )
+        self._base_qss_template = base_qss
+        self._apply_theme_colors()
+
+    def _apply_theme_colors(self):  # pragma: no cover
+        # Try to pull dynamic colors from theme service; otherwise fallback palette.
+        try:
+            from gui.services.service_locator import services as _services  # type: ignore
+
+            theme_svc = _services.try_get("theme_service") if _services else None
+            colors = theme_svc.colors() if (theme_svc and hasattr(theme_svc, "colors")) else {}
+        except Exception:
+            colors = {}
+        # Fallbacks
+        accent = colors.get("accent.base", "#3D8BFD")
+        accent_end = colors.get("accent.alt", "#6F4BFF")
+        accent_alt = colors.get("accent.soft", "#34c3ff")
+        accent_alt_end = colors.get("accent.softAlt", "#66e1ff")
+        fg_primary = colors.get("text.primary", "#E8F1FF")
+        fg_subtle = colors.get("text.secondary", "#9db2c6")
+        fg_disabled = colors.get("text.disabled", "#55616e")
+        bar_bg = colors.get("surface.sunken", "#11161c")
+        btn_bg = colors.get("surface.button", "#2e3a48")
+        btn_bg_hover = colors.get("surface.button.hover", "#3a4858")
+        btn_bg_disabled = colors.get("surface.button.disabled", "#1f272f")
+        border = colors.get("border.medium", "#415064")
+        phase_pending = colors.get("text.muted", "#6d7a8a")
+        phase_active = fg_primary
+        phase_done = colors.get("success", "#48c78e")
+
+        # Ensure sufficient contrast for bar text by picking white or near-black
+        def _contrasting(c: str) -> str:
+            c = c.lstrip('#')
+            if len(c) == 3:
+                c = ''.join(ch * 2 for ch in c)
+            try:
+                r, g, b = int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
+                luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                return '#000000' if luma > 180 else '#FFFFFF'
+            except Exception:
+                return '#FFFFFF'
+
+        bar_text = _contrasting(accent)
+
+        qss = self._base_qss_template
+        repl = {
+            '__ACCENT_START__': accent,
+            '__ACCENT_END__': accent_end,
+            '__ACCENT_ALT_START__': accent_alt,
+            '__ACCENT_ALT_END__': accent_alt_end,
+            '__FG_PRIMARY__': fg_primary,
+            '__FG_SUBTLE__': fg_subtle,
+            '__FG_DISABLED__': fg_disabled,
+            '__BAR_BG__': bar_bg,
+            '__BAR_TEXT__': bar_text,
+            '__BTN_BG__': btn_bg,
+            '__BTN_BG_HOVER__': btn_bg_hover,
+            '__BTN_BG_DISABLED__': btn_bg_disabled,
+            '__BORDER__': border,
+            '__PHASE_PENDING__': phase_pending,
+            '__PHASE_ACTIVE__': phase_active,
+            '__PHASE_DONE__': phase_done,
+        }
+        for k, v in repl.items():
+            qss = qss.replace(k, v)
+        self.setStyleSheet(qss)
 
     # ---- Fade / Close -------------------------------------------------------
     def _schedule_close(self, cancelled: bool = False):
