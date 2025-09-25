@@ -65,3 +65,9 @@ feat(ingestion-rules): add core declarative rule schema (Milestone 7.10.6)
  - Unit tests cover round-trip, field mapping variants, and validation errors
  - Defers transforms, attribute extraction & regex capture to later milestone tasks
 
+feat(ingestion-rules): implement chained transforms execution engine & schema support (Milestone 7.10.7)
+ - Added TransformSpec to rule_schema with parsing & serialization
+ - Added rule_transforms.apply_transform_chain executor with safety guards
+ - Supports trim, collapse_ws, to_number, parse_date, expr (flag-gated)
+ - Added unit tests for transform parsing, execution, numeric/date coercion & security constraints
+
