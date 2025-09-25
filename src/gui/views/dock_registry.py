@@ -74,7 +74,7 @@ _CORE_IDS = [
 ]
 
 # Optional extended docks (registered when factory supplied)
-_OPTIONAL_CORE_IDS = ["personalization", "themeeditor"]
+_OPTIONAL_CORE_IDS = ["personalization", "themeeditor", "ingestionlab"]
 
 
 def ensure_core_docks_registered(factories: Dict[str, Callable[[], QWidget]]) -> None:

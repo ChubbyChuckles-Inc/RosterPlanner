@@ -1,5 +1,6 @@
 from gui.components.skeleton_loader import SkeletonLoaderWidget
 
+
 def test_skeleton_loader_fadeout(qtbot):
     w = SkeletonLoaderWidget("table-row", rows=1, shimmer=False)
     qtbot.addWidget(w)

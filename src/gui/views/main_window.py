@@ -297,6 +297,7 @@ class MainWindow(QMainWindow):  # Dock-based
             "logs": self._build_logs_dock,
             "recent": self._build_recent_dock,
             "themeeditor": self._build_theme_editor_dock,
+            "ingestionlab": self._build_ingestion_lab_dock,
         }
         dock_registry.ensure_core_docks_registered(factories)
         # Register all definitions with local DockManager
@@ -325,6 +326,7 @@ class MainWindow(QMainWindow):  # Dock-based
             "recent",
             "themeeditor",
             "personalization",
+            "ingestionlab",
         ]
         # Add personalization & theme editor docks lazily (not auto-created originally)
         secondary_docks = []
@@ -1479,6 +1481,31 @@ class MainWindow(QMainWindow):  # Dock-based
         btn.clicked.connect(_open)  # type: ignore
         lay.addStretch(1)
         return w
+
+    def _build_ingestion_lab_dock(self) -> QWidget:
+        """Factory for the Ingestion Lab (Milestone 7.10.1 initial scaffold).
+
+        Returns the composite panel providing file navigation, rule editor placeholder,
+        preview area and log output. The heavy functionality (rule parsing, sandboxed
+        execution, diffing) will be implemented in subsequent milestone tasks.
+        """
+        try:
+            from gui.views.ingestion_lab_panel import IngestionLabPanel
+        except Exception:
+            # Fallback simple placeholder if import fails (keeps dock creation resilient)
+            box = QWidget()
+            lay = QVBoxLayout(box)
+            lay.addWidget(QLabel("Ingestion Lab unavailable"))
+            return box
+        base_dir = getattr(self, "data_dir", ".")
+        try:
+            panel = IngestionLabPanel(base_dir=base_dir)
+            return panel
+        except Exception:
+            box = QWidget()
+            lay = QVBoxLayout(box)
+            lay.addWidget(QLabel("Failed to initialize Ingestion Lab"))
+            return box
 
     def _build_planner_dock(self) -> QWidget:
         w = QWidget()

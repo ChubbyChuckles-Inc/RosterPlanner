@@ -302,7 +302,7 @@ Milestone 7.10: Interactive Ingestion Customization & Sandbox Panel
 Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML asset in the data directory, declaratively define extraction rules, map outputs to the SQLite schema (or ad‑hoc preview schemas), run test ingests in isolation, and visualize exact parsed outputs + diffs before committing changes. Must leverage existing scraping/ingestion architecture (IngestionCoordinator, repositories, provenance, hashing, post-scrape hooks) while remaining non-destructive until explicitly applied.
 
  Architecture & Core Panel Shell
- [ ] 7.10.1 Create dockable "Ingestion Lab" panel (multi-pane: File Navigator | Rule Editor | Preview | Execution Log)
+ [x] 7.10.1 Create dockable "Ingestion Lab" panel (multi-pane: File Navigator | Rule Editor | Preview | Execution Log)
  [ ] 7.10.2 File Navigator: tree/grid of HTML assets grouped by logical phase (landing, ranking_tables, division_rosters, club_overviews, club_team_pages, player_histories, tracking_state)
  [ ] 7.10.3 Detect & display provenance metadata (hash, last parsed timestamp, size, parser version) per file
  [ ] 7.10.4 Provide search & filter (by filename, phase, size range, last modified, hash delta)
