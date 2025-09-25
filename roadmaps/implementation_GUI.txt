@@ -329,7 +329,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.19 Performance metrics capture (parse time, node count visited, memory delta) per test run
  [x] 7.10.20 Error channel integration: structured parse errors & transform failures surfaced in panel (reuse logging JSONL pipeline)
  [x] 7.10.21 Partial apply mode: write only selected entities to sandbox DB for iterative refinement
- [ ] 7.10.22 Hash impact preview: show which provenance entries would be updated (and which cached paths reused)
+ [x] 7.10.22 Hash impact preview: show which provenance entries would be updated (and which cached paths reused)
 
  Testing & Verification Hooks
  [ ] 7.10.23 Inline assertion editor: user can define expected extracted values for specific selectors; run asserts per preview
