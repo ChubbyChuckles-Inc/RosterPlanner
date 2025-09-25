@@ -58,6 +58,7 @@ from typing import Dict, Any
 # Field coverage backend (Milestone 7.10.26)
 try:  # pragma: no cover - import guard if module missing in earlier migrations
     from gui.ingestion.rule_field_coverage import compute_field_coverage, FieldCoverageReport
+    from gui.ingestion.rule_orphan import compute_orphan_fields
 except Exception:  # pragma: no cover
     compute_field_coverage = None  # type: ignore
     FieldCoverageReport = None  # type: ignore
@@ -151,6 +152,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_field_coverage.setToolTip(
             "Compute per-field non-empty ratios across all visible files using current rules"
         )
+        self.btn_orphan_fields = QPushButton("Orphan Fields")
+        self.btn_orphan_fields.setToolTip("List extracted fields lacking mapping entries")
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -193,6 +196,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_preview)
         actions.addWidget(self.btn_hash_impact)
         actions.addWidget(self.btn_field_coverage)
+        actions.addWidget(self.btn_orphan_fields)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -258,6 +262,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_preview.clicked.connect(self._on_preview_clicked)  # type: ignore
         self.btn_hash_impact.clicked.connect(self._on_hash_impact_clicked)  # type: ignore
         self.btn_field_coverage.clicked.connect(self._on_field_coverage_clicked)  # type: ignore
+        self.btn_orphan_fields.clicked.connect(self._on_orphan_fields_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -599,6 +604,40 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         if not self._last_field_coverage:
             return {}
         return self._last_field_coverage.to_mapping()  # type: ignore[no-any-return]
+
+    # ------------------------------------------------------------------
+    # Orphan Field Detector (7.10.27)
+    def _on_orphan_fields_clicked(self) -> None:
+        try:
+            rs = self._parse_ruleset_from_editor()
+        except Exception as e:
+            self._append_log(f"Orphan ERROR (rules): {e}")
+            return
+        # Attempt to derive a mapping block from editor JSON if present under key 'mapping'
+        import json as _json
+
+        raw_text = (self.rule_editor.toPlainText() or "").strip()
+        mapping_block = None
+        try:
+            js = _json.loads(raw_text)
+            mapping_block = js.get("mapping") if isinstance(js, dict) else None
+            if mapping_block is not None and not isinstance(mapping_block, dict):
+                mapping_block = None
+        except Exception:
+            mapping_block = None
+        try:
+            orphans = compute_orphan_fields(rs, mapping_block)
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Orphan ERROR (compute): {e}")
+            return
+        if not orphans:
+            self._append_log("Orphans: none")
+            return
+        self._append_log(f"Orphans ({len(orphans)}):")
+        for o in orphans[:25]:  # cap log spam
+            self._append_log(f"  {o.resource}.{o.field} -> {o.suggestion}")
+        if len(orphans) > 25:
+            self._append_log(f"  ... {len(orphans)-25} more")
 
     # ------------------------------------------------------------------
     # Accessors used in tests
