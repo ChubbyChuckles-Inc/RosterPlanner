@@ -327,7 +327,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.17 Multi-file batch preview (select N files -> aggregated result set diff summary)
  [x] 7.10.18 Delta viewer: compare current repository objects vs proposed re-parse (added / removed / changed rows; per-field diff)
  [x] 7.10.19 Performance metrics capture (parse time, node count visited, memory delta) per test run
- [ ] 7.10.20 Error channel integration: structured parse errors & transform failures surfaced in panel (reuse logging JSONL pipeline)
+ [x] 7.10.20 Error channel integration: structured parse errors & transform failures surfaced in panel (reuse logging JSONL pipeline)
  [ ] 7.10.21 Partial apply mode: write only selected entities to sandbox DB for iterative refinement
  [ ] 7.10.22 Hash impact preview: show which provenance entries would be updated (and which cached paths reused)
 
