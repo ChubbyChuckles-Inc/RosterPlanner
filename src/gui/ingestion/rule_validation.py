@@ -112,7 +112,9 @@ class ValidationReport:
         }
 
 
-def _validate_list_rule(rule_name: str, rule: ListRule, soups: List[BeautifulSoup], warnings: List[str]) -> ListRuleReport:
+def _validate_list_rule(
+    rule_name: str, rule: ListRule, soups: List[BeautifulSoup], warnings: List[str]
+) -> ListRuleReport:
     report = ListRuleReport()
     # Count root selector matches across all docs
     root_matches = []
@@ -141,7 +143,9 @@ def _validate_list_rule(rule_name: str, rule: ListRule, soups: List[BeautifulSou
             if sel_nodes:
                 matched_items += 1
                 raw_matches += len(sel_nodes)
-        cov = FieldCoverage(matched_items=matched_items, total_items=report.item_count, raw_matches=raw_matches)
+        cov = FieldCoverage(
+            matched_items=matched_items, total_items=report.item_count, raw_matches=raw_matches
+        )
         report.fields[fname] = cov
         if cov.matched_items == 0:
             warnings.append(
@@ -150,7 +154,9 @@ def _validate_list_rule(rule_name: str, rule: ListRule, soups: List[BeautifulSou
     return report
 
 
-def _validate_table_rule(rule_name: str, rule: TableRule, soups: List[BeautifulSoup], warnings: List[str]) -> TableRuleReport:
+def _validate_table_rule(
+    rule_name: str, rule: TableRule, soups: List[BeautifulSoup], warnings: List[str]
+) -> TableRuleReport:
     report = TableRuleReport()
     total = 0
     for soup in soups:

@@ -73,7 +73,12 @@ def test_validation_zero_root():
     rs = RuleSet.from_mapping(
         {
             "resources": {
-                "bad": {"kind": "list", "selector": "div.none", "item_selector": "div.player", "fields": {"x": ".name"}}
+                "bad": {
+                    "kind": "list",
+                    "selector": "div.none",
+                    "item_selector": "div.player",
+                    "fields": {"x": ".name"},
+                }
             }
         }
     )
