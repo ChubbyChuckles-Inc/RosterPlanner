@@ -40,7 +40,7 @@ def test_partial_apply_basic_insertion():
             <li><span class='name'>Bob</span><span class='pz'>1350</span></li>
         </ul>
         </body></html>
-        ",
+        """,
         "file2.html": """
         <html><body>
         <table class='ranking'>
@@ -48,7 +48,7 @@ def test_partial_apply_basic_insertion():
             <tr><td>C</td><td>6</td></tr>
         </table>
         </body></html>
-        ",
+        """,
     }
     result = partial_apply(rs, html_docs, ["ranking", "players"], apply_transforms=False)
     # Expect tables created for both resources
@@ -73,7 +73,7 @@ def test_partial_apply_ignores_unselected():
             <tr><td>X</td><td>1</td></tr>
         </table>
         </body></html>
-        ",
+        """,
     }
     result = partial_apply(rs, html_docs, ["players"])  # table resource not selected
     # Only players table should exist
