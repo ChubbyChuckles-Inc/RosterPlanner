@@ -295,7 +295,7 @@ Milestone 7: Visualization Layer
 [x] 7.5 Implement charts: Division standings evolution (round-based positions)
 [x] 7.6 Implement charts: Match volume timeline & cumulative win %
 [x] 7.7 Interactive tooltips + export as PNG/SVG
-[ ] 7.8 Performance tuning (lazy loading large datasets)
+[x] 7.8 Performance tuning (lazy loading large datasets)
 [ ] 7.9 Responsive layout adaptation (minimum sizes, hide secondary legends)
 [ ] 7.10 Snapshot caching for unchanged charts
 

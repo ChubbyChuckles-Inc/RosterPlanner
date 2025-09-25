@@ -3,6 +3,7 @@
 Provides a thin helper wrapping backend export & optional tooltip enabling.
 This keeps higher-level code decoupled from backend concrete APIs.
 """
+
 from __future__ import annotations
 
 from . import chart_registry
@@ -21,6 +22,8 @@ def export_chart(chart_widget, path: str, *, format: str = "png", dpi: int = 120
     backend.export_widget(chart_widget, path, format=format, dpi=dpi)
 
 
-def enable_line_chart_tooltips(chart_widget, series, x_values=None, labels=None) -> None:  # noqa: D401
+def enable_line_chart_tooltips(
+    chart_widget, series, x_values=None, labels=None
+) -> None:  # noqa: D401
     backend = chart_registry._backend  # type: ignore[attr-defined]
     backend.enable_basic_line_tooltips(chart_widget, series, x_values, labels)

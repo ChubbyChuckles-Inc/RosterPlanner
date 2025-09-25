@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Callable, Dict, Any, List, Protocol, Optional
+from time import perf_counter
 
 from .types import ChartRequest, ChartResult
 from .backends import MatplotlibChartBackend
@@ -92,10 +93,20 @@ class ChartRegistry:
         )
 
     def build(self, req: ChartRequest) -> ChartResult:
+        """Eagerly build the requested chart and record build duration (ms)."""
         ct = self._types.get(req.chart_type)
         if ct is None:
             raise KeyError(f"Unknown chart type: {req.chart_type}")
-        return ct.builder(req, self._backend)
+        start = perf_counter()
+        result = ct.builder(req, self._backend)
+        elapsed = (perf_counter() - start) * 1000.0
+        # Do not override if builder already set build_ms
+        result.meta.setdefault("build_ms", elapsed)
+        return result
+
+    # ---------------- Lazy building -----------------------------------
+    def build_lazy(self, req: ChartRequest) -> "LazyChartProxy":
+        return LazyChartProxy(self, req)
 
     def list_types(self) -> Dict[str, str]:
         return {k: v.description for k, v in self._types.items()}
@@ -117,6 +128,38 @@ class ChartRegistry:
 
 
 chart_registry = ChartRegistry()
+
+
+class LazyChartProxy:
+    """Proxy object deferring chart construction until first access.
+
+    Access the `widget` property (or call materialize()) to trigger build.
+    Subsequent accesses reuse the cached ChartResult.
+    """
+
+    __slots__ = ("_registry", "_req", "_result")
+
+    def __init__(self, registry: ChartRegistry, req: ChartRequest) -> None:
+        self._registry = registry
+        self._req = req
+        self._result: ChartResult | None = None
+
+    def materialize(self) -> ChartResult:
+        if self._result is None:
+            self._result = self._registry.build(self._req)
+            # annotate meta to indicate lazy
+            self._result.meta.setdefault("lazy", True)
+        return self._result
+
+    @property
+    def widget(self):  # noqa: D401
+        return self.materialize().widget
+
+    @property
+    def meta(self) -> Dict[str, Any]:  # allow inspection even before build
+        if self._result is None:
+            return {"lazy": True, "built": False}
+        return self._result.meta
 
 
 def register_chart_type(chart_type: str, builder, description: str) -> None:

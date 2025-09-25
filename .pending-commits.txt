@@ -2,6 +2,7 @@ feat(charting): add team availability heatmap (provisional) and heatmap backend 
 feat(charting): add division standings evolution chart (Milestone 7.5)
 feat(charting): add match volume & cumulative win % chart (Milestone 7.6)
 feat(charting): add chart export utilities and basic line tooltips (Milestone 7.7)
+feat(charting): add lazy chart proxy and build timing (Milestone 7.8)
 feat: add VirtualizedList component and styling parity test (Milestone 5.10.70)
 fix: apply theme hooks to command palette, calendar, shortcut cheat sheet; refine glass surface border; always show command group headers
 feat: extend theme QSS generation for dialogs (command palette, shortcut cheat sheet), calendar, and availability panel refinements

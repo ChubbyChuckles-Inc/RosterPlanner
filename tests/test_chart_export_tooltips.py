@@ -7,6 +7,7 @@ Since we operate in a (likely) headless environment, we only verify that:
 Interactive hover behavior is not easily testable without a GUI loop;
 we keep this lightweight until GUI integration tests are added.
 """
+
 from __future__ import annotations
 
 import os
@@ -41,4 +42,6 @@ def test_export_chart_svg(tmp_path):
 
 def test_enable_tooltips_no_error():
     result = _build_simple_chart()
-    enable_line_chart_tooltips(result.widget, [[0, 1, 2], [1, 1, 1]], [0, 1, 2], ["A", "B"])  # should not raise
+    enable_line_chart_tooltips(
+        result.widget, [[0, 1, 2], [1, 1, 1]], [0, 1, 2], ["A", "B"]
+    )  # should not raise

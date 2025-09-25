@@ -57,7 +57,11 @@ class ChartBackendProtocol(Protocol):  # pragma: no cover - structural only
         ...
 
     def enable_basic_line_tooltips(
-        self, canvas: Any, series: Sequence[Sequence[float]], x_values: Sequence[float] | None, labels: Sequence[str] | None
+        self,
+        canvas: Any,
+        series: Sequence[Sequence[float]],
+        x_values: Sequence[float] | None,
+        labels: Sequence[str] | None,
     ) -> None:
         """Optional: attach simple hover tooltips for a line chart.
 

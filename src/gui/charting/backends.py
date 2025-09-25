@@ -72,10 +72,15 @@ class MatplotlibChartBackend(ChartBackendProtocol):  # pragma: no cover - thin w
 
     # --- interactive helpers -----------------------------------------
     def enable_basic_line_tooltips(
-        self, canvas, series: Sequence[Sequence[float]], x_values: Sequence[float] | None, labels: Sequence[str] | None
+        self,
+        canvas,
+        series: Sequence[Sequence[float]],
+        x_values: Sequence[float] | None,
+        labels: Sequence[str] | None,
     ) -> None:  # pragma: no cover - interactive GUI feature
         try:
             import math
+
             fig = canvas.figure  # type: ignore[attr-defined]
             ax = fig.axes[0]
             if x_values is None and series and series[0]:
@@ -84,7 +89,14 @@ class MatplotlibChartBackend(ChartBackendProtocol):  # pragma: no cover - thin w
             for idx, ys in enumerate(series):
                 xs = x_values if x_values is not None else list(range(len(ys)))
                 scatter = ax.scatter(xs, ys, s=10, alpha=0)  # invisible hit targets
-                scatters.append((scatter, ys, xs, labels[idx] if labels and idx < len(labels) else f"Series {idx+1}"))
+                scatters.append(
+                    (
+                        scatter,
+                        ys,
+                        xs,
+                        labels[idx] if labels and idx < len(labels) else f"Series {idx+1}",
+                    )
+                )
             annot = ax.annotate(
                 "",
                 xy=(0, 0),
