@@ -33,4 +33,6 @@ feat(stats): introduce StatsCacheService with freshness-aware invalidation + tes
 test(stats): add edge case coverage (empty team, partial season, missing LivePZ, predictor neutral, single-team division) (Milestone 6.8)
 
 perf(stats): add profiling harness and performance baseline test (Milestone 6.9)
+feat(charting): add common charting wrapper with registry + basic line chart (Milestone 7.1)
+feat(charting): add plugin interface (ChartPluginProtocol, registrar, tests) (Milestone 7.1.1)
 

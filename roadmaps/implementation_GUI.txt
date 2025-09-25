@@ -287,8 +287,8 @@ Milestone 6: Advanced Statistics Engine
 [x] 6.9 Stats profiling harness (time + memory, large synthetic dataset)
 
 Milestone 7: Visualization Layer
-[ ] 7.1 Common charting wrapper (e.g., PyQtGraph or Matplotlib embed abstraction)
-[ ] 7.1.1 Chart plugin interface (register new chart types dynamically)
+[x] 7.1 Common charting wrapper (e.g., PyQtGraph or Matplotlib embed abstraction)
+[x] 7.1.1 Chart plugin interface (register new chart types dynamically)
 [ ] 7.2 Theme-aware color palette manager for charts
 [ ] 7.3 Implement charts: Player LivePZ progression line chart
 [ ] 7.4 Implement charts: Team availability heatmap (player vs date)
