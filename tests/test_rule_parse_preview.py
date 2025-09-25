@@ -49,7 +49,9 @@ def test_parse_preview_without_transforms():
     assert len(preview.extracted_records["ranking_table"]) == 2
     # List records raw (not coerced): whitespace preserved for first name, numeric still string
     roster = preview.extracted_records["team_roster"]
-    assert roster[0]["name"].startswith("Alice")  # leading space trimmed? not yet because trim transform skipped
+    assert roster[0]["name"].startswith(
+        "Alice"
+    )  # leading space trimmed? not yet because trim transform skipped
     # because apply_transforms=False, numeric not coerced
     assert isinstance(roster[0]["points"], str)
 

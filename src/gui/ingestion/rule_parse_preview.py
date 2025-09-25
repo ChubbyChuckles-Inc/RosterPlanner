@@ -73,7 +73,9 @@ class ParsePreview:
         }
 
 
-def _extract_table(rule_name: str, rule: TableRule, soup: BeautifulSoup) -> tuple[List[dict], List[str], List[Mapping[str, Any]]]:
+def _extract_table(
+    rule_name: str, rule: TableRule, soup: BeautifulSoup
+) -> tuple[List[dict], List[str], List[Mapping[str, Any]]]:
     warnings: List[str] = []
     rows_out: List[dict] = []
     match_data: List[Mapping[str, Any]] = []
@@ -187,9 +189,7 @@ def generate_parse_preview(
             flattened[rname] = rows  # identical for list rules currently
             match_spans[rname] = matches
             summaries.append(
-                ResourceSummary(
-                    resource=rname, kind="list", record_count=len(rows), warnings=warns
-                )
+                ResourceSummary(resource=rname, kind="list", record_count=len(rows), warnings=warns)
             )
         else:  # pragma: no cover
             continue

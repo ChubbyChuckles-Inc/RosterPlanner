@@ -324,7 +324,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
 
  Preview & Execution Sandbox
  [x] 7.10.16 Single-file parse preview: raw HTML snippet (highlight matched nodes), extracted JSON tree, tabular flattening
- [ ] 7.10.17 Multi-file batch preview (select N files -> aggregated result set diff summary)
+ [x] 7.10.17 Multi-file batch preview (select N files -> aggregated result set diff summary)
  [ ] 7.10.18 Delta viewer: compare current repository objects vs proposed re-parse (added / removed / changed rows; per-field diff)
  [ ] 7.10.19 Performance metrics capture (parse time, node count visited, memory delta) per test run
  [ ] 7.10.20 Error channel integration: structured parse errors & transform failures surfaced in panel (reuse logging JSONL pipeline)
