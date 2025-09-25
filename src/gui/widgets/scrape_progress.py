@@ -259,7 +259,8 @@ class ScrapeProgressWidget(QFrame):
         self._current_phase = None
         self._current_phase_progress = 0
         self._update_total()
-        self._update_eta_label(final=True)
+        # Recompute ETA using progress so far (do NOT treat each phase as final run)
+        self._update_eta_label()
 
     def _update_total(self):
         # Weighted total percent
@@ -290,7 +291,16 @@ class ScrapeProgressWidget(QFrame):
             self._phase_status[self._current_phase.key] = "done"
             self._current_phase = None
         self._refresh_phase_styles()
+        # Append total run duration to history for future ETA predictions
+        try:
+            total_duration_s = self._debounce_timer.elapsed() / 1000.0
+            if total_duration_s > 0.5:  # ignore trivially short runs
+                self._history.append(total_duration_s)
+        except Exception:
+            pass
         self._save_history()
+        # Mark ETA final now
+        self._update_eta_label(final=True)
         # Emit summary JSON for copy convenience
         summary = self._build_summary_json()
         self.copy_summary_requested.emit(summary)
@@ -466,36 +476,36 @@ class ScrapeProgressWidget(QFrame):
 
         # Ensure sufficient contrast for bar text by picking white or near-black
         def _contrasting(c: str) -> str:
-            c = c.lstrip('#')
+            c = c.lstrip("#")
             if len(c) == 3:
-                c = ''.join(ch * 2 for ch in c)
+                c = "".join(ch * 2 for ch in c)
             try:
                 r, g, b = int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
                 luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
-                return '#000000' if luma > 180 else '#FFFFFF'
+                return "#000000" if luma > 180 else "#FFFFFF"
             except Exception:
-                return '#FFFFFF'
+                return "#FFFFFF"
 
         bar_text = _contrasting(accent)
 
         qss = self._base_qss_template
         repl = {
-            '__ACCENT_START__': accent,
-            '__ACCENT_END__': accent_end,
-            '__ACCENT_ALT_START__': accent_alt,
-            '__ACCENT_ALT_END__': accent_alt_end,
-            '__FG_PRIMARY__': fg_primary,
-            '__FG_SUBTLE__': fg_subtle,
-            '__FG_DISABLED__': fg_disabled,
-            '__BAR_BG__': bar_bg,
-            '__BAR_TEXT__': bar_text,
-            '__BTN_BG__': btn_bg,
-            '__BTN_BG_HOVER__': btn_bg_hover,
-            '__BTN_BG_DISABLED__': btn_bg_disabled,
-            '__BORDER__': border,
-            '__PHASE_PENDING__': phase_pending,
-            '__PHASE_ACTIVE__': phase_active,
-            '__PHASE_DONE__': phase_done,
+            "__ACCENT_START__": accent,
+            "__ACCENT_END__": accent_end,
+            "__ACCENT_ALT_START__": accent_alt,
+            "__ACCENT_ALT_END__": accent_alt_end,
+            "__FG_PRIMARY__": fg_primary,
+            "__FG_SUBTLE__": fg_subtle,
+            "__FG_DISABLED__": fg_disabled,
+            "__BAR_BG__": bar_bg,
+            "__BAR_TEXT__": bar_text,
+            "__BTN_BG__": btn_bg,
+            "__BTN_BG_HOVER__": btn_bg_hover,
+            "__BTN_BG_DISABLED__": btn_bg_disabled,
+            "__BORDER__": border,
+            "__PHASE_PENDING__": phase_pending,
+            "__PHASE_ACTIVE__": phase_active,
+            "__PHASE_DONE__": phase_done,
         }
         for k, v in repl.items():
             qss = qss.replace(k, v)
@@ -525,31 +535,42 @@ class ScrapeProgressWidget(QFrame):
 
     # ---- ETA + animation helpers -----------------------------------------
     def _update_eta_label(self, final: bool = False):  # pragma: no cover
-        if final:
-            try:
-                duration_s = self._debounce_timer.elapsed() / 1000.0
-                self._eta_window.append(duration_s)
-            except Exception:
-                pass
-            self.eta_label.setText("Done")
-            return
-        if not self._eta_window:
-            # seed from stored history if available
-            if self._history:
-                avg = sum(self._history) / len(self._history)
-                self._eta_window.append(avg)
-            else:
-                self.eta_label.setText("ETA --:--")
-                return
-        avg_total = sum(self._eta_window) / len(self._eta_window)
-        overall_frac = self.bar_total.value() / 100.0
-        if overall_frac <= 0.01:
-            self.eta_label.setText("ETA --:--")
-            return
         try:
             elapsed_s = self._debounce_timer.elapsed() / 1000.0
         except Exception:
+            elapsed_s = 0.0
+
+        overall_frac = self.bar_total.value() / 100.0
+
+        if final:
+            # Final run complete: show Done
+            self.eta_label.setText("Done")
             return
+
+        if overall_frac <= 0.01:
+            self.eta_label.setText("ETA --:--")
+            return
+
+        # Seed estimation window if empty
+        if not self._eta_window:
+            if self._history:
+                avg = sum(self._history) / len(self._history)
+                if avg > 0:
+                    self._eta_window.append(avg)
+            else:
+                # First-ever run: derive naive projection from current pace once enough progress
+                if overall_frac > 0.03 and elapsed_s > 1.0:
+                    projected_total = elapsed_s / max(overall_frac, 1e-3)
+                    self._eta_window.append(projected_total)
+                else:
+                    self.eta_label.setText("ETA --:--")
+                    return
+
+        if not self._eta_window:  # still empty
+            self.eta_label.setText("ETA --:--")
+            return
+
+        avg_total = sum(self._eta_window) / len(self._eta_window)
         remaining_s = max(0.0, avg_total - elapsed_s)
         mins = int(remaining_s // 60)
         secs = int(remaining_s % 60)
