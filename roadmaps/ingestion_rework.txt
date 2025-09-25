@@ -1,0 +1,114 @@
+# Ingestion Rework Roadmap (Removal & Replacement)
+
+Legend: [ ] Not started  [~] In progress  [>] Blocked / prerequisite  [!] Decision  [R] Research/Spike  [T] Testing  [D] Documentation  [M] Migration helper / transitional layer
+
+Goal: Safely remove legacy ingestion pipeline (DataAuditService, IngestionCoordinator, db.ingest module, related provenance & incremental refresh logic) and replace with a new direct scrape → domain object → persisted unified structure aligned to target hierarchy:
+
+Club
+  └─ Teams
+       ├─ Players (with Player History snapshots / progression)
+       ├─ Matches (all match data for the team / cross-link to opponents)
+       └─ League (division / league metadata & standings context)
+
+High-Level Strategy:
+1. Introduce new domain model & repositories side-by-side (no removal yet).
+2. Build parsing adapters that produce the new in-memory model directly from existing HTML assets (bypass legacy DB shape assumptions).
+3. Provide a transitional persistence layer (either new tables or a JSON document store) while GUI continues to read from old repositories; add feature flag to switch read paths for early verification.
+4. Migrate GUI services (TeamDataService, ClubDataService, DivisionDataService, Match/Stats services) to read from new model behind the flag.
+5. Once parity confirmed (tests + visual diff), decommission legacy ingestion coordinator & provenance tables, remove obsolete tests.
+6. Final refactor: simplify scraping->storage pipeline, remove unused compatibility code, update ADRs & roadmap.
+
+Phases & Tasks:
+
+Milestone IR-0: Baseline Inventory & Guardrails
+[ ] IR-0.1 Catalog legacy ingestion entry points (CLI ingest-only, post-scrape hook, LandingLoadWorker auto-ingest) and wrap with deprecation warnings.
+[ ] IR-0.2 Add runtime feature flag: ENABLE_NEW_INGEST (env var + settings service) default False.
+[ ] IR-0.3 Introduce metrics counters for dual-path comparisons (legacy vs new) when flag is True (shadow mode) [M].
+[ ] IR-0.4 Snapshot current integration test fixtures (copy representative HTML set) for deterministic parity runs [T].
+[ ] IR-0.5 Create parity test harness: run legacy ingest -> export canonical JSON; run new pipeline -> export; structural diff must be empty (allow ordering variance) [T].
+
+Milestone IR-1: New Domain Model Definition
+[ ] IR-1.1 Define dataclasses (Club, Team, Player, PlayerHistoryEntry, Match, LeagueMeta, StandingsEntry) with explicit IDs (stable derived keys) [R].
+[ ] IR-1.2 Create new repository protocols (Read + Write) for each aggregate root (ClubRepositoryV2 etc.).
+[ ] IR-1.3 Implement in-memory repositories (for early parsing validation) [T].
+[ ] IR-1.4 Define serialization schema (JSON) for full Club aggregate (versioned, includes history arrays) [D].
+[ ] IR-1.5 ADR: New Aggregated Domain Model & Rationale vs legacy row-normalized schema [D].
+
+Milestone IR-2: Parsing Adapters (Bypass Legacy Ingestion)
+[ ] IR-2.1 Write ranking parser adapter -> StandingsEntry list + LeagueMeta.
+[ ] IR-2.2 Write roster parser adapter -> Players + initial PlayerHistoryEntry (timestamped snapshot).
+[ ] IR-2.3 Derive Matches from existing assets or placeholder (spec: identify source for match data) [R].
+[ ] IR-2.4 Implement PlayerHistory enrichment hook (on repeated scrape compare LivePZ deltas) [M].
+[ ] IR-2.5 Build ClubAssembler: groups Teams by inferred club from roster titles.
+[ ] IR-2.6 Unit tests for each adapter ensuring resilience to malformed HTML (graceful empty returns) [T].
+[ ] IR-2.7 Shadow build orchestrator: From data directory -> produce list[Club] without writing DB (flag-gated) [M].
+
+Milestone IR-3: Transitional Persistence Layer
+[ ] IR-3.1 Choose storage approach: (a) new tables (club_v2, team_v2, player_v2, match_v2, league_v2, player_history_v2) vs (b) JSON store (one file per club) [!] .
+[ ] IR-3.2 Implement versioned JSON writer (if JSON path chosen) or migration scripts (if table path chosen) [M].
+[ ] IR-3.3 Add checksum + modified timestamp metadata for each persisted aggregate.
+[ ] IR-3.4 Implement load layer with validation (schema version mismatch -> rebuild) [T].
+[ ] IR-3.5 Parity export: produce legacy-compatible query outputs from new store for comparison tests [T].
+
+Milestone IR-4: Dual-Path (Shadow) Mode
+[ ] IR-4.1 When feature flag enabled, run new pipeline in background after legacy ingest and collect metrics (entity counts, timing) [M].
+[ ] IR-4.2 Diff service: compute semantic diffs (team count mismatch, player name mismatch, LivePZ deltas) -> log warnings.
+[ ] IR-4.3 GUI developer panel to inspect latest diff summary (optional) [R].
+[ ] IR-4.4 Alert threshold: if diff critical (missing >5% players) auto-disable new path for session.
+[ ] IR-4.5 Unit test: shadow mode does not mutate legacy DB rows [T].
+
+Milestone IR-5: GUI Migration
+[ ] IR-5.1 Introduce abstraction layer in TeamDataService to select legacy vs v2 repository.
+[ ] IR-5.2 Migrate ClubDataService to new aggregated ClubRepositoryV2 output.
+[ ] IR-5.3 Migrate Division/Standings view to use LeagueMeta + StandingsEntry.
+[ ] IR-5.4 Adapt Stats services to consume v2 model (win %, availability heuristics) while keeping legacy fallback.
+[ ] IR-5.5 Add integration test using v2 flag asserting roster + standings render identically [T].
+[ ] IR-5.6 Remove direct SQL assumptions in services still referencing legacy table names (search & patch) [M].
+[ ] IR-5.7 Update navigation tree population to pull from v2 repositories when flag enabled.
+[ ] IR-5.8 Performance test: v2 load time vs legacy ingest (<= legacy median) [T].
+
+Milestone IR-6: Decommission Legacy Ingestion
+[ ] IR-6.1 Mark IngestionCoordinator and db.ingest.ingest_path deprecated (warnings on import) [M].
+[ ] IR-6.2 Remove incremental refresh & provenance tables usage (migrations to drop or ignore) [!].
+[ ] IR-6.3 Delete legacy-specific tests:
+       - test_ingestion_coordinator, *_incremental, *_hash_skip, *_transactional, *_performance_baseline
+       - db.ingest tests (rebuild_database / progress ingest portions)
+       - auto-ingest startup tests relying on IngestionCoordinator
+[ ] IR-6.4 Replace DataFreshnessService ingest timestamp logic with new persistence timestamps.
+[ ] IR-6.5 Update DataStateService to detect data presence via v2 storage instead of legacy row counts.
+[ ] IR-6.6 Remove legacy repository implementations (TeamRepo, PlayerRepo etc.) once all GUI paths migrated.
+[ ] IR-6.7 Update CLI commands (ingest-only, rebuild) to call new pipeline; keep shim raising if legacy options passed.
+[ ] IR-6.8 Purge unused helper utilities (id_map, legacy canonical name dedup heuristics) from codebase.
+[ ] IR-6.9 Update ADR-0001 to deprecated status; add ADR-XXXX New Unified Domain Storage [D].
+[ ] IR-6.10 Final test sweep: ensure no import path references IngestionCoordinator or db.ingest.
+
+Milestone IR-7: Cleanup & Optimization
+[ ] IR-7.1 Optimize parsing (avoid repeated HTML reads; streaming where possible).
+[ ] IR-7.2 Introduce optional caching of computed aggregates (player history delta computation) with invalidation on new scrape.
+[ ] IR-7.3 Memory profiling of large datasets vs legacy baseline; document improvements [T][D].
+[ ] IR-7.4 Simplify error handling (structured error objects per club/team) + surface in Logs Dock.
+[ ] IR-7.5 Add export command: dump unified domain JSON (clubs + metadata) for external analysis.
+[ ] IR-7.6 Security review: sanitize / strip unsafe HTML fragments before serialization.
+[ ] IR-7.7 Remove feature flag (ENABLE_NEW_INGEST) -> always-on path.
+[ ] IR-7.8 Mark deprecation window complete; remove remaining shims & warnings.
+
+Cross-Cutting Tasks
+[ ] IR-X.1 Refactor tests to use factory builders for v2 model objects (reduce setup duplication) [T].
+[ ] IR-X.2 Introduce golden master JSON fixtures for diff-based regression detection [T].
+[ ] IR-X.3 Update developer README with new data flow diagram [D].
+[ ] IR-X.4 Add script to migrate existing installations (export legacy DB -> build v2 JSON/tables) [M].
+[ ] IR-X.5 Ensure application runnable mid-transition (CI matrix: legacy path ON / new path ON) [T].
+[ ] IR-X.6 Add lint rule (grep or AST) preventing new imports of IngestionCoordinator after deprecation flag date.
+
+Risk Mitigations
+- Shadow mode parity diff before feature cut-over reduces risk of silent data regressions.
+- Retain legacy ingest code until IR-5 completion & parity metrics stable for N runs.
+- Feature flag fallback ensures GUI remains functional if new pipeline errors.
+
+Exit Criteria
+- All GUI data views sourcing from v2 repositories.
+- Legacy ingestion modules removed, tests green, no imports remain.
+- ADR updated & README documents new pipeline.
+- Performance: new pipeline median end-to-end time <= legacy ingest median; memory footprint not materially worse.
+
+# End of File
