@@ -35,7 +35,9 @@ def test_diff_resource_infer_key():
         {"team": "B", "points": 13},
         {"team": "C", "points": 8},
     ]
-    res = diff_resource("ranking_table", existing, new)  # infer key -> ['points'] doesn't work (not unique); should pick ['points','team'] or ['team'] if team unique
+    res = diff_resource(
+        "ranking_table", existing, new
+    )  # infer key -> ['points'] doesn't work (not unique); should pick ['points','team'] or ['team'] if team unique
     # Expect key_fields contains 'team'
     assert "team" in res.key_fields
     # There should be 3 keys total after union; one changed (team B)

@@ -29,6 +29,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, List, Mapping, Any, Optional
+import time
+import tracemalloc
 from bs4 import BeautifulSoup
 
 from .rule_schema import RuleSet, TableRule, ListRule
@@ -63,6 +65,9 @@ class ParsePreview:
     extracted_records: Dict[str, List[Mapping[str, Any]]]
     flattened_tables: Dict[str, List[Mapping[str, Any]]]
     match_spans: Dict[str, List[Mapping[str, Any]]]
+    parse_time_ms: float
+    node_count: int
+    memory_delta_kb: float
 
     def to_mapping(self) -> Mapping[str, object]:  # pragma: no cover - trivial
         return {
@@ -151,7 +156,11 @@ def _extract_list(
 
 
 def generate_parse_preview(
-    rule_set: RuleSet, html: str, *, apply_transforms: bool = False
+    rule_set: RuleSet,
+    html: str,
+    *,
+    apply_transforms: bool = False,
+    capture_performance: bool = True,
 ) -> ParsePreview:
     """Generate a parse preview for a single HTML document.
 
@@ -164,7 +173,11 @@ def generate_parse_preview(
     apply_transforms : bool, default False
         When True, run transform chains for list rule fields; otherwise return raw text.
     """
+    t0 = time.perf_counter()
+    if capture_performance:
+        tracemalloc.start()
     soup = BeautifulSoup(html, "html.parser")
+    node_count = len(list(soup.descendants))  # linear walk cost acceptable for preview scale
     summaries: List[ResourceSummary] = []
     extracted: Dict[str, List[Mapping[str, Any]]] = {}
     flattened: Dict[str, List[Mapping[str, Any]]] = {}
@@ -193,9 +206,19 @@ def generate_parse_preview(
             )
         else:  # pragma: no cover
             continue
+    if capture_performance:
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        mem_delta_kb = peak / 1024.0
+    else:
+        mem_delta_kb = 0.0
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
     return ParsePreview(
         summaries=summaries,
         extracted_records=extracted,
         flattened_tables=flattened,
         match_spans=match_spans,
+        parse_time_ms=elapsed_ms,
+        node_count=node_count,
+        memory_delta_kb=mem_delta_kb,
     )

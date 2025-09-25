@@ -110,6 +110,7 @@ def _infer_key_fields(existing: List[Mapping[str, Any]], new: List[Mapping[str, 
     for f in all_fields:
         if f.endswith("_id") and _is_unique([row.get(f) for row in combined]):
             return [f]
+
     # Helper: value appears at most once per side (allows one existing + one new for changed row)
     def side_unique(field: str) -> bool:
         seen_exist = set()
@@ -133,7 +134,11 @@ def _infer_key_fields(existing: List[Mapping[str, Any]], new: List[Mapping[str, 
         if side_unique(f):
             vals = [row.get(f) for row in combined]
             # classify heuristic: treat as numeric if all values are int/float
-            if all(isinstance(v, (int, float)) or (isinstance(v, str) and v.strip().isdigit()) for v in vals if v is not None):
+            if all(
+                isinstance(v, (int, float)) or (isinstance(v, str) and v.strip().isdigit())
+                for v in vals
+                if v is not None
+            ):
                 numeric_candidates.append(f)
             else:
                 textual_candidates.append(f)
@@ -206,7 +211,9 @@ def diff_resource(
         else:
             assert old is not None and new is not None  # for type checkers
             if old == new:
-                deltas.append(RowDelta(key=k, status="unchanged", old=old, new=new, changed_fields={}))
+                deltas.append(
+                    RowDelta(key=k, status="unchanged", old=old, new=new, changed_fields={})
+                )
             else:
                 changed: Dict[str, Tuple[Any, Any]] = {}
                 # union of field names

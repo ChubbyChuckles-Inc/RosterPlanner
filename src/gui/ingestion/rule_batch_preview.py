@@ -34,6 +34,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Tuple
+import time
+import tracemalloc
 
 from .rule_schema import RuleSet, TableRule, ListRule
 from .rule_parse_preview import generate_parse_preview
@@ -100,6 +102,9 @@ class BatchPreviewResult:
     file_resource_stats: List[BatchFileResourceStats]
     aggregated_records: Dict[str, List[Mapping[str, Any]]]
     duplicate_counts: Dict[str, int]
+    total_parse_time_ms: float
+    total_node_count: int
+    peak_memory_kb: float
 
     def to_mapping(self) -> Mapping[str, Any]:  # pragma: no cover - trivial
         return {
@@ -115,6 +120,7 @@ def generate_batch_preview(
     html_by_file: Mapping[str, str],
     *,
     apply_transforms: bool = False,
+    capture_performance: bool = True,
 ) -> BatchPreviewResult:
     """Generate an aggregated multi-file preview.
 
@@ -137,8 +143,23 @@ def generate_batch_preview(
     file_stats: List[BatchFileResourceStats] = []
 
     # Iterate files in insertion order of mapping
+    total_time = 0.0
+    total_nodes = 0
+    peak_mem = 0.0
+    if capture_performance:
+        tracemalloc.start()
     for file_id, html in html_by_file.items():
-        preview = generate_parse_preview(rule_set, html, apply_transforms=apply_transforms)
+        preview = generate_parse_preview(
+            rule_set,
+            html,
+            apply_transforms=apply_transforms,
+            capture_performance=capture_performance,
+        )
+        total_time += preview.parse_time_ms
+        total_nodes += preview.node_count
+        if capture_performance:
+            current, peak = tracemalloc.get_traced_memory()
+            peak_mem = max(peak_mem, peak / 1024.0)
         # Build lookup from summaries for quick record counts
         rec_map = preview.extracted_records
         # Ensure all resources present even if empty
@@ -179,9 +200,14 @@ def generate_batch_preview(
             )
         )
 
+    if capture_performance:
+        tracemalloc.stop()
     return BatchPreviewResult(
         resource_aggregates=resource_aggregates,
         file_resource_stats=file_stats,
         aggregated_records=aggregated_records,
         duplicate_counts=duplicate_counts,
+        total_parse_time_ms=total_time,
+        total_node_count=total_nodes,
+        peak_memory_kb=peak_mem,
     )
