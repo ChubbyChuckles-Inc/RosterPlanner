@@ -24,7 +24,8 @@ Integration Plan (5.10.10):
 from __future__ import annotations
 from typing import List, Optional
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSizePolicy
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation
+from PyQt6.QtWidgets import QGraphicsOpacityEffect
 from gui.design.reduced_motion import is_reduced_motion
 
 from gui.design.skeletons import get_skeleton_variant, SkeletonVariant
@@ -107,7 +108,9 @@ class SkeletonLoaderWidget(QWidget):
             self._shimmer_timer.start(self._shimmer_interval)
 
     def stop(self):
-        self.hide()
+        # Graceful fade-out (skip if already inactive)
+        if not self._active:
+            return
         self._active = False
         if self._shimmer_timer:
             try:
@@ -115,6 +118,27 @@ class SkeletonLoaderWidget(QWidget):
             except Exception:
                 pass
             self._shimmer_timer = None
+        # Reduced motion: hide instantly
+        if is_reduced_motion():
+            self.hide()
+            return
+        try:
+            if not isinstance(self.graphicsEffect(), QGraphicsOpacityEffect):
+                fx = QGraphicsOpacityEffect(self)
+                self.setGraphicsEffect(fx)
+            fx = self.graphicsEffect()
+            if isinstance(fx, QGraphicsOpacityEffect):
+                fx.setOpacity(1.0)
+                anim = QPropertyAnimation(fx, b"opacity", self)
+                anim.setDuration(180)
+                anim.setStartValue(1.0)
+                anim.setEndValue(0.0)
+                anim.finished.connect(self.hide)  # type: ignore[attr-defined]
+                anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+            else:  # fallback
+                self.hide()
+        except Exception:
+            self.hide()
 
     # Accessors -----------------------------------------------------------
     def variant_name(self) -> str:
