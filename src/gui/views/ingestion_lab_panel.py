@@ -58,6 +58,11 @@ from dataclasses import dataclass
 from typing import Dict, Any
 import time
 from PyQt6.QtWidgets import QAbstractItemView
+try:  # pragma: no cover - optional internal import
+    from gui.ingestion.prompt_rule_assist import generate_rule_draft, ruleset_to_mapping  # type: ignore
+except Exception:  # pragma: no cover
+    generate_rule_draft = None  # type: ignore
+    ruleset_to_mapping = None  # type: ignore
 
 try:  # pragma: no cover - optional import
     from gui.components.skeleton_loader import SkeletonLoaderWidget
@@ -233,12 +238,23 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_visual_builder.setToolTip(
             "Open visual rule builder canvas (drag/drop authoring scaffold)"
         )
+        # Prompt Assist (7.10.A4)
+        self.btn_prompt_assist = QPushButton("Prompt Assist")
+        self.btn_prompt_assist.setObjectName("ingLabBtnPromptAssist")
+        self.btn_prompt_assist.setToolTip(
+            "Generate draft rules from a natural language description (heuristic)."
+        )
         # Draft / publish (7.10.49)
         self.btn_publish = QPushButton("Publish")
         self.btn_publish.setObjectName("ingLabBtnPublish")
         self.btn_publish.setToolTip(
             "Persist current draft rule set as the active published version (creates new version entry if changed)."
         )
+        # Wire prompt assist
+        try:
+            self.btn_prompt_assist.clicked.connect(self._on_prompt_assist)  # type: ignore
+        except Exception:
+            pass
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -297,6 +313,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_cache)
         actions.addWidget(self.btn_security)
         actions.addWidget(self.btn_visual_builder)
+        actions.addWidget(self.btn_prompt_assist)
         actions.addWidget(self.btn_publish)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
@@ -1923,6 +1940,32 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         for p in parents:
             child_visible = any(not p.child(i).isHidden() for i in range(p.childCount()))
             p.setHidden(not child_visible)
+
+    # ------------------------------------------------------------------
+    # Prompt Assist (7.10.A4)
+    def _on_prompt_assist(self):  # pragma: no cover - UI interaction
+        if generate_rule_draft is None:
+            self._append_log("Prompt Assist unavailable (module missing)")
+            return
+        from PyQt6.QtWidgets import QInputDialog
+
+        prompt, ok = QInputDialog.getText(
+            self,
+            "Prompt Assist",
+            "Describe what to extract (e.g. 'Extract player names and their live rating'):",
+        )
+        if not ok:
+            return
+        try:
+            draft = generate_rule_draft(prompt)
+            mapping = ruleset_to_mapping(draft.ruleset) if ruleset_to_mapping else {}
+            pretty = json.dumps(mapping, indent=2, ensure_ascii=False)
+            self.rule_editor.setPlainText(pretty)
+            self._append_log("Prompt Assist generated draft rule set")
+            for line in draft.explanation:
+                self._append_log("  - " + line)
+        except Exception as exc:  # pragma: no cover
+            self._append_log(f"Prompt Assist error: {exc}")
 
     # For tests
     def filtered_file_count(self) -> int:
