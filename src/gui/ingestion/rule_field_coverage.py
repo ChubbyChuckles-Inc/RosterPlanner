@@ -33,6 +33,7 @@ Design Notes
 Returns a ``FieldCoverageReport`` dataclass which the GUI layer can
 serialize to JSON and feed into a table/heatmap widget.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -108,7 +109,11 @@ class FieldCoverageReport:
 
     @property
     def overall_ratio(self) -> float:
-        return (self.total_non_empty_cells / self.total_possible_cells) if self.total_possible_cells else 0.0
+        return (
+            (self.total_non_empty_cells / self.total_possible_cells)
+            if self.total_possible_cells
+            else 0.0
+        )
 
     def to_mapping(self) -> Dict[str, Any]:  # pragma: no cover - trivial
         return {

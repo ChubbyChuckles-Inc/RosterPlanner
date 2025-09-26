@@ -1,19 +1,23 @@
 from gui.ingestion.rule_schema import RuleSet
 from gui.ingestion.rule_adapter import adapt_ruleset_over_files
 
+
 def _ruleset():
-    return RuleSet.from_mapping({
-        "version": 1,
-        "resources": {
-            "players": {
-                "kind": "list",
-                "selector": "ul.p",
-                "item_selector": "li",
-                "fields": {"name": {"selector": "span.n"}, "rank": {"selector": "span.r"}},
+    return RuleSet.from_mapping(
+        {
+            "version": 1,
+            "resources": {
+                "players": {
+                    "kind": "list",
+                    "selector": "ul.p",
+                    "item_selector": "li",
+                    "fields": {"name": {"selector": "span.n"}, "rank": {"selector": "span.r"}},
+                },
+                "ranking": {"kind": "table", "selector": "table.r", "columns": ["team", "pts"]},
             },
-            "ranking": {"kind": "table", "selector": "table.r", "columns": ["team", "pts"]},
-        },
-    })
+        }
+    )
+
 
 HTML_A = """
 <html><body>
@@ -39,6 +43,7 @@ HTML_B = """
 </ul>
 </body></html>
 """
+
 
 def test_adapter_basic_dedup():
     rs = _ruleset()

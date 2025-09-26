@@ -659,6 +659,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._append_log(f"Quality Gates ERROR (rules): {e}")
             return
         import json as _json
+
         text = (self.rule_editor.toPlainText() or "").strip()
         gates_cfg = {}
         try:

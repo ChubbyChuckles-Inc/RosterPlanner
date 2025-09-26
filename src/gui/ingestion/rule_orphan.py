@@ -22,6 +22,7 @@ Testing Strategy
 Provide a focused unit test that constructs a rule set with an omitted field
 in the mapping and asserts the orphan list contains that field.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

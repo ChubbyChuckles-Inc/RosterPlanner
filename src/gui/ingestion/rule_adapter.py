@@ -28,6 +28,7 @@ extraction logic. This keeps maintenance cost low and ensures consistency
 between what a user previews and what ultimately gets ingested when applying
 rules.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Any, Iterable
@@ -35,6 +36,7 @@ from .rule_schema import RuleSet
 from .rule_parse_preview import generate_parse_preview
 
 __all__ = ["AdaptedResource", "AdaptedBundle", "adapt_ruleset_over_files"]
+
 
 @dataclass
 class AdaptedResource:
@@ -53,6 +55,7 @@ class AdaptedResource:
     warnings: List[str]
         Aggregated warnings encountered during extraction.
     """
+
     name: str
     kind: str
     rows: List[Mapping[str, Any]] = field(default_factory=list)
@@ -67,6 +70,7 @@ class AdaptedResource:
             "source_files": list(self.source_files),
             "warnings": list(self.warnings),
         }
+
 
 @dataclass
 class AdaptedBundle:
@@ -95,7 +99,9 @@ def adapt_ruleset_over_files(rule_set: RuleSet, html_by_file: Mapping[str, str])
     # Temporary per-resource de-dupe set (tuple of sorted items) to avoid duplicate row noise
     dedupe: Dict[str, set] = {r: set() for r in rule_set.resources}
     for fpath, html in html_by_file.items():
-        preview = generate_parse_preview(rule_set, html, apply_transforms=True, capture_performance=False)
+        preview = generate_parse_preview(
+            rule_set, html, apply_transforms=True, capture_performance=False
+        )
         # Build map of warnings per resource from preview summaries
         warn_map = {s.resource: list(s.warnings) for s in preview.summaries}
         for rname, rows in preview.extracted_records.items():
