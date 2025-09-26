@@ -435,6 +435,69 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  Exit Criteria: User can open Ingestion Lab, craft or modify rules, preview multi-file extraction, inspect diffs, validate & apply changes updating DB + provenance, rollback if needed, and observe ETA/stats unaffected elsewhere.
 
 
+Milestone 7.11: Database Overview & Management Panel (Comprehensive DB Introspection & Safety Tools)
+Goal: Insert a power-user dock ("Database") that offers a read-only by default, safety‑gated interface to explore schema objects, inspect table contents, analyze query performance, visualize relationships, and perform controlled maintenance operations. Must respect existing repository abstractions (no ad‑hoc writes bypassing repos) and provide clear diff/confirmation workflows for any mutating action.
+
+ Architecture & Panel Shell
+ [ ] 7.11.1 Database Panel dock scaffold (split: Schema Tree | Detail Tabs | Action Console)
+ [ ] 7.11.2 Schema introspection service (tables, columns, PK/FK, indexes, row counts cached)
+ [ ] 7.11.3 Lazy data preview model (paginated SELECT w/ LIMIT/OFFSET + cancellation)
+ [ ] 7.11.4 Relational graph mini-view (graphviz / ascii fallback) of FK edges (interactive highlight)
+ [ ] 7.11.5 Safety mode toggle (Read‑Only vs Admin) persisted; mutating actions hidden unless Admin enabled
+
+ Data Exploration Features
+ [ ] 7.11.6 Table profile summary: row count, approx size (page count), last ingest touch (from provenance)
+ [ ] 7.11.7 Column stats sampler (distinct count sample, null %, min/max for numeric/date) with throttled queries
+ [ ] 7.11.8 Full text quick filter (WHERE column LIKE) with injection-safe parameter binding
+ [ ] 7.11.9 Row detail inspector (JSON dump + related FK entity previews)
+ [ ] 7.11.10 Inline value diffing (compare two selected rows by primary key)
+
+ Query & Performance Tooling
+ [ ] 7.11.11 Ad-hoc read-only query runner (syntax highlight, result grid, EXPLAIN toggle)
+ [ ] 7.11.12 Query plan analyzer: capture EXPLAIN output -> structured tree with cost highlight
+ [ ] 7.11.13 Slow query log viewer (surfacing entries from existing query perf logging 3.9)
+ [ ] 7.11.14 Index usage advisor: detect missing index patterns from recent slow queries (basic heuristic)
+ [ ] 7.11.15 Vacuum / analyze maintenance trigger (confirmation dialog + progress banner) [Admin]
+
+ Data Integrity & Diff Utilities
+ [ ] 7.11.16 FK orphan detector (scan for broken refs; expect zero) with exportable report
+ [ ] 7.11.17 Uniqueness drift detector (re-run uniqueness assumptions vs live data)
+ [ ] 7.11.18 Table row diff tool: snapshot two query result sets -> produce added/removed/changed summary
+ [ ] 7.11.19 Temporal change sampler: sample N rows over time (requires provenance / updated_at fallback heuristic)
+ [ ] 7.11.20 Rule provenance cross-link: given a row, show origin rule version (joins provenance additions)
+
+ Controlled Mutation (Safety-Gated, via Repository Paths Only)
+ [ ] 7.11.21 Inline row edit prototype (availability + player note fields only) using repository upsert with audit log
+ [ ] 7.11.22 Bulk scripted transform preview (apply Python snippet over selected rows -> diff preview -> confirm apply) sandboxed
+ [ ] 7.11.23 Constraint simulation sandbox: propose new index or constraint, simulate impact (duplicate detection)
+ [ ] 7.11.24 Migration dry-run viewer (render pending migrations; reuse existing migration manager) [Admin]
+ [ ] 7.11.25 Change audit trail panel (recent writes with actor/time/source) – integrate ingest + manual edits
+
+ UX & Visualization
+ [ ] 7.11.26 Color-coded column badges (PK, FK, Indexed, Nullable, Unique) with legend
+ [ ] 7.11.27 Relationship path finder (shortest FK path between two tables)
+ [ ] 7.11.28 Adaptive virtualized grid for large tables (only render visible cells)
+ [ ] 7.11.29 Dark / high-contrast tuned SQL syntax theme aligning with design tokens
+ [ ] 7.11.30 Accessibility: keyboard navigation across schema tree → tab bar → result grid without mouse
+
+ Testing & Quality Gates
+ [ ] 7.11.31 Unit tests: schema introspection service (tables, columns, FKs) [T]
+ [ ] 7.11.32 Unit tests: index advisor heuristic suggestions edge cases [T]
+ [ ] 7.11.33 Integration test: open Database Panel, run paginated query, cancel mid-flight [T]
+ [ ] 7.11.34 Integration test: read-only mode hides Admin actions [T]
+ [ ] 7.11.35 Security test: ad-hoc query runner blocks mutating statements (INSERT/UPDATE/DELETE) [T]
+ [ ] 7.11.36 Performance test: introspection baseline < 150ms on reference dataset [T]
+ [ ] 7.11.37 Diff tool test: added/removed/changed detection correctness [T]
+ [ ] 7.11.38 Virtualized grid test: memory stays bounded with large synthetic result set [T]
+
+ Documentation & ADRs
+ [ ] 7.11.39 ADR: Database Panel safety model & mutation gating [D]
+ [ ] 7.11.40 User guide section: exploring data & performance diagnostics [D]
+ [ ] 7.11.41 Developer doc: adding new advisors / analyzers plug-in point [D]
+
+ Exit Criteria: User can safely explore schema & data, run read-only diagnostics, view relationships & performance plans, and (optionally) perform constrained edits with full diff & audit trail—without risking accidental destructive operations.
+
+
 Milestone 8: Availability & Match Planning Module
 [ ] 8.1 Schema: availability (player_id, date, status, confidence, note)
 [ ] 8.1.1 Add constraint: unique (player_id, date)
