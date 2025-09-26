@@ -500,13 +500,16 @@ class MainWindow(QMainWindow):  # Dock-based
         palette_action.triggered.connect(self._open_command_palette)  # type: ignore[attr-defined]
         # Preferences dialog
         act_prefs = view_menu.addAction("Preferences...")
+
         def _open_prefs():
             try:
                 from gui.views.preferences_dialog import PreferencesDialog  # type: ignore
+
                 dlg = PreferencesDialog(self)
                 dlg.exec()
             except Exception:
                 pass
+
         act_prefs.triggered.connect(_open_prefs)  # type: ignore[attr-defined]
         cheatsheet_action = help_menu.addAction("Keyboard Shortcuts...")
         cheatsheet_action.triggered.connect(self._open_shortcut_cheatsheet)  # type: ignore[attr-defined]
@@ -545,8 +548,10 @@ class MainWindow(QMainWindow):  # Dock-based
         # Debug hook: auto-open Command Palette if env var set (facilitates crash reproduction)
         try:
             import os
+
             if os.environ.get("ROSTERPLANNER_DEBUG_OPEN_PALETTE") == "1":
                 from PyQt6.QtCore import QTimer  # type: ignore
+
                 QTimer.singleShot(600, self._open_command_palette)  # open shortly after init
         except Exception:
             pass
@@ -612,14 +617,17 @@ class MainWindow(QMainWindow):  # Dock-based
             lambda: self._on_reset_layout(),
             "Restore default dock arrangement",
         )
+
         # Toggle command palette auto-resize (new enhancement)
         def _toggle_palette_auto_resize():
             try:
                 from gui.services.settings_service import SettingsService  # type: ignore
+
                 cur = SettingsService.instance.command_palette_auto_resize
                 SettingsService.instance.command_palette_auto_resize = not cur
             except Exception:
                 pass
+
         global_command_registry.register(
             "commandPalette.toggleAutoResize",
             "Toggle Command Palette Auto-Resize",

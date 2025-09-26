@@ -9,6 +9,7 @@ def test_toggle_command_palette_auto_resize_setting():
         def _toggle():
             cur = SettingsService.instance.command_palette_auto_resize
             SettingsService.instance.command_palette_auto_resize = not cur
+
         global_command_registry.register(
             "commandPalette.toggleAutoResize",
             "Toggle Command Palette Auto-Resize",

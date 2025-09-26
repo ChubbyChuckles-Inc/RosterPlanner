@@ -288,8 +288,13 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
                 # Try settings / preferences overrides
                 try:
                     from gui.services.settings_service import SettingsService  # type: ignore
-                    dur_attr = getattr(SettingsService.instance, "command_palette_anim_duration_ms", None)
-                    easing_attr = getattr(SettingsService.instance, "command_palette_anim_easing", None)
+
+                    dur_attr = getattr(
+                        SettingsService.instance, "command_palette_anim_duration_ms", None
+                    )
+                    easing_attr = getattr(
+                        SettingsService.instance, "command_palette_anim_easing", None
+                    )
                     if isinstance(dur_attr, (int, float)) and dur_attr > 0:
                         duration_ms = int(dur_attr)
                     if isinstance(easing_attr, str):
@@ -336,13 +341,15 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         if self._debounce_timer is None:
             self._debounce_timer = QTimer(self)
             self._debounce_timer.setSingleShot(True)
+
             # Guard: only resize if still visible (prevents late call after close)
             def _do_resize():  # pragma: no cover - GUI timing
-                if not getattr(self, 'isVisible', lambda: False)():
+                if not getattr(self, "isVisible", lambda: False)():
                     return
                 try:
                     self._auto_size(center=False, animate=True)
                 except Exception:
                     pass
+
             self._debounce_timer.timeout.connect(_do_resize)  # type: ignore[attr-defined]
         self._debounce_timer.start(70)
