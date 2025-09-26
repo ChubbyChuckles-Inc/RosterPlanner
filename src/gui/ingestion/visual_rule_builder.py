@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Mapping, TYPE_CHECKING
 import copy
 from collections import deque
+import json
 
 # ---------------------------------------------------------------------------
 # Model Layer
@@ -151,6 +152,32 @@ class CanvasModel:
         self._undo_stack.append(self._snapshot())
         self.nodes = self._redo_stack.pop()
         return True
+
+    # --- History Persistence -------------------------------------------
+    def _serialize_nodes(self, nodes: List[BuilderNode]) -> List[Dict[str, Any]]:  # pragma: no cover
+        return [n.to_mapping() for n in nodes]
+
+    def export_history(self) -> Dict[str, Any]:  # pragma: no cover - thin
+        return {
+            "current": self._serialize_nodes(self.nodes),
+            "undo": [self._serialize_nodes(s) for s in list(self._undo_stack)],
+            "redo": [self._serialize_nodes(s) for s in list(self._redo_stack)],
+        }
+
+    def import_history(self, payload: Mapping[str, Any]) -> None:  # pragma: no cover - thin
+        try:
+            from_nodes = payload.get("current", [])
+            undo_nodes = payload.get("undo", [])
+            redo_nodes = payload.get("redo", [])
+            self.nodes = CanvasModel.from_mapping({"nodes": from_nodes}).nodes
+            self._undo_stack.clear()
+            for snap in undo_nodes:
+                self._undo_stack.append(CanvasModel.from_mapping({"nodes": snap}).nodes)
+            self._redo_stack.clear()
+            for snap in redo_nodes:
+                self._redo_stack.append(CanvasModel.from_mapping({"nodes": snap}).nodes)
+        except Exception:
+            pass
 
     def add_node(self, node: BuilderNode) -> None:
         self._push_undo()
@@ -434,6 +461,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             return
         try:
             self._build_ui()
+            self._restore_session_state()
             self.refresh()
         except Exception as e:  # pragma: no cover - UI construction failure surfaced upstream
             self._last_error = f"UI build error: {e}"
@@ -453,14 +481,15 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_add_field.setToolTip("Add Field Mapping Node")
         self.btn_add_chain = QPushButton("Chain")
         self.btn_add_chain.setToolTip("Add Transform Chain Node")
-        # Icon hooks (design system could set icons later)
+        # Icon registry integration (design token based) with graceful fallback
         try:  # pragma: no cover - runtime optional
-            from PyQt6.QtGui import QIcon
+            from src.gui.utils.icons import apply_token_icon  # type: ignore
 
-            self.btn_add_selector.setIcon(QIcon.fromTheme("list-add"))
-            self.btn_add_field.setIcon(QIcon.fromTheme("add-field"))
-            self.btn_add_chain.setIcon(QIcon.fromTheme("preferences-other"))
+            apply_token_icon(self.btn_add_selector, "add.selector")
+            apply_token_icon(self.btn_add_field, "add.field")
+            apply_token_icon(self.btn_add_chain, "add.chain")
         except Exception:
+            # Fallback: leave text-only
             pass
         self.btn_undo = QPushButton("Undo")
         self.btn_undo.setToolTip("Undo last edit (Ctrl+Z)")
@@ -590,6 +619,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         form.addRow("Selector", self.field_selector_edit)
         # Validation feedback label
         from PyQt6.QtWidgets import QLabel as _Lbl
+
         self.selector_feedback = _Lbl("")
         self.selector_feedback.setObjectName("visualRuleBuilderSelectorFeedback")
         form.addRow("Matches", self.selector_feedback)
@@ -635,6 +665,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         QShortcut(QKeySequence("Alt+C"), self, activated=self._on_add_chain)  # type: ignore
         QShortcut(QKeySequence("Ctrl+Z"), self, activated=self._on_undo)  # type: ignore
         QShortcut(QKeySequence("Ctrl+Y"), self, activated=self._on_redo)  # type: ignore
+        QShortcut(QKeySequence("Ctrl+Shift+Z"), self, activated=self._on_redo)  # type: ignore
         QShortcut(QKeySequence("Ctrl+/"), self, activated=self._show_cheat_sheet)  # type: ignore
         # Load persisted palette state
         self._restore_palette_state()
@@ -646,6 +677,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.model.add_node(node)
         self.refresh()
         self._maybe_emit_live()
+        self._persist_session_state()
 
     def _on_add_field(self) -> None:
         idx = len([n for n in self.model.nodes if isinstance(n, FieldMappingNode)]) + 1
@@ -659,6 +691,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.model.add_node(node)
         self.refresh()
         self._maybe_emit_live()
+        self._persist_session_state()
 
     def _on_add_chain(self) -> None:
         idx = len([n for n in self.model.nodes if isinstance(n, TransformChainNode)]) + 1
@@ -671,6 +704,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.model.add_node(node)
         self.refresh()
         self._maybe_emit_live()
+        self._persist_session_state()
 
     def _on_compile_clicked(self) -> None:
         mapping = self.model.to_rule_set_mapping()
@@ -762,11 +796,13 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
                 self.refresh()
                 self.status_label.setText(f"Duplicated {node.id} → {new_node.id}")
                 self._maybe_emit_live()
+                self._persist_session_state()
         elif act == act_del:
             self.model.remove_node(node.id)
             self.refresh()
             self.status_label.setText(f"Deleted {node.id}")
             self._maybe_emit_live()
+            self._persist_session_state()
 
     # Settings persistence -----------------------------------------------
     def _settings(self):  # pragma: no cover - convenience
@@ -807,6 +843,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             node.field_name = self.field_name_edit.text().strip() or node.field_name
             self.refresh()
             self._maybe_emit_live()
+            self._persist_session_state()
 
     def _commit_field_selector(self):  # pragma: no cover - UI
         if not getattr(self, "_selected_node_id", None):
@@ -818,25 +855,29 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
                 node.selector = sel
                 self._update_selector_feedback(sel)
             self._maybe_emit_live()
+            self._persist_session_state()
 
     # Undo/Redo handlers -------------------------------------------------
     def _on_undo(self):  # pragma: no cover - UI
         if self.model.undo():
             self.refresh()
             self._maybe_emit_live()
+            self._persist_session_state()
 
     def _on_redo(self):  # pragma: no cover - UI
         if self.model.redo():
             self.refresh()
             self._maybe_emit_live()
+            self._persist_session_state()
 
     # Selector validation ------------------------------------------------
     def _update_selector_feedback(self, selector: str):  # pragma: no cover - GUI heuristic
         try:
-            # Lazy import bs4 if available (fall back silently if absent)
             from bs4 import BeautifulSoup  # type: ignore
-            # Heuristic: try last loaded HTML cached externally (IngestionLab may set attr)
-            html_doc = getattr(self.parent(), "_last_preview_html", "") or ""
+            html_doc = getattr(self, "_active_preview_html", None)
+            if html_doc is None:
+                # backward compatibility fallback
+                html_doc = getattr(self.parent(), "_last_preview_html", "") or ""
             if not html_doc:
                 self.selector_feedback.setText("?")
                 return
@@ -845,6 +886,13 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.selector_feedback.setText(str(count))
         except Exception:
             self.selector_feedback.setText("-")
+
+    def set_preview_html(self, html: str) -> None:  # pragma: no cover - external API
+        self._active_preview_html = html
+        if getattr(self, "_selected_node_id", None):
+            node = next((n for n in self.model.nodes if n.id == self._selected_node_id), None)
+            if isinstance(node, FieldMappingNode):
+                self._update_selector_feedback(node.selector)
 
     # Cheat sheet --------------------------------------------------------
     def _show_cheat_sheet(self):  # pragma: no cover - UI dialog
@@ -870,6 +918,31 @@ Ctrl+/ — Show this cheat sheet<br>
             item = QListWidgetItem(f"{node.kind}: {getattr(node, 'label', node.id)}")
             self.list_widget.addItem(item)
         self.status_label.setText(f"{len(self.model.nodes)} node(s)")
+        # Persist session on any refresh to capture latest state
+        self._persist_session_state()
+
+    # Session persistence (model + history) -----------------------------
+    def _persist_session_state(self) -> None:  # pragma: no cover - simple
+        try:
+            from PyQt6.QtCore import QSettings
+            s = QSettings()
+            payload = self.model.export_history()
+            s.setValue("visual_builder/session", json.dumps(payload))
+        except Exception:
+            pass
+
+    def _restore_session_state(self) -> None:  # pragma: no cover - simple
+        try:
+            from PyQt6.QtCore import QSettings
+            s = QSettings()
+            raw = s.value("visual_builder/session", "")
+            if not raw:
+                return
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                self.model.import_history(data)
+        except Exception:
+            pass
 
     # Convenience for tests
     def compile_to_mapping(self) -> Dict[str, Any]:
