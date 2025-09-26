@@ -1,4 +1,5 @@
 """Test that IngestionCoordinator records active rule_version in provenance (Milestone 7.10.60)."""
+
 from __future__ import annotations
 
 import sqlite3

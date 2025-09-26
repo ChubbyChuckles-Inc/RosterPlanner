@@ -21,6 +21,11 @@ from .service_locator import services
 from .event_bus import GUIEvent, EventBus
 from .ingestion_coordinator import IngestionCoordinator
 
+try:  # optional import; GUI may not always have lab components loaded
+    from gui.views.ingestion_lab_panel import IngestionLabPanel  # type: ignore
+except Exception:  # pragma: no cover
+    IngestionLabPanel = None  # type: ignore
+
 __all__ = ["PostScrapeIngestionHook"]
 
 
@@ -58,3 +63,21 @@ class PostScrapeIngestionHook:
         # IngestionCoordinator already emits DATA_REFRESHED; we can optionally also publish a completed event for UI to pick up ingestion summary specifically.
         if self._bus:
             self._bus.publish(GUIEvent.DATA_REFRESH_COMPLETED, payload={"ingestion": summary})
+        # Auto-open Ingestion Lab logic (Milestone 7.10.61): if no rule set versions exist yet
+        # and new HTML assets were discovered (processed_files > 0) we signal for the lab to open.
+        try:
+            if IngestionLabPanel is not None:
+                rule_store = services.try_get("rule_version_store")
+                has_rules = bool(rule_store and getattr(rule_store, "latest_version", None))
+                if (not has_rules) and summary.processed_files > 0:
+                    # Publish a dedicated event consumers (MainWindow) can handle to open the panel.
+                    if self._bus:
+                        self._bus.publish(
+                            "OPEN_INGESTION_LAB",
+                            {
+                                "reason": "auto_open_first_html",
+                                "processed_files": summary.processed_files,
+                            },
+                        )
+        except Exception:  # pragma: no cover - non-fatal
+            pass
