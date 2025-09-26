@@ -1,4 +1,5 @@
 """Tests that DataFreshnessService surfaces active rule version (Milestone 7.10.63)."""
+
 from __future__ import annotations
 
 import sqlite3

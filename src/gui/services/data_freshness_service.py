@@ -77,6 +77,7 @@ class DataFreshness:
             if dt is None or age is None:
                 return "never"
             return humanize_age(age)
+
         rv = f" | Rules: v{self.rule_version}" if self.rule_version is not None else ""
         return f"Scrape: {_fmt(self.last_scrape, self.age_since_scrape_seconds)} | Ingest: {_fmt(self.last_ingest, self.age_since_ingest_seconds)}{rv}"
 

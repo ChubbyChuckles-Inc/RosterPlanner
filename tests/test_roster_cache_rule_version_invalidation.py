@@ -8,6 +8,7 @@ Scenario:
 
 We use an in-memory sqlite schema with minimal tables required by TeamDataService.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -26,19 +27,22 @@ CREATE TABLE match(match_id INTEGER PRIMARY KEY, division_id INTEGER, home_team_
 CREATE TABLE id_map(entity_type TEXT, source_key TEXT, assigned_id INTEGER PRIMARY KEY AUTOINCREMENT, UNIQUE(entity_type, source_key));
 """
 
+
 def _seed(conn: sqlite3.Connection):
     conn.executescript(SCHEMA)
     # Seed IDs
     conn.execute("INSERT INTO id_map(entity_type, source_key) VALUES('division','Div 1')")
     div_id = conn.execute("SELECT assigned_id FROM id_map WHERE source_key='Div 1'").fetchone()[0]
-    conn.execute("INSERT INTO division(division_id, name, season) VALUES(?,?,2025)", (div_id, 'Div 1'))
+    conn.execute(
+        "INSERT INTO division(division_id, name, season) VALUES(?,?,2025)", (div_id, "Div 1")
+    )
     conn.execute("INSERT INTO id_map(entity_type, source_key) VALUES('team','Team A')")
     team_id = conn.execute("SELECT assigned_id FROM id_map WHERE source_key='Team A'").fetchone()[0]
     conn.execute(
         "INSERT INTO team(team_id, club_id, division_id, name) VALUES(?,?,?,?)",
-        (team_id, None, div_id, 'A'),
+        (team_id, None, div_id, "A"),
     )
-    for p in ['Alpha', 'Beta']:
+    for p in ["Alpha", "Beta"]:
         conn.execute("INSERT INTO id_map(entity_type, source_key) VALUES('player',?)", (p,))
         pid = conn.execute("SELECT assigned_id FROM id_map WHERE source_key=?", (p,)).fetchone()[0]
         conn.execute(
@@ -46,7 +50,7 @@ def _seed(conn: sqlite3.Connection):
             (pid, team_id, p, 1500),
         )
     conn.commit()
-    return str(team_id), 'Div 1'
+    return str(team_id), "Div 1"
 
 
 def test_rule_version_change_clears_cache():
@@ -57,7 +61,7 @@ def test_rule_version_change_clears_cache():
     services.register("roster_cache", cache, allow_override=True)
     services.register("active_rule_version", 1, allow_override=True)
 
-    team_entry = TeamEntry(team_id=team_id, name='A', division=div_name, club_name=None)
+    team_entry = TeamEntry(team_id=team_id, name="A", division=div_name, club_name=None)
     svc = TeamDataService(conn=conn)
 
     first = svc.load_team_bundle(team_entry)

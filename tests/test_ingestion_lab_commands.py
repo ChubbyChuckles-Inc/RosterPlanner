@@ -9,6 +9,7 @@ def setup_function(_fn):
     services.clear()
     # Re-import module to auto-register commands
     import importlib
+
     mod = importlib.import_module("gui.services.ingestion_lab_commands")
     # Explicit registration to avoid relying on import side-effects in test isolation
     if hasattr(mod, "register_ingestion_lab_commands"):
@@ -45,8 +46,8 @@ def test_rollback_previous_loads_prev_version(monkeypatch):
             loaded["text"] = text
 
     # Fake version entries
-    prev_entry = types.SimpleNamespace(version_num=1, rules_json="{\"version\":1,\"a\":1}")
-    latest_entry = types.SimpleNamespace(version_num=2, rules_json="{\"version\":1,\"a\":2}")
+    prev_entry = types.SimpleNamespace(version_num=1, rules_json='{"version":1,"a":1}')
+    latest_entry = types.SimpleNamespace(version_num=2, rules_json='{"version":1,"a":2}')
 
     class Store:
         def latest(self):  # pragma: no cover - simple
@@ -60,4 +61,4 @@ def test_rollback_previous_loads_prev_version(monkeypatch):
 
     ok, err = global_command_registry.execute("ingestion_lab.rollback_previous_rule_version")
     assert ok and err is None, err
-    assert loaded.get("text", "").startswith("{\"version\":1")
+    assert loaded.get("text", "").startswith('{"version":1')

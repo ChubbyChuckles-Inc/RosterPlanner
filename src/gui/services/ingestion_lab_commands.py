@@ -67,7 +67,11 @@ def _rollback_previous() -> None:
         latest = store.latest() if hasattr(store, "latest") else None
         if not latest:
             return
-        prev = store.previous_version(latest.version_num) if hasattr(store, "previous_version") else None
+        prev = (
+            store.previous_version(latest.version_num)
+            if hasattr(store, "previous_version")
+            else None
+        )
         if not prev:
             return
         raw_json = getattr(prev, "rules_json", None)

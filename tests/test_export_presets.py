@@ -59,6 +59,7 @@ def test_derived_placeholder_expands(tmp_path: Path):
     presets = ExportPresetsService(base_dir=str(tmp_path))
     presets.add_or_replace("with_derived", ["Player", DERIVED_PLACEHOLDER])
     export_svc = ExportService()
+
     # Dummy includes derived columns so expansion is meaningful
     class DummyWithDerived:
         def get_export_rows(self):  # pragma: no cover - simple
