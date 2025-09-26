@@ -23,6 +23,7 @@ Future extensions (later milestones):
 The guard is intentionally stateless beyond retaining recent simulations,
 allowing tests to operate deterministically.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Any, Optional
@@ -120,7 +121,11 @@ class SafeApplyGuard:
         # Quality gates (if config & backend available)
         gate_report = None
         if evaluate_quality_gates is not None:
-            qcfg = raw_rules_payload.get("quality_gates") if isinstance(raw_rules_payload, Mapping) else None
+            qcfg = (
+                raw_rules_payload.get("quality_gates")
+                if isinstance(raw_rules_payload, Mapping)
+                else None
+            )
             if isinstance(qcfg, Mapping) and qcfg:
                 try:
                     gate_report = evaluate_quality_gates(rule_set, html_by_file, qcfg)  # type: ignore[arg-type]
@@ -170,12 +175,12 @@ class SafeApplyGuard:
             raise RuntimeError("Cannot apply: simulation failed validation")
         # Ensure audit table exists
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS rule_apply_audit("\
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,"\
-            "applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"\
-            "sim_id INTEGER,"\
-            "rules_hash TEXT,"\
-            "resource TEXT,"\
+            "CREATE TABLE IF NOT EXISTS rule_apply_audit("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+            "sim_id INTEGER,"
+            "rules_hash TEXT,"
+            "resource TEXT,"
             "row_count INTEGER)"
         )
         for r, count in sim.adapter_rows.items():

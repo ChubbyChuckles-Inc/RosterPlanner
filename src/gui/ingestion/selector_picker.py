@@ -124,7 +124,9 @@ class SelectorPickerDialog(QDialog):
                 el_id = attrs.get("id")
                 classes = attrs.get("class") or []
                 item = QTreeWidgetItem([name])
-                item.setData(0, Qt.ItemDataRole.UserRole, {"tag": name, "id": el_id, "classes": classes})
+                item.setData(
+                    0, Qt.ItemDataRole.UserRole, {"tag": name, "id": el_id, "classes": classes}
+                )
                 parent_item.addChild(item)
                 add_children(child, item)
 

@@ -1073,7 +1073,9 @@ class IngestionCoordinator:
             cur = self.conn.execute("PRAGMA table_info(provenance)")
             cols = {r[1] for r in cur.fetchall()}
             if "rule_version" not in cols:
-                self.conn.execute("ALTER TABLE provenance ADD COLUMN rule_version INTEGER DEFAULT NULL")
+                self.conn.execute(
+                    "ALTER TABLE provenance ADD COLUMN rule_version INTEGER DEFAULT NULL"
+                )
         except Exception:
             pass
 

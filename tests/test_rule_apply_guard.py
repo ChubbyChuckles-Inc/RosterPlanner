@@ -26,6 +26,7 @@ HTML = {
     """,
 }
 
+
 def test_safe_apply_guard_simulate_and_apply():
     rs = RuleSet.from_mapping(RULES)
     guard = SafeApplyGuard()

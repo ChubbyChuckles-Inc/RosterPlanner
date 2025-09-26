@@ -226,7 +226,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_versions)
         actions.addWidget(self.btn_rollback)
         actions.addWidget(self.btn_selector_picker)
-    actions.addWidget(self.btn_regex_tester)
+        actions.addWidget(self.btn_regex_tester)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -299,7 +299,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_versions.clicked.connect(self._on_versions_clicked)  # type: ignore
         self.btn_rollback.clicked.connect(self._on_rollback_clicked)  # type: ignore
         self.btn_selector_picker.clicked.connect(self._on_selector_picker_clicked)  # type: ignore
-    self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
+        self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore

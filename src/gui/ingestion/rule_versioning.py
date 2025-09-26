@@ -90,7 +90,10 @@ class RuleSetVersionStore:
         if not row:
             return None
         return RuleVersionEntry(
-            version_num=int(row[0]), rules_hash=str(row[1]), rules_json=str(row[2]), created_at=str(row[3])
+            version_num=int(row[0]),
+            rules_hash=str(row[1]),
+            rules_json=str(row[2]),
+            created_at=str(row[3]),
         )
 
     # ------------------------------------------------------------------
@@ -118,7 +121,10 @@ class RuleSetVersionStore:
         )
         return [
             RuleVersionEntry(
-                version_num=int(r[0]), rules_hash=str(r[1]), rules_json=str(r[2]), created_at=str(r[3])
+                version_num=int(r[0]),
+                rules_hash=str(r[1]),
+                rules_json=str(r[2]),
+                created_at=str(r[3]),
             )
             for r in cur.fetchall()
         ]
@@ -133,7 +139,10 @@ class RuleSetVersionStore:
         if not row:
             return None
         return RuleVersionEntry(
-            version_num=int(row[0]), rules_hash=str(row[1]), rules_json=str(row[2]), created_at=str(row[3])
+            version_num=int(row[0]),
+            rules_hash=str(row[1]),
+            rules_json=str(row[2]),
+            created_at=str(row[3]),
         )
 
     # ------------------------------------------------------------------

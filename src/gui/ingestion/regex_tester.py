@@ -51,7 +51,12 @@ class RegexMatch:
     groups: List[str]
 
     def to_mapping(self) -> Dict[str, Any]:  # pragma: no cover - trivial
-        return {"start": self.start, "end": self.end, "text": self.text, "groups": list(self.groups)}
+        return {
+            "start": self.start,
+            "end": self.end,
+            "text": self.text,
+            "groups": list(self.groups),
+        }
 
 
 def _compile(pattern: str, flags: int):
