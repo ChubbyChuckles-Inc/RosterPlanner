@@ -8,6 +8,7 @@ os.environ["RP_ING_PREVIEW_PERF_THRESHOLD_MS"] = "5"
 
 app = QApplication.instance() or QApplication([])
 
+
 def test_preview_perf_badge_triggers(tmp_path, qtbot):
     from gui.views.ingestion_lab_panel import IngestionLabPanel
 
@@ -32,7 +33,11 @@ def test_preview_perf_badge_triggers(tmp_path, qtbot):
 
     # Directly exercise badge logic for deterministic timing independent of perf_counter
     panel._update_performance_badge(200.0)  # slow (> default 120ms threshold)
-    assert getattr(panel, "_perf_badge_active", False) is True, "Performance badge state flag should be active for slow preview"
+    assert (
+        getattr(panel, "_perf_badge_active", False) is True
+    ), "Performance badge state flag should be active for slow preview"
     assert "Preview" in panel._perf_badge.text()
     panel._update_performance_badge(1.0)  # fast
-    assert getattr(panel, "_perf_badge_active", True) is False, "Performance badge state flag should be inactive for fast preview"
+    assert (
+        getattr(panel, "_perf_badge_active", True) is False
+    ), "Performance badge state flag should be inactive for fast preview"

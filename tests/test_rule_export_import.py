@@ -39,6 +39,7 @@ def test_export_import_roundtrip(tmp_path):
 def test_export_rejects_invalid(tmp_path):
     bad = {"resources": {"x": {"kind": "table", "selector": "", "columns": []}}}
     import json as _j
+
     try:
         export_rules(_j.dumps(bad), str(tmp_path / "bad.json"))
     except ValueError as e:

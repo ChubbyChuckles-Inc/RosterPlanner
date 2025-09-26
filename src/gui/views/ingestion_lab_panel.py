@@ -1423,9 +1423,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         thresh = self.preview_perf_threshold_ms
         # Guard: elapsed_ms may be tiny in fast CI; rely on env override in tests
         if elapsed_ms > thresh:
-            self._perf_badge.setText(
-                f"Preview {elapsed_ms:.1f}ms (> {thresh:.0f}ms threshold)"
-            )
+            self._perf_badge.setText(f"Preview {elapsed_ms:.1f}ms (> {thresh:.0f}ms threshold)")
             self._perf_badge.setVisible(True)
             self._perf_badge_active = True
         else:

@@ -8,6 +8,7 @@ os.environ.setdefault("RP_TEST_MODE", "1")
 
 app = QApplication.instance() or QApplication([])
 
+
 def _build_min_rules():
     return {
         "version": 1,
@@ -16,11 +17,9 @@ def _build_min_rules():
                 "kind": "list",
                 "selector": "body",
                 "item_selector": "div",
-                "fields": {
-                    "text": {"selector": "div"}
-                },
+                "fields": {"text": {"selector": "div"}},
             }
-        }
+        },
     }
 
 
@@ -50,8 +49,20 @@ def test_keyboard_shortcuts_registration_and_preview(tmp_path, qtbot):
     panel.file_tree.setCurrentItem(first_child)
 
     # Validate shortcuts registered in registry (logical ids)
-    expected_ids = {"ing.refresh", "ing.preview", "ing.search", "ing.simulate", "ing.apply", "ing.security", "ing.export", "ing.import", "ing.hash_impact"}
-    registered_ids = {e.shortcut_id for e in global_shortcut_registry.list() if e.category == "Ingestion Lab"}
+    expected_ids = {
+        "ing.refresh",
+        "ing.preview",
+        "ing.search",
+        "ing.simulate",
+        "ing.apply",
+        "ing.security",
+        "ing.export",
+        "ing.import",
+        "ing.hash_impact",
+    }
+    registered_ids = {
+        e.shortcut_id for e in global_shortcut_registry.list() if e.category == "Ingestion Lab"
+    }
     # Subset check: some ids from other tests may already exist; ensure ours are present
     missing = expected_ids - registered_ids
     assert not missing, f"Missing expected shortcut registrations: {missing}"
@@ -74,7 +85,9 @@ def test_keyboard_shortcuts_registration_and_preview(tmp_path, qtbot):
 def test_enter_key_triggers_preview(tmp_path, qtbot):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "ranking_table_test.html").write_text("<html><body>RT</body></html>", encoding="utf-8")
+    (data_dir / "ranking_table_test.html").write_text(
+        "<html><body>RT</body></html>", encoding="utf-8"
+    )
 
     from gui.views.ingestion_lab_panel import IngestionLabPanel
     from PyQt6.QtCore import Qt
