@@ -156,60 +156,80 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         # Top action bar
         actions = QHBoxLayout()
         self.btn_refresh = QPushButton("Refresh")
+        self.btn_refresh.setObjectName("ingLabBtnRefresh")
         self.btn_preview = QPushButton("Preview")
+        self.btn_preview.setObjectName("ingLabBtnPreview")
         self.btn_preview.setEnabled(False)
         self.btn_hash_impact = QPushButton("Hash Impact")
+        self.btn_hash_impact.setObjectName("ingLabBtnHashImpact")
         self.btn_hash_impact.setToolTip("Compute which files would trigger ingest (hash changes)")
         self.btn_field_coverage = QPushButton("Field Coverage")
+        self.btn_field_coverage.setObjectName("ingLabBtnFieldCoverage")
         self.btn_field_coverage.setToolTip(
             "Compute per-field non-empty ratios across all visible files using current rules"
         )
         self.btn_orphan_fields = QPushButton("Orphan Fields")
+        self.btn_orphan_fields.setObjectName("ingLabBtnOrphanFields")
         self.btn_orphan_fields.setToolTip("List extracted fields lacking mapping entries")
         self.btn_quality_gates = QPushButton("Quality Gates")
+        self.btn_quality_gates.setObjectName("ingLabBtnQualityGates")
         self.btn_quality_gates.setToolTip(
             "Evaluate minimum non-null ratios (quality gate config under 'quality_gates' in rules JSON)"
         )
         self.btn_simulate = QPushButton("Simulate")
+        self.btn_simulate.setObjectName("ingLabBtnSimulate")
         self.btn_simulate.setToolTip(
             "Run safe simulation (adapter + coverage + gates) — no DB writes"
         )
         self.btn_apply = QPushButton("Apply")
+        self.btn_apply.setObjectName("ingLabBtnApply")
         self.btn_apply.setToolTip("Apply last successful simulation (audit only in this milestone)")
         self.btn_versions = QPushButton("Versions")
+        self.btn_versions.setObjectName("ingLabBtnVersions")
         self.btn_versions.setToolTip("List stored rule set versions in log")
         self.btn_rollback = QPushButton("Rollback")
+        self.btn_rollback.setObjectName("ingLabBtnRollback")
         self.btn_rollback.setToolTip("Load previous rule version into editor (not yet applied)")
         self.btn_export = QPushButton("Export")
+        self.btn_export.setObjectName("ingLabBtnExport")
         self.btn_export.setToolTip("Export current rules to a JSON file")
         self.btn_import = QPushButton("Import")
+        self.btn_import.setObjectName("ingLabBtnImport")
         self.btn_import.setToolTip("Import rules from a JSON file (replaces editor contents)")
         self.btn_selector_picker = QPushButton("Pick Selector")
+        self.btn_selector_picker.setObjectName("ingLabBtnSelectorPicker")
         self.btn_selector_picker.setToolTip(
             "Open visual picker to build CSS selector from sample HTML"
         )
         self.btn_regex_tester = QPushButton("Regex Tester")
+        self.btn_regex_tester.setObjectName("ingLabBtnRegexTester")
         self.btn_regex_tester.setToolTip("Open regex tester dialog for pattern experimentation")
         self.btn_derived = QPushButton("Derived Fields")
+        self.btn_derived.setObjectName("ingLabBtnDerived")
         self.btn_derived.setToolTip(
             "Compose derived fields (expressions referencing existing extracted fields)"
         )
         self.btn_dep_graph = QPushButton("Dep Graph")
+        self.btn_dep_graph.setObjectName("ingLabBtnDepGraph")
         self.btn_dep_graph.setToolTip("Show dependency graph (base + derived field relationships)")
         self.btn_benchmark = QPushButton("Benchmark")
+        self.btn_benchmark.setObjectName("ingLabBtnBenchmark")
         self.btn_benchmark.setToolTip(
             "Run A/B parse benchmark comparing two rule variants over a sample of visible files"
         )
         self.btn_cache = QPushButton("Cache Inspect")
+        self.btn_cache.setObjectName("ingLabBtnCache")
         self.btn_cache.setToolTip(
             "Show which files are unchanged (cache hit) vs updated/new/missing based on provenance"
         )
         self.btn_security = QPushButton("Security Scan")
+        self.btn_security.setObjectName("ingLabBtnSecurity")
         self.btn_security.setToolTip(
             "Run static security sandbox scan over expression & derived transforms"
         )
         # Draft / publish (7.10.49)
         self.btn_publish = QPushButton("Publish")
+        self.btn_publish.setObjectName("ingLabBtnPublish")
         self.btn_publish.setToolTip(
             "Persist current draft rule set as the active published version (creates new version entry if changed)."
         )
@@ -480,6 +500,22 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         self.batch_preview_artificial_delay_ms = int(os.environ.get("RP_ING_BATCH_DELAY_MS", "0"))
         self._batch_skeleton_last_shown = False  # test visibility flag
+    
+    # ------------------------------------------------------------------
+    # Accessibility (7.10.68) helper for tests
+    def run_accessibility_audit(self):  # pragma: no cover - thin wrapper, exercised in tests
+        """Run an accessibility audit over this panel's widget tree.
+
+        Returns
+        -------
+        AccessibilityReport
+            The aggregated report instance.
+        """
+        try:
+            from gui.services.accessibility_audit import audit_widget_tree  # type: ignore
+        except Exception:
+            return None  # type: ignore
+        return audit_widget_tree(self)
 
     # ------------------------------------------------------------------
     # File Discovery

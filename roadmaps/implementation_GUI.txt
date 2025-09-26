@@ -387,7 +387,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.65 Enhance Logs Dock to filter on ingestion rule events (INGEST_RULES_APPLIED, RULE_VALIDATION_FAILED)
  [x] 7.10.66 Add Command Palette actions: Open Ingestion Lab, Apply Current Rule Set, Revert to Previous Rule Version
  [x] 7.10.67 Update theme tokens / QSS if new panel introduces novel component patterns (diff grid, selector picker) -- added ingestion lab + selector picker QSS selectors & test
- [ ] 7.10.68 Accessibility audit for new panel interactive complexity
+ [x] 7.10.68 Accessibility audit for new panel interactive complexity -- added audit utility + tests (Ingestion Lab & Selector Picker)
 
  Exit Criteria: User can open Ingestion Lab, craft or modify rules, preview multi-file extraction, inspect diffs, validate & apply changes updating DB + provenance, rollback if needed, and observe ETA/stats unaffected elsewhere.
 
