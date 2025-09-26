@@ -399,11 +399,6 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         palette_layout = QVBoxLayout(self._palette_container)
         palette_layout.setContentsMargins(0, 4, 0, 4)
         palette_layout.setSpacing(4)
-        try:
-            from PyQt6.QtWidgets import QPushButton  # local import for clarity
-        except Exception:  # pragma: no cover
-            QPushButton = object  # type: ignore
-
         self._palette_buttons: Dict[str, List[Any]] = {}
         for category, items in TRANSFORM_PALETTE.items():
             cat_btn = QPushButton(f"{category}")  # collapsible toggle soon
