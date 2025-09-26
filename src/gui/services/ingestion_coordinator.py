@@ -51,6 +51,9 @@ class IngestionCoordinator:
         self.base_dir = Path(base_dir)
         self.conn = conn
         self.event_bus = event_bus
+        # Active ingestion rule set version (populated when Ingestion Lab publishes a new version).
+        # If None, provenance entries will keep rule_version NULL to preserve legacy semantics.
+        self.active_rule_version: int | None = None
         self._singular_mode = True
         self._table_division = "division"
         self._table_team = "team"
@@ -63,6 +66,16 @@ class IngestionCoordinator:
         start_ts = time.time()
         self._ensure_provenance_table()
         self._ensure_normalized_provenance_view()
+        # Attempt to discover active rule version from a shared service if not explicitly set.
+        if self.active_rule_version is None:
+            try:
+                from .service_locator import services as _services  # lazy
+
+                rv = _services.try_get("active_rule_version")
+                if isinstance(rv, int):  # pragma: no branch
+                    self.active_rule_version = rv
+            except Exception:  # pragma: no cover - best effort
+                pass
         if self._singular_mode:
             self._ensure_id_map_table()
             self._ensure_ranking_table()
@@ -1084,12 +1097,19 @@ class IngestionCoordinator:
         return bool(row and row[0] == sha1)
 
     def _record_provenance(self, path: str, sha1: str):
-        # For legacy ingestion path (Coordinator) we do not have rule_version context yet; keep NULL
-        self.conn.execute(
-            "INSERT INTO provenance(path, sha1, last_ingested_at) VALUES(?,?,CURRENT_TIMESTAMP) "
-            "ON CONFLICT(path) DO UPDATE SET sha1=excluded.sha1, last_ingested_at=CURRENT_TIMESTAMP",
-            (path, sha1),
-        )
+        # Record provenance including active rule version if available.
+        if self.active_rule_version is not None:
+            self.conn.execute(
+                "INSERT INTO provenance(path, sha1, last_ingested_at, rule_version) VALUES(?,?,CURRENT_TIMESTAMP, ?) "
+                "ON CONFLICT(path) DO UPDATE SET sha1=excluded.sha1, last_ingested_at=CURRENT_TIMESTAMP, rule_version=excluded.rule_version",
+                (path, sha1, self.active_rule_version),
+            )
+        else:
+            self.conn.execute(
+                "INSERT INTO provenance(path, sha1, last_ingested_at) VALUES(?,?,CURRENT_TIMESTAMP) "
+                "ON CONFLICT(path) DO UPDATE SET sha1=excluded.sha1, last_ingested_at=CURRENT_TIMESTAMP",
+                (path, sha1),
+            )
 
     def _post_ingest_name_dedup(self):
         """Collapse duplicated combined names and upgrade dash-separated pairs to pipe format.

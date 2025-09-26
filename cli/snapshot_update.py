@@ -23,6 +23,7 @@ Future enhancements (documented for roadmap linkage):
 - Add --fail-on-diff to compare in-memory generation with existing file.
 - Add hashing summary for quick diff inspection in PRs.
 """
+
 from __future__ import annotations
 
 import argparse, json, glob, sys
@@ -50,11 +51,19 @@ def _collect_html(paths: list[str]) -> Dict[str, str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="snapshot-update", description="Generate/update extraction snapshots")
+    p = argparse.ArgumentParser(
+        prog="snapshot-update", description="Generate/update extraction snapshots"
+    )
     p.add_argument("--rules", required=True, help="Path to rule set JSON file")
     p.add_argument("--name", required=True, help="Snapshot logical name (file stem)")
-    p.add_argument("--input", nargs="*", help="HTML file paths or glob patterns (default: data/*.html)")
-    p.add_argument("--allow-expr", action="store_true", help="Enable expression transforms when ruleset requires it")
+    p.add_argument(
+        "--input", nargs="*", help="HTML file paths or glob patterns (default: data/*.html)"
+    )
+    p.add_argument(
+        "--allow-expr",
+        action="store_true",
+        help="Enable expression transforms when ruleset requires it",
+    )
     p.add_argument("--dry-run", action="store_true", help="Do not write file; print summary only")
     return p
 

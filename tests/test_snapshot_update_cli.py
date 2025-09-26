@@ -5,6 +5,7 @@ Covers:
 - Dry run mode not writing file.
 - Error on missing inputs.
 """
+
 from __future__ import annotations
 
 import json, os, sys, types
@@ -45,7 +46,9 @@ def sample_html_files(tmp_path: Path) -> list[Path]:
     return files
 
 
-def test_snapshot_update_happy_path(monkeypatch, tmp_path: Path, temp_rules_file: Path, sample_html_files):
+def test_snapshot_update_happy_path(
+    monkeypatch, tmp_path: Path, temp_rules_file: Path, sample_html_files
+):
     snap_dir = Path("tests/_extraction_snapshots")
     if snap_dir.exists():
         for f in snap_dir.glob("*.json"):
@@ -86,6 +89,13 @@ def test_snapshot_update_dry_run(tmp_path: Path, temp_rules_file: Path, sample_h
 
 def test_snapshot_update_errors_on_no_inputs(tmp_path: Path, temp_rules_file: Path):
     # Provide a pattern that matches nothing to force error; we intercept SystemExit from argparse
-    argv = ["--rules", str(temp_rules_file), "--name", "empty_case", "--input", "not_found_dir/*.html"]
+    argv = [
+        "--rules",
+        str(temp_rules_file),
+        "--name",
+        "empty_case",
+        "--input",
+        "not_found_dir/*.html",
+    ]
     with pytest.raises(SystemExit):
         su.main(argv)

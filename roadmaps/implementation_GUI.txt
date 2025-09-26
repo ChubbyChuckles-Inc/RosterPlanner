@@ -379,7 +379,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.59 Snapshot regression test generator CLI command (update stored expected extractions) [T]
 
  Migration / Adjustment of Existing Features
- [ ] 7.10.60 Update IngestionCoordinator to load active rule set version & attach provenance rule version id
+ [x] 7.10.60 Update IngestionCoordinator to load active rule set version & attach provenance rule version id
  [ ] 7.10.61 Extend ScrapeRunner post-scrape hook to optionally auto-open Ingestion Lab if new HTML detected but no rules exist
  [ ] 7.10.62 Adjust repository caching (RosterCacheService) to invalidate on rule set version change
  [ ] 7.10.63 Update DataFreshnessService to include rule version in freshness summary
