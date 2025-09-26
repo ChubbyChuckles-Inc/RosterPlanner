@@ -375,11 +375,14 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             for spec in items:
                 b = QPushButton(spec["label"])  # type: ignore[arg-type]
                 b.setObjectName(f"transformChip_{spec['kind']}")
+
                 # Bind spec copy to closure
                 def _make_handler(s: Dict[str, Any]):  # noqa: WPS430 - closure factory
                     def _handler():  # pragma: no cover - UI pathway
                         self._apply_transform_chip(s)
+
                     return _handler
+
                 b.clicked.connect(_make_handler(spec))  # type: ignore
                 row.addWidget(b)
                 btn_refs.append(b)
@@ -396,7 +399,11 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_add_chain.clicked.connect(self._on_add_chain)  # type: ignore
         self.btn_compile.clicked.connect(self._on_compile_clicked)  # type: ignore
         self.chk_live.stateChanged.connect(self._on_live_preview_toggled)  # type: ignore
-    self.list_widget.currentRowChanged.connect(self._on_selection_changed)  # type: ignore
+        # Selection change hookup (inside build_ui to avoid NameError at class creation)
+        try:  # pragma: no cover - safety
+            self.list_widget.currentRowChanged.connect(self._on_selection_changed)  # type: ignore
+        except Exception:
+            pass
 
     # Actions -------------------------------------------------------------
     def _on_add_selector(self) -> None:
