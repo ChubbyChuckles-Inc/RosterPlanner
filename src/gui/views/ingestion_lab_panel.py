@@ -297,19 +297,35 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.rule_editor.setPlaceholderText(
             "# Define extraction rules here (YAML or JSON)\n# e.g.\n# ranking_table:\n#   selector: 'table.ranking'\n#   columns: [team, points, diff]\n"
         )
-        # Provide immediate legible styling (pre-theme) to avoid white text on white bg flashes
-        self.rule_editor.setStyleSheet(
-            "QPlainTextEdit#ingestionLabRuleEditor { background:#1b1b1b; color:#f0f0f0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
-        )
+        # Fallback styling (will be overridden by _apply_density_and_theme if theme service present)
+        try:  # pragma: no cover - guarded import
+            from gui.services.service_locator import services as _svc
+
+            if not _svc.try_get("theme_service"):
+                self.rule_editor.setStyleSheet(
+                    "QPlainTextEdit#ingestionLabRuleEditor { background:#1b1b1b; color:#f0f0f0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+                )
+        except Exception:
+            self.rule_editor.setStyleSheet(
+                "QPlainTextEdit#ingestionLabRuleEditor { background:#1b1b1b; color:#f0f0f0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+            )
         mid_split.addWidget(self.rule_editor)
 
         self.preview_area = QTextEdit()
         self.preview_area.setObjectName("ingestionLabPreview")
         self.preview_area.setReadOnly(True)
         self.preview_area.setPlaceholderText("Select a file then click Preview to see metadata.")
-        self.preview_area.setStyleSheet(
-            "QTextEdit#ingestionLabPreview { background:#111111; color:#e0e0e0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
-        )
+        try:  # pragma: no cover
+            from gui.services.service_locator import services as _svc
+
+            if not _svc.try_get("theme_service"):
+                self.preview_area.setStyleSheet(
+                    "QTextEdit#ingestionLabPreview { background:#111111; color:#e0e0e0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+                )
+        except Exception:
+            self.preview_area.setStyleSheet(
+                "QTextEdit#ingestionLabPreview { background:#111111; color:#e0e0e0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+            )
         mid_split.addWidget(self.preview_area)
 
         # Right: Execution Log
@@ -319,9 +335,17 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.log_area.setPlaceholderText(
             "Execution log will appear here (rule validation, parse results)."
         )
-        self.log_area.setStyleSheet(
-            "QPlainTextEdit#ingestionLabLog { background:#141414; color:#d0d0d0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
-        )
+        try:  # pragma: no cover
+            from gui.services.service_locator import services as _svc
+
+            if not _svc.try_get("theme_service"):
+                self.log_area.setStyleSheet(
+                    "QPlainTextEdit#ingestionLabLog { background:#141414; color:#d0d0d0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+                )
+        except Exception:
+            self.log_area.setStyleSheet(
+                "QPlainTextEdit#ingestionLabLog { background:#141414; color:#d0d0d0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+            )
         splitter.addWidget(self.log_area)
 
         splitter.setStretchFactor(0, 25)
