@@ -13,6 +13,12 @@ Future Enhancements (2.4.x roadmap):
 
 from __future__ import annotations
 from typing import List, Tuple
+import re
+
+try:  # Qt screen utilities (optional in headless tests)
+    from PyQt6.QtGui import QGuiApplication
+except Exception:  # pragma: no cover
+    QGuiApplication = None  # type: ignore
 
 try:  # Optional PyQt6 (tests may skip if not installed)
     from PyQt6.QtWidgets import (
@@ -44,6 +50,10 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         self.setObjectName("CommandPaletteDialog")
         self.setModal(True)
         layout = self.content_layout()
+        # Track whether initial centering has occurred (avoid re-centering after user drags)
+        self._centered_once = False
+        # Cache widest command text width observed (prevents jittery shrink while filtering)
+        self._max_command_px = 0
         self.search_edit = QLineEdit(self)
         self.search_edit.setObjectName("commandPaletteSearch")
         self.search_edit.setPlaceholderText("Type a command…")
@@ -58,6 +68,17 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
 
         self._refresh_list("")
         self.search_edit.setFocus()
+
+    # Qt lifecycle -------------------------------------------------
+    def showEvent(self, e):  # type: ignore[override]
+        # Perform initial auto-sizing & centering exactly once on first show
+        try:
+            if not self._centered_once:
+                self._auto_size(center=True)
+                self._centered_once = True
+        except Exception:
+            pass
+        return super().showEvent(e)
 
     # ------------------------------------------------------------------
     def _on_text_changed(self, text: str):  # pragma: no cover - simple delegate
@@ -137,6 +158,11 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
                 self.list_widget.addItem(item)
         if self.list_widget.count():
             self.list_widget.setCurrentRow(0)
+        # Adjust size after each refresh (width grows to accommodate widest ever; height targets 10 commands)
+        try:
+            self._auto_size(center=False)
+        except Exception:
+            pass
 
     def _format_entry_text(self, entry: CommandEntry, query: str) -> str:
         title = entry.title
@@ -161,3 +187,74 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         command_id = item.data(Qt.ItemDataRole.UserRole)  # type: ignore[attr-defined]
         global_command_registry.execute(command_id)
         self.accept()
+
+    # Auto-sizing --------------------------------------------------
+    def _auto_size(self, center: bool):  # pragma: no cover - UI sizing logic
+        """Resize dialog to fit content: widest command & 10 command rows.
+
+        Width: Longest command text measured (cached so width never shrinks while open)
+               + padding + scrollbar (if needed).
+        Height: Title bar + search field + 10 list rows (or fewer if <10 commands) + margins.
+        If center=True, dialog is moved to the middle of the active screen.
+        """
+        lw = self.list_widget
+        if lw is None:
+            return
+        fm = lw.fontMetrics()
+        widest = self._max_command_px
+        command_rows = 0
+        for i in range(lw.count()):
+            item = lw.item(i)
+            # Only measure selectable command entries (skip headers lacking user role data)
+            if item.data(Qt.ItemDataRole.UserRole):  # type: ignore[attr-defined]
+                # Strip simple HTML tags used for highlight
+                raw = re.sub(r"<[^>]+>", "", item.text())
+                w = fm.horizontalAdvance(raw)
+                if w > widest:
+                    widest = w
+                command_rows += 1
+        self._max_command_px = widest
+        # Base width accounts for: id suffix text (~ 140px typical), interior margins, scrollbar if needed
+        padding_extra = 160  # heuristic for command id + icon spacing + left/right content margins
+        # Estimate vertical scrollbar presence if more than 10 commands
+        need_scroll = command_rows > 10
+        scrollbar_w = 0
+        try:
+            if need_scroll:
+                from PyQt6.QtWidgets import QApplication
+                scrollbar_w = QApplication.style().pixelMetric(  # type: ignore[attr-defined]
+                    getattr(QApplication, "PM_ScrollBarExtent", 7)  # fallback
+                )
+        except Exception:
+            pass
+        target_width = max(480, widest + padding_extra + scrollbar_w)
+        # Height: compute row height sample
+        row_h = lw.sizeHintForRow(0) if lw.count() else fm.height() + 6
+        visible_rows = min(10, max(1, command_rows))
+        list_height = row_h * visible_rows
+        # Include search edit & spacing/margins/title bar
+        search_h = self.search_edit.sizeHint().height()
+        # Content layout margins
+        m_left, m_top, m_right, m_bottom = self.content_layout().contentsMargins().getCoords()
+        content_vertical_margins = m_top + m_bottom
+        spacing = self.content_layout().spacing() * 2  # search->list + maybe extra buffer
+        title_h = self._title_bar.height() if hasattr(self, "_title_bar") else 28
+        target_height = title_h + search_h + list_height + content_vertical_margins + spacing
+        # Apply size (respect current position; avoid shrinking width below current to prevent jitter during rapid filter changes)
+        cur_w = self.width()
+        if target_width < cur_w:
+            target_width = cur_w  # never shrink horizontally during session
+        self.resize(int(target_width), int(target_height))
+        if center:
+            try:
+                # Determine active screen geometry
+                screen = self.screen()
+                if screen is None and QGuiApplication is not None:  # pragma: no cover
+                    screen = QGuiApplication.primaryScreen()
+                if screen is not None:
+                    geo = screen.availableGeometry()
+                    cx = geo.center().x() - self.width() // 2
+                    cy = geo.center().y() - self.height() // 2
+                    self.move(cx, cy)
+            except Exception:
+                pass
