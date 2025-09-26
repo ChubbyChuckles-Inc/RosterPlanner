@@ -46,6 +46,10 @@ class RosterCacheService:
     """
 
     capacity: int = 32
+    # Tracks the rule set version whose results currently populate the cache.
+    # When a differing rule version is observed, the cache is cleared to avoid
+    # serving stale roster bundles derived from older transformation rules.
+    last_rule_version: int | None = None
 
     def __post_init__(self) -> None:  # pragma: no cover - trivial
         if self.capacity <= 0:
@@ -82,6 +86,25 @@ class RosterCacheService:
     def clear(self) -> None:
         """Clear all cached entries."""
         self._store.clear()
+
+    # Rule version awareness -----------------------------------------------
+    def ensure_rule_version(self, current: int | None) -> None:
+        """Ensure the cache is aligned with the provided rule version.
+
+        Behavior:
+        - If current is None: no action (legacy / unknown rule context).
+        - If last_rule_version is None and current provided: set it (first observation).
+        - If last_rule_version differs from current: clear cache and update.
+        """
+        if current is None:
+            return
+        if self.last_rule_version is None:
+            self.last_rule_version = current
+            return
+        if self.last_rule_version != current:
+            # Invalidate all cached bundles produced under prior rule set.
+            self.clear()
+            self.last_rule_version = current
 
     def __len__(self) -> int:  # pragma: no cover - simple passthrough
         return len(self._store)

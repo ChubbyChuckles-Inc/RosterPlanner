@@ -66,6 +66,17 @@ class TeamDataService:
             except Exception:
                 cache = None
         if cache:
+            # Align cache with current rule version (if any). A differing rule
+            # version triggers a full clear inside ensure_rule_version.
+            try:
+                current_rule_version = services.try_get("active_rule_version")
+            except Exception:  # pragma: no cover - defensive
+                current_rule_version = None
+            try:
+                cache.ensure_rule_version(current_rule_version)  # type: ignore[attr-defined]
+            except AttributeError:
+                # Older cache instance without method (forward compatibility): ignore.
+                pass
             cached = cache.get(team.team_id)
             if cached is not None:
                 return cached
@@ -85,7 +96,10 @@ class TeamDataService:
         seen = set()
         match_dates: list[MatchDate] = []
         for m in repos.matches.list_matches_for_team(team.team_id):
-            iso = m.iso_date
+            # Repository exposes match_date as iso_date internally; support both attr names.
+            iso = getattr(m, "iso_date", None) or getattr(m, "match_date", None)
+            if iso is None:  # pragma: no cover - unexpected schema
+                continue
             if iso in seen:
                 continue
             seen.add(iso)
@@ -118,10 +132,17 @@ class TeamDataService:
             match_dates.append(MatchDate(iso_date=iso, display=display, time=None))
         bundle = TeamRosterBundle(team=team, players=players, match_dates=match_dates)
         if cache is None:
-            # Re-attempt lookup (service may have been registered after initial check in some test setups)
             cache = services.try_get("roster_cache")
         if cache:
-            cache.put(team.team_id, bundle)
+            try:
+                current_rule_version = services.try_get("active_rule_version")
+                cache.ensure_rule_version(current_rule_version)  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            try:
+                cache.put(team.team_id, bundle)
+            except Exception:  # pragma: no cover
+                pass
         return bundle
 
     # Invalidation helpers --------------------------------------

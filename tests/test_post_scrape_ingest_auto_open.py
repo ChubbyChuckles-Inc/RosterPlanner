@@ -1,4 +1,5 @@
 """Test auto-open Ingestion Lab trigger when new HTML ingested and no rules exist (Milestone 7.10.61)."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -12,11 +13,14 @@ from gui.services.post_scrape_ingest import PostScrapeIngestionHook
 class _FakeSignal:
     def __init__(self):
         self._handlers = []
+
     def connect(self, fn):
         self._handlers.append(fn)
+
     def emit(self, payload):
         for h in list(self._handlers):
             h(payload)
+
 
 class _FakeRunner:
     def __init__(self):
@@ -40,8 +44,12 @@ def test_auto_open_ingestion_lab_event_emitted(tmp_path: Path):
     # Prepare HTML assets (division prefix naming)
     data_dir = tmp_path / "1_SampleDiv"
     data_dir.mkdir()
-    (data_dir / "ranking_table_1_SampleDiv.html").write_text("<html><table></table></html>", encoding="utf-8")
-    (data_dir / "team_roster_1_SampleDiv_Team_A_001.html").write_text("<html>RosterA</html>", encoding="utf-8")
+    (data_dir / "ranking_table_1_SampleDiv.html").write_text(
+        "<html><table></table></html>", encoding="utf-8"
+    )
+    (data_dir / "team_roster_1_SampleDiv_Team_A_001.html").write_text(
+        "<html>RosterA</html>", encoding="utf-8"
+    )
 
     bus = EventBus()
     services.register("event_bus", bus, allow_override=True)
@@ -57,7 +65,9 @@ def test_auto_open_ingestion_lab_event_emitted(tmp_path: Path):
     PostScrapeIngestionHook(runner, lambda: str(data_dir))
     runner.scrape_finished.emit({"ok": True})
 
-    assert received_auto, "Expected OPEN_INGESTION_LAB event when no rules exist and new HTML ingested"
+    assert (
+        received_auto
+    ), "Expected OPEN_INGESTION_LAB event when no rules exist and new HTML ingested"
     assert received_auto[0]["reason"] == "auto_open_first_html"
 
 
@@ -75,6 +85,7 @@ def test_no_auto_open_when_rules_exist(tmp_path: Path):
     # Simulated rule store with latest_version attribute
     class _RuleStore:
         latest_version = 3
+
     services.register("rule_version_store", _RuleStore(), allow_override=True)
 
     received_auto = []
