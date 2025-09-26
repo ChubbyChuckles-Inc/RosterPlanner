@@ -41,8 +41,11 @@ from PyQt6.QtGui import QTextCharFormat, QColor
 try:  # pragma: no cover - optional mixin import
     from gui.components.theme_aware import ThemeAwareMixin
 except Exception:  # pragma: no cover
+
     class ThemeAwareMixin:  # type: ignore
         pass
+
+
 from PyQt6.QtCore import Qt
 
 __all__ = ["RegexTesterDialog", "find_regex_matches"]
