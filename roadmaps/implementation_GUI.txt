@@ -374,8 +374,8 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.54 Unit tests: rule validation, transform chaining, mapping diff generation [T]
  [x] 7.10.55 Integration tests: sandbox apply vs real apply produce consistent DB deltas [T]
  [x] 7.10.56 Performance test: batch preview (N=50 division roster files) < target ms baseline [T]
- [ ] 7.10.57 Visual regression snapshots for diff view & mapping grid [T]
- [ ] 7.10.58 Security tests: ensure disallowed python expressions blocked [T]
+ [x] 7.10.57 Visual regression snapshots for diff view & mapping grid [T]
+ [x] 7.10.58 Security tests: ensure disallowed python expressions blocked [T]
  [ ] 7.10.59 Snapshot regression test generator CLI command (update stored expected extractions) [T]
 
  Migration / Adjustment of Existing Features

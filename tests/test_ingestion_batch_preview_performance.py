@@ -69,4 +69,6 @@ def test_batch_preview_performance():
     assert bundle.resources, "Expected at least one resource extracted"
     total_rows = sum(len(r.rows) for r in bundle.resources.values())
     assert total_rows >= 0  # allow zero if pages radically differ, but resource presence verified
-    assert elapsed < THRESHOLD_SECONDS, f"Batch preview took {elapsed:.3f}s (threshold {THRESHOLD_SECONDS}s)"
+    assert (
+        elapsed < THRESHOLD_SECONDS
+    ), f"Batch preview took {elapsed:.3f}s (threshold {THRESHOLD_SECONDS}s)"

@@ -110,14 +110,36 @@ class SafeApplyGuard:
         # Enforce safety flag (settings service) to optionally reject custom python transforms
         try:
             from gui.services.settings_service import SettingsService  # type: ignore
-
             if getattr(SettingsService.instance, "ingestion_disallow_custom_python", False):
-                # Very light heuristic: if raw payload contains key signaling custom python, block.
-                # Future: integrate deeper inspection of RuleSet once transform expressions added.
+                # Heuristic 1 (legacy): any top-level mapping containing a key with 'python'
                 for k, v in raw_rules_payload.items():  # type: ignore[assignment]
                     if isinstance(v, dict) and any("python" in str(x).lower() for x in v.keys()):
                         raise ValueError("custom python expressions disallowed by settings")
-        except Exception:
+
+                # Heuristic 2 (new): detect nested transform specs of kind == 'expr'.
+                # We traverse the raw payload rather than the parsed RuleSet to avoid
+                # any future normalisation hiding original intent.
+                def _contains_expr(obj: Any) -> bool:  # nested helper
+                    if isinstance(obj, Mapping):
+                        # typical transform spec: {kind: 'expr', code: '...'}
+                        if obj.get("kind") == "expr" and "code" in obj:
+                            return True
+                        for vv in obj.values():
+                            if _contains_expr(vv):
+                                return True
+                        return False
+                    if isinstance(obj, list):
+                        return any(_contains_expr(it) for it in obj)
+                    return False
+
+                if _contains_expr(raw_rules_payload):
+                    raise ValueError(
+                        "custom python expressions disallowed by settings (expr transform)"
+                    )
+        except ValueError:
+            # Propagate explicit security block errors
+            raise
+        except Exception:  # pragma: no cover - defensive import/attr errors only
             pass
 
         bundle = adapt_ruleset_over_files(rule_set, html_by_file)

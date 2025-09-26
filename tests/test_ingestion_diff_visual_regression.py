@@ -43,7 +43,11 @@ def test_ingestion_diff_mapping_structural_hash(qtbot):  # type: ignore
     rs = RuleSet.from_mapping(
         {
             "resources": {
-                "ranking": {"kind": "table", "selector": "table.rank", "columns": ["col_a", "col_b"]},
+                "ranking": {
+                    "kind": "table",
+                    "selector": "table.rank",
+                    "columns": ["col_a", "col_b"],
+                },
                 "players": {
                     "kind": "list",
                     "selector": "ul.players",
@@ -69,4 +73,6 @@ def test_ingestion_diff_mapping_structural_hash(qtbot):  # type: ignore
     h = _structural_hash(struct)
     # Pin expected hash for current structure; update intentionally if mapping/diff layout changes.
     expected = h  # first run pinning; replace with literal if needed for stricter regression
-    assert h == expected, f"Structural hash changed {h} != {expected}; review intentional UI changes"
+    assert (
+        h == expected
+    ), f"Structural hash changed {h} != {expected}; review intentional UI changes"
