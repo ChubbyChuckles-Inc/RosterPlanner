@@ -1491,20 +1491,33 @@ class MainWindow(QMainWindow):  # Dock-based
         """
         try:
             from gui.views.ingestion_lab_panel import IngestionLabPanel
-        except Exception:
+        except Exception as e:
             # Fallback simple placeholder if import fails (keeps dock creation resilient)
             box = QWidget()
             lay = QVBoxLayout(box)
-            lay.addWidget(QLabel("Ingestion Lab unavailable"))
+            msg = f"Ingestion Lab unavailable (import error): {e.__class__.__name__}: {e}"
+            lay.addWidget(QLabel(msg))
+            try:
+                # Log to status/log panel if available
+                if hasattr(self, "_log"):
+                    getattr(self, "_log").appendPlainText(msg)  # type: ignore
+            except Exception:
+                pass
             return box
         base_dir = getattr(self, "data_dir", ".")
         try:
             panel = IngestionLabPanel(base_dir=base_dir)
             return panel
-        except Exception:
+        except Exception as e:
             box = QWidget()
             lay = QVBoxLayout(box)
-            lay.addWidget(QLabel("Failed to initialize Ingestion Lab"))
+            msg = f"Failed to initialize Ingestion Lab: {e.__class__.__name__}: {e}"
+            lay.addWidget(QLabel(msg))
+            try:
+                if hasattr(self, "_log"):
+                    getattr(self, "_log").appendPlainText(msg)  # type: ignore
+            except Exception:
+                pass
             return box
 
     def _build_planner_dock(self) -> QWidget:
