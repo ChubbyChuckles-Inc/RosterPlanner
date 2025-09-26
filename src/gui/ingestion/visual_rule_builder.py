@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Mapping, TYPE_CHECKING
+import copy
 
 # ---------------------------------------------------------------------------
 # Model Layer
@@ -283,6 +284,38 @@ class CanvasModel:
             target.transforms.append(transform)
         return True
 
+    # Duplication --------------------------------------------------------
+    def duplicate_node(self, node_id: str) -> Optional[BuilderNode]:
+        """Duplicate a node, inserting the copy immediately after original.
+
+        Generates a unique id by appending/incrementing a numeric suffix.
+        For field nodes also adjusts field_name if collision would occur.
+        Returns the new node or None if not found.
+        """
+        idx = None
+        for i, n in enumerate(self.nodes):
+            if n.id == node_id:
+                idx = i
+                original = n
+                break
+        if idx is None:
+            return None
+        new_obj = copy.deepcopy(original)
+        base = original.id
+        suffix = 2
+        while any(n.id == f"{base}_{suffix}" for n in self.nodes):
+            suffix += 1
+        new_obj.id = f"{base}_{suffix}"  # type: ignore
+        if isinstance(new_obj, FieldMappingNode):  # adjust field_name to avoid collision
+            fname_base = new_obj.field_name or "field"
+            f_suffix = 2
+            existing_fields = {getattr(n, "field_name", None) for n in self.nodes if isinstance(n, FieldMappingNode)}
+            while f"{fname_base}_{f_suffix}" in existing_fields:
+                f_suffix += 1
+            new_obj.field_name = f"{fname_base}_{f_suffix}"  # type: ignore
+        self.nodes.insert(idx + 1, new_obj)
+        return new_obj
+
 
 # ---------------------------------------------------------------------------
 # Transform Palette (define BEFORE widget so _build_ui can reference it)
@@ -491,6 +524,29 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         splitter.addWidget(node_container)
         splitter.setStretchFactor(0, 1)
         layout.addWidget(splitter, 1)
+        # Field detail editor (appears only for Field nodes)
+        self._field_editor = _QW()
+        self._field_editor.setObjectName("visualRuleBuilderFieldEditor")
+        fe_layout = QHBoxLayout(self._field_editor)
+        fe_layout.setContentsMargins(0, 0, 0, 0)
+        fe_layout.setSpacing(4)
+        from PyQt6.QtWidgets import QFormLayout, QLineEdit
+        form = QFormLayout()
+        form.setContentsMargins(0, 0, 0, 0)
+        self.field_name_edit = QLineEdit()
+        self.field_name_edit.setPlaceholderText("field_name")
+        self.field_selector_edit = QLineEdit()
+        self.field_selector_edit.setPlaceholderText(".css-selector")
+        form.addRow("Name", self.field_name_edit)
+        form.addRow("Selector", self.field_selector_edit)
+        fe_layout.addLayout(form)
+        layout.addWidget(self._field_editor)
+        self._field_editor.hide()
+        try:  # connect change handlers
+            self.field_name_edit.editingFinished.connect(self._commit_field_name)  # type: ignore
+            self.field_selector_edit.editingFinished.connect(self._commit_field_selector)  # type: ignore
+        except Exception:  # pragma: no cover
+            pass
 
         # Connections
         self.btn_add_selector.clicked.connect(self._on_add_selector)  # type: ignore
@@ -504,6 +560,23 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         except Exception:
             pass
         self.btn_toggle_palette.toggled.connect(self._on_palette_toggled)  # type: ignore
+        # Node list context menu
+        self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.list_widget.customContextMenuRequested.connect(self._on_list_context_menu)  # type: ignore
+        # Drag reorder
+        from PyQt6.QtWidgets import QAbstractItemView
+        self.list_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        try:
+            self.list_widget.model().rowsMoved.connect(self._on_rows_moved)  # type: ignore
+        except Exception:
+            pass
+        # Shortcuts
+        from PyQt6.QtGui import QShortcut, QKeySequence
+        QShortcut(QKeySequence("Alt+S"), self, activated=self._on_add_selector)  # type: ignore
+        QShortcut(QKeySequence("Alt+F"), self, activated=self._on_add_field)  # type: ignore
+        QShortcut(QKeySequence("Alt+C"), self, activated=self._on_add_chain)  # type: ignore
+        # Load persisted palette state
+        self._restore_palette_state()
 
     # Actions -------------------------------------------------------------
     def _on_add_selector(self) -> None:
@@ -557,8 +630,20 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
     def _on_selection_changed(self, row: int) -> None:  # pragma: no cover
         self._selected_node_id = None
         if row < 0 or row >= len(self.model.nodes):
+            self._field_editor.hide()
             return
-        self._selected_node_id = self.model.nodes[row].id
+        node = self.model.nodes[row]
+        self._selected_node_id = node.id
+        if isinstance(node, FieldMappingNode):
+            self.field_name_edit.blockSignals(True)
+            self.field_selector_edit.blockSignals(True)
+            self.field_name_edit.setText(node.field_name)
+            self.field_selector_edit.setText(node.selector)
+            self.field_name_edit.blockSignals(False)
+            self.field_selector_edit.blockSignals(False)
+            self._field_editor.show()
+        else:
+            self._field_editor.hide()
 
     # Transform chip application -----------------------------------------
     def _apply_transform_chip(self, spec: Dict[str, Any]) -> None:  # pragma: no cover - thin UI
@@ -582,6 +667,94 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         else:
             self._palette_container.hide()
             self.btn_toggle_palette.setText("Transforms ▸")
+        self._persist_palette_state()
+
+    # Drag reorder -------------------------------------------------------
+    def _on_rows_moved(self, *_) -> None:  # pragma: no cover - UI event
+        # Rebuild model order from list items' stored ids
+        id_to_node = {n.id: n for n in self.model.nodes}
+        ids: List[str] = []
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            nid = item.data(Qt.ItemDataRole.UserRole)
+            if nid in id_to_node:
+                ids.append(nid)
+        self.model.nodes = [id_to_node[i] for i in ids if i in id_to_node]
+        self._maybe_emit_live()
+
+    # Context menu -------------------------------------------------------
+    def _on_list_context_menu(self, pos) -> None:  # pragma: no cover - GUI path
+        from PyQt6.QtWidgets import QMenu
+        global_pos = self.list_widget.mapToGlobal(pos)
+        menu = QMenu(self.list_widget)
+        act_dup = menu.addAction("Duplicate")
+        act_del = menu.addAction("Delete")
+        act = menu.exec(global_pos)
+        row = self.list_widget.currentRow()
+        if row < 0 or row >= len(self.model.nodes):
+            return
+        node = self.model.nodes[row]
+        if act == act_dup:
+            new_node = self.model.duplicate_node(node.id)
+            if new_node:
+                self.refresh()
+                self.status_label.setText(f"Duplicated {node.id} → {new_node.id}")
+                self._maybe_emit_live()
+        elif act == act_del:
+            self.model.remove_node(node.id)
+            self.refresh()
+            self.status_label.setText(f"Deleted {node.id}")
+            self._maybe_emit_live()
+
+    # Settings persistence -----------------------------------------------
+    def _settings(self):  # pragma: no cover - convenience
+        try:
+            from PyQt6.QtCore import QSettings
+            return QSettings()
+        except Exception:
+            return None
+
+    def _persist_palette_state(self) -> None:  # pragma: no cover - simple
+        s = self._settings()
+        if not s:
+            return
+        try:
+            s.setValue("visual_builder/palette_collapsed", not self.btn_toggle_palette.isChecked())
+        except Exception:
+            pass
+
+    def _restore_palette_state(self) -> None:  # pragma: no cover - simple
+        s = self._settings()
+        if not s:
+            return
+        try:
+            collapsed = s.value("visual_builder/palette_collapsed", False, type=bool)
+            if collapsed:
+                # Will trigger persistence again but harmless
+                self.btn_toggle_palette.setChecked(False)
+        except Exception:
+            pass
+
+    # Field editor change handlers --------------------------------------
+    def _commit_field_name(self):  # pragma: no cover - UI
+        if not getattr(self, "_selected_node_id", None):
+            return
+        node = next((n for n in self.model.nodes if n.id == self._selected_node_id), None)
+        if isinstance(node, FieldMappingNode):
+            node.field_name = self.field_name_edit.text().strip() or node.field_name
+            self.refresh()
+            self._maybe_emit_live()
+
+    def _commit_field_selector(self):  # pragma: no cover - UI
+        if not getattr(self, "_selected_node_id", None):
+            return
+        node = next((n for n in self.model.nodes if n.id == self._selected_node_id), None)
+        if isinstance(node, FieldMappingNode):
+            sel = self.field_selector_edit.text().strip()
+            if sel:
+                node.selector = sel
+            self._maybe_emit_live()
+
 
     def refresh(self) -> None:
         self.list_widget.clear()
