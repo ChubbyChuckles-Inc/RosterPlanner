@@ -145,3 +145,6 @@ feat(ingestion-lab): safe execution guard (simulate + apply audit) with tests (M
 feat(ingestion-lab): add parse benchmark dialog with A/B rule variant execution + optional parallel workers (Milestone 7.10.39)
 feat(ingestion-lab): add caching inspector (hash diff viewer) with dialog + backend diff_provenance (Milestone 7.10.40)
 
+
+chore(roadmap): extend 7.10 Ingestion Lab with advanced UI/UX enhancement tasks (7.10.47–7.10.90)
+
