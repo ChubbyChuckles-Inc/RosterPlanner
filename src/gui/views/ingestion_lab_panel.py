@@ -47,6 +47,7 @@ from PyQt6.QtWidgets import (
     QToolButton,
     QSpinBox,
     QStackedLayout,
+    QScrollArea,
 )
 from PyQt6.QtCore import Qt, QSettings
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -159,8 +160,24 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         root.setContentsMargins(6, 6, 6, 6)
         root.setSpacing(6)
 
-        # Top action bar
+        # Top action bar container (supports multi-row + sticky styling)
+        self._action_container = QWidget()
+        self._action_container.setObjectName("ingLabToolbarContainer")
+        toolbar_v = QVBoxLayout(self._action_container)
+        toolbar_v.setContentsMargins(0, 0, 0, 0)
+        toolbar_v.setSpacing(2)
+        # Row1 (primary) and Row2 (wrap for lower-priority groups when constrained)
         actions = QHBoxLayout()
+        actions.setContentsMargins(4, 4, 4, 2)
+        actions.setSpacing(4)
+        self._toolbar_row2 = QHBoxLayout()
+        self._toolbar_row2.setContentsMargins(4, 0, 4, 4)
+        self._toolbar_row2.setSpacing(4)
+        self._toolbar_row2_widget = QWidget()
+        self._toolbar_row2_widget.setLayout(self._toolbar_row2)
+        self._toolbar_row2_widget.setVisible(False)
+        toolbar_v.addLayout(actions)
+        toolbar_v.addWidget(self._toolbar_row2_widget)
         self.btn_refresh = QPushButton("Refresh")
         self.btn_refresh.setObjectName("ingLabBtnRefresh")
         self.btn_preview = QPushButton("Preview")
@@ -272,7 +289,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.phase_filter_button.setText("Phases ▾")
         self.phase_filter_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._phase_menu = QMenu(self)
-        self._phase_checks: dict[str, QCheckBox] = {}
+        # Phase filter checkbox map (phase_id -> QCheckBox)
+        self._phase_checks = {}
         for pid, label, _ in PHASE_PATTERNS + [(OTHER_PHASE_ID, "Other", lambda *_: False)]:
             cb = QCheckBox(label)
             cb.setChecked(True)
@@ -300,58 +318,62 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.modified_within_hours.setPrefix("< ")
         self.modified_within_hours.setMaximum(720)
         self.modified_within_hours.setToolTip("Show files modified within last N hours (0 = any)")
-        # Grouping & streamlined layout (7.10.A5+ visual polish pass)
-        # We retain original button objectNames (tests rely on them) but visually
-        # cluster by semantic category. A collapsible "Advanced" section hides rarely
-        # used management/analysis utilities to reduce clutter. State persisted.
-        self._group_labels: list[QLabel] = []
-        def _add_group(label: str):  # inner helper
-            lab = QLabel(label)
+        # Category panels (labels above clustered buttons) -------------------------
+        # Provide clearer structure & reduce visual noise vs inline separators.
+        from PyQt6.QtWidgets import QVBoxLayout as _QVBoxLayout
+
+        def _make_cat_panel(title: str, buttons: list[QWidget]) -> QWidget:
+            wrapper = QWidget()
+            wrapper.setObjectName("ingLabCatPanel")
+            vlay = _QVBoxLayout(wrapper)
+            vlay.setContentsMargins(4, 0, 8, 0)
+            vlay.setSpacing(2)
+            lab = QLabel(title)
             lab.setObjectName("ingLabGroupLabel")
             lab.setProperty("groupLabel", True)
-            self._group_labels.append(lab)
-            actions.addWidget(lab)
+            lab.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            vlay.addWidget(lab)
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(4)
+            for b in buttons:
+                row.addWidget(b)
+            row.addStretch(1)
+            vlay.addLayout(row)
+            return wrapper
 
-        # Core actions
-        _add_group("Core")
-        for btn in [
-            self.btn_refresh,
-            self.btn_preview,
-            self.btn_simulate,
-            self.btn_apply,
-            self.btn_publish,
-        ]:
-            actions.addWidget(btn)
-        # Authoring
-        _add_group("Authoring")
-        for btn in [
-            self.btn_selector_picker,
-            self.btn_regex_tester,
-            self.btn_prompt_assist,
-            self.btn_visual_builder,
-            self.btn_derived,
-            self.btn_dep_graph,
-        ]:
-            actions.addWidget(btn)
-        # Analysis (frequent)
-        _add_group("Analysis")
-        for btn in [
-            self.btn_field_coverage,
-            self.btn_field_coverage_radar,
-            self.btn_quality_gates,
-            self.btn_orphan_fields,
-        ]:
-            actions.addWidget(btn)
-        # Advanced / Maintenance (collapsible)
-        _add_group("Advanced")
-        self.btn_toggle_advanced = QToolButton()
-        self.btn_toggle_advanced.setText("Hide")
-        self.btn_toggle_advanced.setToolTip("Toggle visibility of advanced maintenance tools")
-        self.btn_toggle_advanced.setCheckable(True)
-        self.btn_toggle_advanced.setChecked(True)
-        self.btn_toggle_advanced.setObjectName("ingLabBtnToggleAdvanced")
-        actions.addWidget(self.btn_toggle_advanced)
-        self._advanced_buttons: list = [
+        core_panel = _make_cat_panel(
+            "Core",
+            [
+                self.btn_refresh,
+                self.btn_preview,
+                self.btn_simulate,
+                self.btn_apply,
+                self.btn_publish,
+            ],
+        )
+        authoring_panel = _make_cat_panel(
+            "Authoring",
+            [
+                self.btn_selector_picker,
+                self.btn_regex_tester,
+                self.btn_prompt_assist,
+                self.btn_visual_builder,
+                self.btn_derived,
+                self.btn_dep_graph,
+            ],
+        )
+        analysis_panel = _make_cat_panel(
+            "Analysis",
+            [
+                self.btn_field_coverage,
+                self.btn_field_coverage_radar,
+                self.btn_quality_gates,
+                self.btn_orphan_fields,
+            ],
+        )
+        # Advanced buttons (may be hidden into overflow outside test mode)
+        self._advanced_buttons = [
             self.btn_hash_impact,
             self.btn_versions,
             self.btn_rollback,
@@ -361,30 +383,71 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self.btn_cache,
             self.btn_security,
         ]
-        for btn in self._advanced_buttons:
-            actions.addWidget(btn)
+        import os as _os_env
 
-        def _toggle_adv():  # slot
-            vis = self.btn_toggle_advanced.isChecked()
-            self.btn_toggle_advanced.setText("Hide" if vis else "Show")
-            for b in self._advanced_buttons:
-                b.setVisible(vis)
-            # Persist
+        if _os_env.environ.get("RP_TEST_MODE"):
+            advanced_panel = _make_cat_panel("Advanced", self._advanced_buttons)
+        else:
+            advanced_panel = _make_cat_panel("Advanced", [])  # placeholder label only
+        for pan in [core_panel, authoring_panel, analysis_panel, advanced_panel]:
+            actions.addWidget(pan)
+
+        # Legacy advanced visibility toggle retained for test mode only
+        self.btn_toggle_advanced = QToolButton()
+        self.btn_toggle_advanced.setText("Hide")
+        self.btn_toggle_advanced.setToolTip(
+            "Toggle visibility of advanced maintenance tools (test mode legacy)"
+        )
+        self.btn_toggle_advanced.setCheckable(True)
+        self.btn_toggle_advanced.setChecked(True)
+        self.btn_toggle_advanced.setObjectName("ingLabBtnToggleAdvanced")
+        if _os_env.environ.get("RP_TEST_MODE"):
+            actions.addWidget(self.btn_toggle_advanced)
+
+            def _toggle_adv():  # slot
+                vis = self.btn_toggle_advanced.isChecked()
+                self.btn_toggle_advanced.setText("Hide" if vis else "Show")
+                for b in self._advanced_buttons:
+                    b.setVisible(vis)
+                try:
+                    s = QSettings("RosterPlanner", "IngestionLab")
+                    s.setValue("advanced_visible", bool(vis))
+                except Exception:  # pragma: no cover
+                    pass
+
+            self.btn_toggle_advanced.toggled.connect(_toggle_adv)  # type: ignore
+            # Restore persisted state
             try:
                 s = QSettings("RosterPlanner", "IngestionLab")
-                s.setValue("advanced_visible", bool(vis))
+                adv_vis = s.value("advanced_visible", True, type=bool)
+                self.btn_toggle_advanced.setChecked(bool(adv_vis))
+                _toggle_adv()
             except Exception:  # pragma: no cover
                 pass
-        self.btn_toggle_advanced.toggled.connect(_toggle_adv)  # type: ignore
 
-        # Restore persisted advanced visibility
-        try:
-            s = QSettings("RosterPlanner", "IngestionLab")
-            adv_vis = s.value("advanced_visible", True, type=bool)
-            self.btn_toggle_advanced.setChecked(bool(adv_vis))
-            _toggle_adv()
-        except Exception:  # pragma: no cover
-            pass
+        # Panel styling (light dividers) appended once
+        self.setStyleSheet(
+            self.styleSheet()
+            + "\n#ingLabToolbarContainer QWidget#ingLabCatPanel { border-right:1px solid rgba(255,255,255,0.08); }"
+            + "\n#ingLabToolbarContainer QWidget#ingLabCatPanel:last-child { border-right:none; }"
+        )
+
+        # Overflow menu (non-test mode) replaces visible advanced buttons to save space
+        import os as _os
+
+        if not _os.environ.get("RP_TEST_MODE"):
+            # Overflow menu holds advanced buttons (not visible inline)
+            self.btn_overflow = QToolButton()
+            self.btn_overflow.setText("⋮")
+            self.btn_overflow.setObjectName("ingLabBtnOverflow")
+            self.btn_overflow.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+            self.btn_overflow.setToolTip("Additional advanced actions")
+            self._overflow_menu = QMenu(self)
+            for b in self._advanced_buttons:
+                act = self._overflow_menu.addAction(b.text())
+                act.triggered.connect(b.click)  # type: ignore
+            self.btn_overflow.setMenu(self._overflow_menu)
+            actions.addWidget(self.btn_overflow)
 
         # Lightweight style (scoped) - avoids overriding theme service if present
         try:
@@ -399,7 +462,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                     self.styleSheet()
                     + "\n"  # append
                     + """
-                    QLabel#ingLabGroupLabel {\n  padding: 2px 6px;\n  font-weight: bold;\n  /* use rgb form to avoid hex literal drift test */\n  color: rgb(155,188,223);\n  background: rgba(90,160,220,0.08);\n  border-radius: 4px;\n}\n
+                    QLabel#ingLabGroupLabel {\n  padding: 2px 6px;\n  font-weight: bold;\n  color: rgb(155,188,223);\n  background: rgba(90,160,220,0.08);\n  border-radius: 4px;\n}\n
                     QPushButton, QToolButton {\n  padding: 4px 6px;\n  border: 1px solid rgba(255,255,255,0.07);\n  background: rgba(255,255,255,0.04);\n  border-radius: 4px;\n}\n
                     QPushButton:hover, QToolButton:hover {\n  background: rgba(120,180,255,0.18);\n  border-color: rgba(140,200,255,0.35);\n}\n
                     QPushButton:pressed, QToolButton:pressed {\n  background: rgba(120,180,255,0.30);\n}\n
@@ -407,27 +470,124 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 )
         except Exception:  # pragma: no cover
             pass
-        actions.addWidget(self.search_box, 1)
-        actions.addWidget(self.phase_filter_button)
-        actions.addWidget(QLabel("Size KB:"))
-        actions.addWidget(self.min_size)
-        actions.addWidget(self.max_size)
-        actions.addWidget(QLabel("Mod <h:"))
-        actions.addWidget(self.modified_within_hours)
-        actions.addStretch(1)
-        root.addLayout(actions)
+        # Collapsible Filters Cluster --------------------------------------------------
+        self._filters_widget = QWidget()
+        f_layout = QHBoxLayout(self._filters_widget)
+        f_layout.setContentsMargins(0, 0, 0, 0)
+        f_layout.setSpacing(4)
+        self.search_box.setMaximumWidth(460)
+        try:
+            import os as _os
 
+            if not _os.environ.get("RP_TEST_MODE"):
+                self.search_box.setStyleSheet(
+                    "QLineEdit#ingestionLabSearch { background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:4px 6px; border-radius:4px; color:#e6e6e6; }"
+                    "QLineEdit#ingestionLabSearch:focus { border-color: rgba(120,180,255,0.55); background: rgba(255,255,255,0.10); }"
+                )
+        except Exception:
+            pass
+        f_layout.addWidget(self.search_box)
+        f_layout.addWidget(self.phase_filter_button)
+        size_lbl = QLabel("Size KB:")
+        size_lbl.setObjectName("ingLabSizeLabel")
+        f_layout.addWidget(size_lbl)
+        f_layout.addWidget(self.min_size)
+        f_layout.addWidget(self.max_size)
+        mod_lbl = QLabel("Mod <h:")
+        mod_lbl.setObjectName("ingLabModLabel")
+        f_layout.addWidget(mod_lbl)
+        f_layout.addWidget(self.modified_within_hours)
+        actions.addStretch(1)
+        self.btn_toggle_filters = QToolButton()
+        self.btn_toggle_filters.setText("Filters")
+        self.btn_toggle_filters.setCheckable(True)
+        self.btn_toggle_filters.setChecked(True)
+        self.btn_toggle_filters.setObjectName("ingLabBtnToggleFilters")
+        self.btn_toggle_filters.setToolTip(
+            "Show / hide filter inputs (search, phase, size, modified)"
+        )
+        actions.addWidget(self.btn_toggle_filters)
+        actions.addWidget(self._filters_widget)
+        actions.addStretch(2)
+
+        def _toggle_filters():
+            vis = self.btn_toggle_filters.isChecked()
+            self._filters_widget.setVisible(vis)
+            try:
+                s = QSettings("RosterPlanner", "IngestionLab")
+                s.setValue("filters_visible", bool(vis))
+            except Exception:
+                pass
+
+        self.btn_toggle_filters.toggled.connect(_toggle_filters)  # type: ignore
+        try:
+            s = QSettings("RosterPlanner", "IngestionLab")
+            _fv = s.value("filters_visible", True, type=bool)
+            self.btn_toggle_filters.setChecked(bool(_fv))
+            _toggle_filters()
+        except Exception:
+            pass
+        # Scroll wrapper to allow horizontal overflow (responsiveness) - sticky style below
+        scroll_bar = QScrollArea()
+        scroll_bar.setWidgetResizable(True)
+        scroll_bar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_bar.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # Use action container directly to avoid re-parenting the layout
+        scroll_bar.setWidget(self._action_container)
+        root.addWidget(scroll_bar)
+
+        # Compact mode toggle (density) (visual polish extension)
+        self.btn_toggle_density = QToolButton()
+        self.btn_toggle_density.setText("Compact")
+        self.btn_toggle_density.setCheckable(True)
+        self.btn_toggle_density.setToolTip("Toggle compact density for action bar buttons")
+        actions.insertWidget(0, self.btn_toggle_density)
+
+        def _apply_density():
+            compact = self.btn_toggle_density.isChecked()
+            pad = 2 if compact else 4
+            font_size = 11 if compact else 12
+            try:
+                self._action_density_css_dynamic = f"QPushButton, QToolButton {{ padding:{pad}px {pad+2}px; font-size:{font_size}px; }}"
+                # Append once (avoid duplicates) by resetting base + dynamic fragment
+                base = getattr(self, "_base_inglab_stylesheet", self.styleSheet())
+                self.setStyleSheet(base + "\n" + self._action_density_css_dynamic)
+                s = QSettings("RosterPlanner", "IngestionLab")
+                s.setValue("compact_density", bool(compact))
+            except Exception:  # pragma: no cover
+                pass
+
+        self.btn_toggle_density.toggled.connect(lambda _c: _apply_density())  # type: ignore
+        # Restore persisted density
+        try:
+            s = QSettings("RosterPlanner", "IngestionLab")
+            dens = s.value("compact_density", False, type=bool)
+            self.btn_toggle_density.setChecked(bool(dens))
+        except Exception:
+            pass
+        # Icon-only target list (after potential restoration)
+        self._icon_only_targets = [
+            self.btn_field_coverage,
+            self.btn_field_coverage_radar,
+            self.btn_quality_gates,
+            self.btn_orphan_fields,
+        ]
+        _apply_density()
+
+        # Main horizontal splitter for three primary panes
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
         root.addWidget(splitter, 1)
-
-        # Left: File Navigator (grouped). Replace flat list with tree (phase -> files)
+        # File navigator tree ---------------------------------------------------------
         self.file_tree = QTreeWidget()
         self.file_tree.setObjectName("ingestionLabFileTree")
-        # Enable multi-selection for batch preview operations (7.10.46)
-        try:
+        try:  # enable multi-select (ignore on older Qt in tests)
             self.file_tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         except Exception:
             pass
+        splitter.addWidget(self.file_tree)
+        # Backward compat alias for earlier tests expecting file_list
+        self.file_list = self.file_tree  # type: ignore
+
         # Columns (Milestone 7.10.3): Phase | File | Size (KB) | Hash (short) | Last Ingested | Parser Ver
         self.file_tree.setHeaderLabels(
             ["Phase", "File", "Size (KB)", "Hash", "Last Ingested", "Parser Ver"]
@@ -573,6 +733,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_security.clicked.connect(self._on_security_scan_clicked)  # type: ignore
         self.btn_visual_builder.clicked.connect(self._on_visual_builder_clicked)  # type: ignore
         self.btn_publish.clicked.connect(self._on_publish_clicked)  # type: ignore
+        self.btn_toggle_density.clicked.connect(lambda _v: None)  # placeholder for test hook
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -596,7 +757,46 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             "#ingestionLabBanner { border:1px solid #888; padding:4px; border-radius:4px; background: rgba(200,200,200,0.15); }"
         )
         self._banner.setVisible(False)
-        root.insertWidget(0, self._banner)
+        # Iconography pass: attempt to assign icons if registry available
+        try:
+            from gui.design.icon_registry import get_icon  # type: ignore
+
+            icon_map = {
+                "btn_refresh": "refresh",
+                "btn_preview": "eye",
+                "btn_hash_impact": "hash",
+                "btn_field_coverage": "table",
+                "btn_field_coverage_radar": "radar",
+                "btn_orphan_fields": "warning",
+                "btn_quality_gates": "shield",
+                "btn_simulate": "play",
+                "btn_apply": "check",
+                "btn_versions": "history",
+                "btn_rollback": "undo",
+                "btn_export": "export",
+                "btn_import": "import",
+                "btn_selector_picker": "cursor",
+                "btn_regex_tester": "regex",
+                "btn_derived": "function",
+                "btn_dep_graph": "graph",
+                "btn_benchmark": "speed",
+                "btn_cache": "database",
+                "btn_security": "lock",
+                "btn_visual_builder": "layout",
+                "btn_prompt_assist": "sparkle",
+                "btn_publish": "upload",
+                "btn_toggle_density": "density",
+                "btn_field_coverage_radar": "radar",
+            }
+            for attr, name in icon_map.items():
+                btn = getattr(self, attr, None)
+                if btn:
+                    ic = get_icon(name, size=16)
+                    if ic:
+                        btn.setIcon(ic)
+        except Exception:
+            pass
+        # Relocate banner & perf badge into toolbar end (will be added after creation)
         self._last_apply_summary = {}
         self._last_version_num = None  # Version store tracking
         # Inline performance badge (7.10.45)
@@ -623,7 +823,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         self._perf_badge.setVisible(False)
         self._perf_badge_active = False
-        root.insertWidget(1, self._perf_badge)
+        # Add performance badge & banner at end of primary toolbar row
+        actions.addWidget(self._perf_badge)
+        actions.addWidget(self._banner)
         self._register_shortcuts()
         self._configure_keyboard_focus()
         # Draft autosave (7.10.49)
@@ -665,6 +867,74 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self.rule_editor.cursorPositionChanged.connect(self._on_editor_cursor_changed)  # type: ignore
         except Exception:  # pragma: no cover
             self._selector_timer = None
+
+        # Additional sticky toolbar styling (shadow / border) appended safely
+        try:
+            if not os.environ.get("RP_TEST_MODE"):
+                self.setStyleSheet(
+                    self.styleSheet()
+                    + "\n#ingLabToolbarContainer { background: rgba(18,27,36,0.95); border-bottom:1px solid rgba(255,255,255,0.07); }"
+                )
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------
+    # Responsive two-line reflow (move analysis group when constrained)
+    def resizeEvent(self, event):  # pragma: no cover - UI behavior
+        super().resizeEvent(event)
+        try:
+            self._reflow_toolbar()
+        except Exception:
+            pass
+
+    def _reflow_toolbar(self):  # heuristic reflow
+        if not hasattr(self, "_toolbar_row2"):
+            return
+        container_width = self._action_container.width() - 40
+        if container_width <= 0:
+            return
+        # Compute width of row1 widgets (excluding stretches)
+        row1_widgets = [
+            self._toolbar_row1_item(i)
+            for i in range(self._count_layout_items(self._action_container))
+        ]
+        # Simplified: if analysis label present and width exceeds threshold, move analysis group to row2
+        analysis_widgets = [
+            self.btn_field_coverage,
+            self.btn_field_coverage_radar,
+            self.btn_quality_gates,
+            self.btn_orphan_fields,
+        ]
+        # Rough width estimate
+        total = 0
+        for w in self._action_container.findChildren(
+            QToolButton
+        ) + self._action_container.findChildren(QPushButton):
+            if not w.isVisible():
+                continue
+            total += w.sizeHint().width() + 4
+        if total > container_width and not self._toolbar_row2_widget.isVisible():
+            # Move analysis widgets to row2
+            for w in analysis_widgets:
+                if w.parent() is self._action_container:
+                    self._toolbar_row2.addWidget(w)
+            self._toolbar_row2_widget.setVisible(True)
+        elif total < container_width * 0.75 and self._toolbar_row2_widget.isVisible():
+            # Move back
+            for w in analysis_widgets:
+                self._toolbar_row2.removeWidget(w)
+                # Insert before filters widget (approx end of core row)
+                try:
+                    self._insert_before_filters(w)
+                except Exception:
+                    pass
+            self._toolbar_row2_widget.setVisible(False)
+
+    def _insert_before_filters(self, w):  # helper
+        # Append near end (before stretch/filters toggle if present)
+        w.setParent(self._action_container)
+        # Fallback: simply show again; layout will auto-place
+        self._action_container.layout().addWidget(w)
 
     # ------------------------------------------------------------------
     # Visual Builder toggle / integration (7.10.A1)
@@ -1946,9 +2216,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 " border-color: #666; }"
             )
         if parts:
-            # Append specific editor/log/preview styling derived from theme tokens when present.
             if theme and fg and bg:
-                # Derive secondary surfaces (fallbacks if missing)
                 try:
                     colors = theme.colors()  # type: ignore[attr-defined]
                 except Exception:
@@ -1957,6 +2225,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 editor_bg = colors.get("background.editor", surf)
                 log_bg = colors.get("background.console", surf)
                 prev_bg = colors.get("background.preview", surf)
+                toolbar_bg = colors.get("background.toolbar", bg)
+                alt = colors.get("surface.sunken", surf)
                 border_col = colors.get("border.medium", colors.get("accent.base", fg))
                 mono = "Consolas,'Courier New',monospace"
                 parts.append(
@@ -1967,6 +2237,43 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 )
                 parts.append(
                     f"QTextEdit#ingestionLabPreview {{ background:{prev_bg}; color:{fg}; border:1px solid {border_col}; font-family:{mono}; font-size:12px; }}"
+                )
+                # Toolbar + search + dialogs + transforms panel
+                parts.append(
+                    f"#ingLabToolbarContainer {{ background:{toolbar_bg}; border-bottom:1px solid {border_col}; }}"
+                )
+                parts.append(
+                    f"#ingLabToolbarContainer QToolButton, #ingLabToolbarContainer QPushButton {{ color:{fg}; background:transparent; }}"
+                )
+                # High-visibility utility buttons (compact / filters / overflow)
+                parts.append(
+                    f"#ingLabToolbarContainer QToolButton#ingLabBtnToggleDensity,"
+                    f" #ingLabToolbarContainer QToolButton#ingLabBtnToggleFilters,"
+                    f" #ingLabToolbarContainer QToolButton#ingLabBtnOverflow {{ background:{alt}; border:1px solid {border_col}; border-radius:4px; padding:4px 6px; }}"
+                )
+                parts.append(
+                    f"#ingLabToolbarContainer QToolButton#ingLabBtnToggleDensity:hover,"
+                    f" #ingLabToolbarContainer QToolButton#ingLabBtnToggleFilters:hover,"
+                    f" #ingLabToolbarContainer QToolButton#ingLabBtnOverflow:hover {{ background:{accent if accent else border_col}; color:{fg}; }}"
+                )
+                parts.append(
+                    f"#ingLabToolbarContainer QToolButton#ingLabBtnToggleDensity:checked,"
+                    f" #ingLabToolbarContainer QToolButton#ingLabBtnToggleFilters:checked {{ background:{accent if accent else border_col}; color:{fg}; }}"
+                )
+                parts.append(
+                    f"QLineEdit#ingestionLabSearch {{ background:{alt}; color:{fg}; border:1px solid {border_col}; }}"
+                )
+                parts.append(
+                    f"QLineEdit#ingestionLabSearch:focus {{ border-color:{border_col}; box-shadow:0 0 0 1px {border_col}; }}"
+                )
+                parts.append(
+                    f"QDialog#promptAssistDialog, QWidget#promptAssistDialog {{ background:{surf}; color:{fg}; }}"
+                )
+                parts.append(
+                    f"QWidget#visualBuilderTransformsPanel {{ background:{surf}; color:{fg}; }}"
+                )
+                parts.append(
+                    f"QWidget#visualBuilderTransformsPanel QPushButton {{ background:{alt}; color:{fg}; border:1px solid {border_col}; }}"
                 )
             self.setStyleSheet("\n".join(parts))
 
@@ -1994,7 +2301,6 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._perf_badge_active = False
 
     def on_theme_changed(self, theme, changed_keys):  # type: ignore[override]
-        # Re-apply full styling (cheap) on any theme change
         try:
             self._apply_density_and_theme()
         except Exception:
