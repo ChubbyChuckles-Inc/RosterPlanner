@@ -823,6 +823,33 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._last_version_num = store.save_version(raw_payload, text or "{}")
         except Exception as ve:  # pragma: no cover
             self._append_log(f"Versioning WARN: {ve}")
+        # Persist rule_version into provenance for affected files (Milestone 7.10.34)
+        if self._last_version_num:
+            try:
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS provenance(path TEXT PRIMARY KEY, sha1 TEXT NOT NULL, last_ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, parser_version INTEGER DEFAULT 1, rule_version INTEGER DEFAULT NULL)"
+                )
+                # Ensure column exists (migration) then update
+                try:
+                    cur = conn.execute("PRAGMA table_info(provenance)")
+                    cols = {r[1] for r in cur.fetchall()}
+                    if "rule_version" not in cols:
+                        conn.execute("ALTER TABLE provenance ADD COLUMN rule_version INTEGER DEFAULT NULL")
+                except Exception:
+                    pass
+                # Compute hashes for involved files to keep provenance coherent
+                import hashlib as _hl
+
+                for fpath, html in html_map.items():
+                    sha1 = _hl.sha1(html.encode("utf-8", "ignore")).hexdigest()
+                    conn.execute(
+                        "INSERT INTO provenance(path, sha1, last_ingested_at, rule_version) VALUES(?,?,CURRENT_TIMESTAMP, ?) "
+                        "ON CONFLICT(path) DO UPDATE SET sha1=excluded.sha1, last_ingested_at=CURRENT_TIMESTAMP, rule_version=excluded.rule_version",
+                        (fpath, sha1, self._last_version_num),
+                    )
+                conn.commit()
+            except Exception as pe:  # pragma: no cover
+                self._append_log(f"Provenance rule_version WARN: {pe}")
         # Build summary (unchanged/skipped placeholders for now)
         inserted_total = sum(result.rows_by_resource.values())
         summary_text = f"Apply Summary sim={result.sim_id} inserted_rows={inserted_total} resources={len(result.rows_by_resource)}"
@@ -878,7 +905,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             if not versions:
                 self._append_log("Versions: none stored")
                 return
-            self._append_log(f"Versions ({len(versions)}): " + ", ".join(f"v{v.version_num}" for v in versions[:15]))
+            self._append_log(
+                f"Versions ({len(versions)}): "
+                + ", ".join(f"v{v.version_num}" for v in versions[:15])
+            )
             if len(versions) > 15:
                 self._append_log(f"  ... {len(versions)-15} more")
         except Exception as e:  # pragma: no cover

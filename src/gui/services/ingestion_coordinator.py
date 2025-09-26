@@ -1066,16 +1066,26 @@ class IngestionCoordinator:
 
     def _ensure_provenance_table(self):
         self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS provenance(path TEXT PRIMARY KEY, sha1 TEXT NOT NULL, last_ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, parser_version INTEGER DEFAULT 1)"
+            "CREATE TABLE IF NOT EXISTS provenance(path TEXT PRIMARY KEY, sha1 TEXT NOT NULL, last_ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, parser_version INTEGER DEFAULT 1, rule_version INTEGER DEFAULT NULL)"
         )
+        # Lightweight migration: add rule_version if table existed without it
+        try:
+            cur = self.conn.execute("PRAGMA table_info(provenance)")
+            cols = {r[1] for r in cur.fetchall()}
+            if "rule_version" not in cols:
+                self.conn.execute("ALTER TABLE provenance ADD COLUMN rule_version INTEGER DEFAULT NULL")
+        except Exception:
+            pass
 
     def _is_unchanged(self, path: str, sha1: str) -> bool:
         row = self.conn.execute("SELECT sha1 FROM provenance WHERE path=?", (path,)).fetchone()
         return bool(row and row[0] == sha1)
 
     def _record_provenance(self, path: str, sha1: str):
+        # For legacy ingestion path (Coordinator) we do not have rule_version context yet; keep NULL
         self.conn.execute(
-            "INSERT INTO provenance(path, sha1, last_ingested_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(path) DO UPDATE SET sha1=excluded.sha1, last_ingested_at=CURRENT_TIMESTAMP",
+            "INSERT INTO provenance(path, sha1, last_ingested_at) VALUES(?,?,CURRENT_TIMESTAMP) "
+            "ON CONFLICT(path) DO UPDATE SET sha1=excluded.sha1, last_ingested_at=CURRENT_TIMESTAMP",
             (path, sha1),
         )
 
