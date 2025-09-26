@@ -194,6 +194,16 @@ class RegexTesterDialog(ChromeDialog, ThemeAwareMixin):  # type: ignore[misc]
         self.chk_dotall.stateChanged.connect(self._update_matches)  # type: ignore
 
         self._update_matches()
+        # Immediately apply current theme if service is available; dialogs created after
+        # initial broadcast would otherwise remain un-themed until next change.
+        try:  # pragma: no cover - best effort
+            from gui.services.service_locator import services as _services
+
+            theme = _services.try_get("theme_service")
+            if theme:
+                self.on_theme_changed(theme, [])
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     def on_theme_changed(self, theme, changed_keys):  # type: ignore[override]
