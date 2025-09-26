@@ -376,6 +376,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                     pass
         except Exception as e:  # pragma: no cover
             import traceback as _tb
+
             err = f"{e.__class__.__name__}: {e}"
             short_tb = "".join(_tb.format_exception_only(type(e), e)).strip()
             self.visual_builder = QLabel(f"Visual builder import error: {err}\n{short_tb}")  # type: ignore[assignment]

@@ -7,7 +7,9 @@ def test_add_transform_with_intelligent_defaults():
     from gui.ingestion.visual_rule_builder import CanvasModel, FieldMappingNode
 
     model = CanvasModel()
-    field = FieldMappingNode(id="f1", kind="field", label="Field 1", field_name="col1", selector="td")
+    field = FieldMappingNode(
+        id="f1", kind="field", label="Field 1", field_name="col1", selector="td"
+    )
     model.add_node(field)
     # Add to_number should prepend trim
     applied = model.add_transform_to_field("f1", {"kind": "to_number"})

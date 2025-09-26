@@ -17,12 +17,14 @@ def test_canvas_model_compile_basic():
     )
 
     model = CanvasModel()
-    model.add_node(SelectorNode(id="sel1", kind="selector", label="Roster", selector="table.roster"))
-    model.add_node(TransformChainNode(id="chain1", kind="transform_chain", label="Chain", transforms=["trim"]))
     model.add_node(
-        FieldMappingNode(
-            id="f1", kind="field", label="Name", field_name="name", selector="td.name"
-        )
+        SelectorNode(id="sel1", kind="selector", label="Roster", selector="table.roster")
+    )
+    model.add_node(
+        TransformChainNode(id="chain1", kind="transform_chain", label="Chain", transforms=["trim"])
+    )
+    model.add_node(
+        FieldMappingNode(id="f1", kind="field", label="Name", field_name="name", selector="td.name")
     )
     compiled = model.to_rule_set_mapping()
     assert "resources" in compiled

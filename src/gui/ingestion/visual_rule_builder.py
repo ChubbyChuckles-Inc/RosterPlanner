@@ -358,7 +358,9 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
 
             if QApplication.instance() is None:  # pragma: no cover - headless safety
                 self._headless = True
-                self._last_error = "No QApplication instance; VisualRuleBuilder in headless stub mode"
+                self._last_error = (
+                    "No QApplication instance; VisualRuleBuilder in headless stub mode"
+                )
                 return
         except Exception as _e:  # pragma: no cover
             # If even QApplication import fails, treat as headless
