@@ -348,7 +348,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.34 Rule provenance: track which rule set version produced each row (extend provenance table)
 
  Advanced Features / Power Tools
- [ ] 7.10.35 Visual selector picker: click element in rendered HTML mini-browser to auto-generate CSS selector/XPath
+ [x] 7.10.35 Visual selector picker: click element in rendered HTML mini-browser to auto-generate CSS selector/XPath
  [ ] 7.10.36 Regex tester pane: live highlighting & group extraction preview
  [ ] 7.10.37 Derived field composer: define new fields from existing extracted fields (expression builder with validation)
  [ ] 7.10.38 Multi-phase dependency graph viewer (which extracted fields feed later transforms)

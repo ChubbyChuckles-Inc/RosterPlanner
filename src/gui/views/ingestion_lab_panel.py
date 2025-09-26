@@ -171,6 +171,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_versions.setToolTip("List stored rule set versions in log")
         self.btn_rollback = QPushButton("Rollback")
         self.btn_rollback.setToolTip("Load previous rule version into editor (not yet applied)")
+        self.btn_selector_picker = QPushButton("Pick Selector")
+        self.btn_selector_picker.setToolTip("Open visual picker to build CSS selector from sample HTML")
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -219,6 +221,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_apply)
         actions.addWidget(self.btn_versions)
         actions.addWidget(self.btn_rollback)
+        actions.addWidget(self.btn_selector_picker)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -290,6 +293,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_apply.clicked.connect(self._on_apply_clicked)  # type: ignore
         self.btn_versions.clicked.connect(self._on_versions_clicked)  # type: ignore
         self.btn_rollback.clicked.connect(self._on_rollback_clicked)  # type: ignore
+        self.btn_selector_picker.clicked.connect(self._on_selector_picker_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -834,7 +838,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                     cur = conn.execute("PRAGMA table_info(provenance)")
                     cols = {r[1] for r in cur.fetchall()}
                     if "rule_version" not in cols:
-                        conn.execute("ALTER TABLE provenance ADD COLUMN rule_version INTEGER DEFAULT NULL")
+                        conn.execute(
+                            "ALTER TABLE provenance ADD COLUMN rule_version INTEGER DEFAULT NULL"
+                        )
                 except Exception:
                     pass
                 # Compute hashes for involved files to keep provenance coherent
@@ -884,6 +890,49 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
     # Snapshot for tests
     def apply_summary_snapshot(self) -> Dict[str, Any]:  # pragma: no cover - test helper
         return dict(self._last_apply_summary)
+
+    # ------------------------------------------------------------------
+    # Selector Picker (7.10.35 initial)
+    def _on_selector_picker_clicked(self) -> None:
+        # Choose currently selected file's HTML as context (or first visible file)
+        target_file = None
+        items = self.file_tree.selectedItems()
+        if items:
+            data = items[0].data(0, Qt.ItemDataRole.UserRole)
+            if isinstance(data, dict) and data.get("file"):
+                target_file = data.get("file")
+        if not target_file:
+            for it in self._all_file_items:
+                if not it.isHidden():
+                    d = it.data(0, Qt.ItemDataRole.UserRole)
+                    if isinstance(d, dict) and d.get("file"):
+                        target_file = d.get("file")
+                        break
+        if not target_file:
+            self._append_log("Selector Picker: no file available")
+            return
+        try:
+            with open(target_file, "r", encoding="utf-8", errors="replace") as fh:
+                html = fh.read()
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Selector Picker ERROR: {e}")
+            return
+        try:
+            from gui.ingestion.selector_picker import SelectorPickerDialog
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Selector Picker import failed: {e}")
+            return
+        dlg = SelectorPickerDialog(html, self)
+        if dlg.exec() == dlg.DialogCode.Accepted:  # type: ignore
+            sel = dlg.selected_selector()
+            if not sel:
+                self._append_log("Selector Picker: no selection made")
+                return
+            # Insert or append into rule editor at cursor position (simple heuristic)
+            cursor = self.rule_editor.textCursor()
+            insertion = f"\n# selector-picked\nselector: '{sel}'\n"
+            cursor.insertText(insertion)
+            self._append_log(f"Selector Picker inserted: {sel}")
 
     # ------------------------------------------------------------------
     # Versioning helpers (7.10.33)
