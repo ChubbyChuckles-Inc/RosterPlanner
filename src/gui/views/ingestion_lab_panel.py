@@ -364,6 +364,11 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             from gui.ingestion.visual_rule_builder import VisualRuleBuilder  # type: ignore
 
             self.visual_builder = VisualRuleBuilder()  # type: ignore[assignment]
+            # Connect live compiled mapping updates (7.10.A2)
+            try:  # pragma: no cover - signal may not exist in headless fallback
+                self.visual_builder.compiledMappingChanged.connect(self._on_visual_builder_live)  # type: ignore
+            except Exception:
+                pass
         except Exception:  # pragma: no cover
             self.visual_builder = QLabel("Visual builder unavailable (import error)")  # type: ignore[assignment]
         self._editor_stack.addWidget(self.visual_builder)  # index 1
@@ -523,6 +528,21 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._batch_skeleton_last_shown = False  # test visibility flag
         # Track editor mode: 0=text, 1=visual
         self._editor_mode = 0
+        # Visual builder snippet markers & preview cache
+        self._vb_marker_begin = "# --- Visual Builder Draft BEGIN ---"
+        self._vb_marker_end = "# --- Visual Builder Draft END ---"
+        self._last_preview_plain = ""
+        # Selector explorer debounced timer
+        try:
+            from PyQt6.QtCore import QTimer
+
+            self._selector_timer = QTimer(self)
+            self._selector_timer.setInterval(250)
+            self._selector_timer.setSingleShot(True)
+            self._selector_timer.timeout.connect(self._apply_selector_from_cursor)  # type: ignore
+            self.rule_editor.cursorPositionChanged.connect(self._on_editor_cursor_changed)  # type: ignore
+        except Exception:  # pragma: no cover
+            self._selector_timer = None
 
     # ------------------------------------------------------------------
     # Visual Builder toggle / integration (7.10.A1)
@@ -538,20 +558,82 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             except Exception:
                 mapping = None
             if mapping:
-                # Append pretty JSON of compiled resources as a convenience (non-destructive append)
-                try:
-                    import json as _json
-
-                    current = self.rule_editor.toPlainText().strip()
-                    snippet = _json.dumps(mapping.get("resources", {}), indent=2, ensure_ascii=False)
-                    if snippet and snippet not in current:
-                        new_text = (current + "\n\n# --- Visual Builder Draft Resources ---\n" + snippet).strip()
-                        self.rule_editor.setPlainText(new_text)
-                except Exception:
-                    pass
+                self._inject_visual_builder_snippet(mapping)
             self._editor_stack.setCurrentIndex(0)
             self._editor_mode = 0
             self.btn_visual_builder.setText("Visual Builder")
+
+    def _inject_visual_builder_snippet(self, mapping: dict | None, force: bool = False) -> None:
+        if not mapping:
+            return
+        try:
+            import json as _json
+
+            resources = mapping.get("resources", {})
+            snippet = _json.dumps(resources, indent=2, ensure_ascii=False)
+        except Exception:
+            return
+        full = self.rule_editor.toPlainText()
+        begin, end = self._vb_marker_begin, self._vb_marker_end
+        if begin in full and end in full:
+            head, rest = full.split(begin, 1)
+            block, tail = rest.split(end, 1)
+            if not force and snippet in block:
+                return
+            new_text = head.rstrip() + f"\n{begin}\n{snippet}\n{end}\n" + tail.lstrip()
+        else:
+            if snippet in full and not force:
+                return
+            new_text = full.rstrip() + f"\n\n{begin}\n{snippet}\n{end}\n"
+        self.rule_editor.setPlainText(new_text)
+
+    # Live preview callback from visual builder
+    def _on_visual_builder_live(self, mapping: dict) -> None:  # pragma: no cover - signal path
+        self._inject_visual_builder_snippet(mapping, force=False)
+
+    # Selector explorer integration
+    def _on_editor_cursor_changed(self) -> None:  # pragma: no cover
+        if getattr(self, "_selector_timer", None):
+            self._selector_timer.stop()
+            self._selector_timer.start()
+
+    def _apply_selector_from_cursor(self) -> None:  # pragma: no cover
+        try:
+            cursor = self.rule_editor.textCursor()
+            cursor.select(cursor.SelectionType.WordUnderCursor)
+            word = cursor.selectedText()
+        except Exception:
+            word = ""
+        if not word or len(word) < 2:
+            return
+        if not any(word.startswith(p) for p in (".", "#", "table", "div", "tr", "td")):
+            return
+        # Re-render preview with naive highlight if we have stored plain text
+        if not self._last_preview_plain:
+            return
+        parts = self._last_preview_plain.split("--- Snippet ---", 1)
+        if len(parts) != 2:
+            return
+        meta, snippet = parts
+        import html as _html
+        esc_snip = _html.escape(snippet)
+        esc_word = _html.escape(word)
+        highlighted = esc_snip.replace(
+            esc_word,
+            f"<span style=\"background:#364fa3;color:#fff;padding:1px 2px;border-radius:2px;\">{esc_word}</span>",
+        )
+        broader = word.rsplit(" ", 1)[0] if " " in word else "(n/a)"
+        narrower = word + " td" if not word.endswith(" td") else word + " span"
+        suggestion_html = (
+            f"<div style='margin-top:4px;font-size:11px;color:#aaa;'>Broader: <code>{_html.escape(broader)}</code> | Narrower: <code>{_html.escape(narrower)}</code></div>"
+        )
+        full_html = (
+            f"<pre style='font-family:Consolas,monospace;font-size:12px;'>{_html.escape(meta)}--- Snippet ---{highlighted}</pre>" + suggestion_html
+        )
+        try:
+            self.preview_area.setHtml(full_html)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Accessibility (7.10.68) helper for tests
@@ -801,14 +883,18 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             if parser_ver:
                 meta.append(f"Parser Version: {parser_ver}")
             meta.extend(["--- Snippet ---", snippet])
-            self.preview_area.setPlainText("\n".join(meta))
+            plain = "\n".join(meta)
+            self._last_preview_plain = plain
+            self.preview_area.setPlainText(plain)
             try:
                 rel_name = target.text(1) or target.text(0)
             except Exception:
                 rel_name = fpath
             self._append_log(f"Previewed: {rel_name}")
         except Exception as e:  # pragma: no cover
-            self.preview_area.setPlainText(f"Error reading file: {e}")
+            err = f"Error reading file: {e}"
+            self._last_preview_plain = err
+            self.preview_area.setPlainText(err)
             try:
                 rel_name = target.text(1) or target.text(0)
             except Exception:

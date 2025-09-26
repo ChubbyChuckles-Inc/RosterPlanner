@@ -257,10 +257,21 @@ try:  # pragma: no cover - optional Qt import isolation for headless tests
         QListWidgetItem,
         QLineEdit,
         QLabel,
+        QCheckBox,
     )
-    from PyQt6.QtCore import Qt
+    from PyQt6.QtCore import Qt, pyqtSignal
 except Exception:  # pragma: no cover
     QWidget = object  # type: ignore
+
+    class _DummySignal:  # pragma: no cover - headless fallback
+        def connect(self, *_, **__):
+            return None
+
+        def emit(self, *_, **__):
+            return None
+
+    def pyqtSignal(*_args, **_kwargs):  # type: ignore
+        return _DummySignal()
 
 
 class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhere
@@ -270,10 +281,13 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
     drag‑and‑drop reordering and inline validation feedback.
     """
 
+    compiledMappingChanged = pyqtSignal(dict)  # type: ignore
+
     def __init__(self, model: Optional[CanvasModel] = None, parent: Optional[Any] = None):
         super().__init__(parent)
         self.model = model or CanvasModel()
         self.setObjectName("visualRuleBuilder")
+        self._live_preview_enabled = False
         self._build_ui()
         self.refresh()
 
@@ -285,10 +299,13 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_add_field = QPushButton("Add Field")
         self.btn_add_chain = QPushButton("Add Transform Chain")
         self.btn_compile = QPushButton("Compile → Editor")
+        self.chk_live = QCheckBox("Live Preview")
+        self.chk_live.setObjectName("visualRuleBuilderLivePreview")
         toolbar.addWidget(self.btn_add_selector)
         toolbar.addWidget(self.btn_add_field)
         toolbar.addWidget(self.btn_add_chain)
         toolbar.addStretch(1)
+        toolbar.addWidget(self.chk_live)
         toolbar.addWidget(self.btn_compile)
         layout.addLayout(toolbar)
 
@@ -304,6 +321,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_add_field.clicked.connect(self._on_add_field)  # type: ignore
         self.btn_add_chain.clicked.connect(self._on_add_chain)  # type: ignore
         self.btn_compile.clicked.connect(self._on_compile_clicked)  # type: ignore
+        self.chk_live.stateChanged.connect(self._on_live_preview_toggled)  # type: ignore
 
     # Actions -------------------------------------------------------------
     def _on_add_selector(self) -> None:
@@ -311,28 +329,47 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         node = SelectorNode(id=f"selector{idx}", kind="selector", label=f"Selector {idx}")
         self.model.add_node(node)
         self.refresh()
+        self._maybe_emit_live()
 
     def _on_add_field(self) -> None:
         idx = len([n for n in self.model.nodes if isinstance(n, FieldMappingNode)]) + 1
         node = FieldMappingNode(
-            id=f"field{idx}", kind="field", label=f"Field {idx}", field_name=f"field_{idx}", selector=".col"
+            id=f"field{idx}",
+            kind="field",
+            label=f"Field {idx}",
+            field_name=f"field_{idx}",
+            selector=".col",
         )
         self.model.add_node(node)
         self.refresh()
+        self._maybe_emit_live()
 
     def _on_add_chain(self) -> None:
         idx = len([n for n in self.model.nodes if isinstance(n, TransformChainNode)]) + 1
         node = TransformChainNode(
-            id=f"chain{idx}", kind="transform_chain", label=f"Chain {idx}", transforms=["trim", {"kind": "to_number"}]
+            id=f"chain{idx}",
+            kind="transform_chain",
+            label=f"Chain {idx}",
+            transforms=[{"kind": "trim"}, {"kind": "to_number"}],
         )
         self.model.add_node(node)
         self.refresh()
+        self._maybe_emit_live()
 
     def _on_compile_clicked(self) -> None:
         mapping = self.model.to_rule_set_mapping()
         self.status_label.setText(f"Compiled {len(mapping.get('resources', {}))} resource(s)")
-        # Emitting a simple Qt signal would require defining one; deferred until A1 follow-up.
         self._last_compiled = mapping  # stored for tests
+        self.compiledMappingChanged.emit(mapping)
+
+    def _on_live_preview_toggled(self) -> None:
+        self._live_preview_enabled = bool(self.chk_live.isChecked())
+        if self._live_preview_enabled:
+            self._on_compile_clicked()
+
+    def _maybe_emit_live(self) -> None:
+        if getattr(self, "_live_preview_enabled", False):
+            self._on_compile_clicked()
 
     def refresh(self) -> None:
         self.list_widget.clear()
