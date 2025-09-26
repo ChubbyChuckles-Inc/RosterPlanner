@@ -1,3 +1,9 @@
+
+feat(authoring): add Visual Rule Builder Canvas scaffold (7.10.A1)
+Introduces visual_rule_builder module with CanvasModel + node types and a minimal VisualRuleBuilder QWidget.
+Integrates toggle button into IngestionLabPanel (stacked editor view), allows switching between text and visual modes,
+and injects compiled draft resources back into the text editor. Adds unit test for model compilation and GUI toggle.
+Updates roadmap marking 7.10.A1 complete.
 feat(database): add Database Panel scaffold and schema introspection service (7.11.1)
 chore(roadmap): add Milestone 7.11 Database Overview & Management Panel (tasks 7.11.1–7.11.41)
 feat(ingestion-lab): add rule set export/import utilities & UI (7.10.42)

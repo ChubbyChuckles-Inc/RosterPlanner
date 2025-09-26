@@ -364,7 +364,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.46 Loading skeletons for large batch preview operations
 
  Authoring Experience & Assisted Rule Definition (Ease YAML/Schema Complexity)
- [ ] 7.10.A1 Visual Rule Builder Canvas: drag-and-drop blocks (Source → Selector → Transforms → Field Mapping) with live JSON preview pane.
+ [x] 7.10.A1 Visual Rule Builder Canvas: drag-and-drop blocks (Source → Selector → Transforms → Field Mapping) with live JSON preview pane.
  [ ] 7.10.A2 Inline Selector Explorer: split preview pane highlights DOM regions while hovering over selector text (debounced, throttled for performance) + auto-suggest narrower/broader variants.
  [ ] 7.10.A3 Transform Palette with Intelligent Defaults: categorized chips (Text Cleanup, Parsing, Numeric, Date, Expression) + one-click add; groups collapse into pill clusters.
  [ ] 7.10.A4 Natural Language Prompt Assist [R]: user enters "Extract player names and their live rating" -> generates draft rule blocks (skeleton TableRule/ListRule) for refinement.

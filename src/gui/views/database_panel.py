@@ -22,9 +22,11 @@ from PyQt6.QtCore import Qt
 try:  # pragma: no cover
     from gui.components.theme_aware import ThemeAwareMixin  # type: ignore
 except Exception:  # pragma: no cover
+
     class ThemeAwareMixin:  # type: ignore
         def apply_theme(self):  # noqa: D401
             pass
+
 
 from gui.services.service_locator import services as _services  # type: ignore
 

@@ -227,6 +227,12 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_security.setToolTip(
             "Run static security sandbox scan over expression & derived transforms"
         )
+        # Visual Builder (7.10.A1)
+        self.btn_visual_builder = QPushButton("Visual Builder")
+        self.btn_visual_builder.setObjectName("ingLabBtnVisualBuilder")
+        self.btn_visual_builder.setToolTip(
+            "Open visual rule builder canvas (drag/drop authoring scaffold)"
+        )
         # Draft / publish (7.10.49)
         self.btn_publish = QPushButton("Publish")
         self.btn_publish.setObjectName("ingLabBtnPublish")
@@ -290,6 +296,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_benchmark)
         actions.addWidget(self.btn_cache)
         actions.addWidget(self.btn_security)
+        actions.addWidget(self.btn_visual_builder)
         actions.addWidget(self.btn_publish)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
@@ -330,6 +337,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         mid_split = QSplitter(Qt.Orientation.Vertical, self)
         splitter.addWidget(mid_split)
 
+        # Middle upper area becomes a stacked editor: text editor / visual builder
+        self._editor_stack_container = QWidget()
+        self._editor_stack = QStackedLayout(self._editor_stack_container)
         self.rule_editor = QPlainTextEdit()
         self.rule_editor.setObjectName("ingestionLabRuleEditor")
         self.rule_editor.setPlaceholderText(
@@ -347,7 +357,17 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self.rule_editor.setStyleSheet(
                 "QPlainTextEdit#ingestionLabRuleEditor { background:#1b1b1b; color:#f0f0f0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
             )
-        mid_split.addWidget(self.rule_editor)
+        # Add text editor to stack index 0
+        self._editor_stack.addWidget(self.rule_editor)
+        # Lazy import of visual builder (optional dependency) (7.10.A1)
+        try:  # pragma: no cover
+            from gui.ingestion.visual_rule_builder import VisualRuleBuilder  # type: ignore
+
+            self.visual_builder = VisualRuleBuilder()  # type: ignore[assignment]
+        except Exception:  # pragma: no cover
+            self.visual_builder = QLabel("Visual builder unavailable (import error)")  # type: ignore[assignment]
+        self._editor_stack.addWidget(self.visual_builder)  # index 1
+        mid_split.addWidget(self._editor_stack_container)
 
         # Preview container (stack: main preview text + batch-loading skeleton) (7.10.46)
         self._preview_container = QWidget()
@@ -424,6 +444,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_benchmark.clicked.connect(self._on_benchmark_clicked)  # type: ignore
         self.btn_cache.clicked.connect(self._on_cache_inspector_clicked)  # type: ignore
         self.btn_security.clicked.connect(self._on_security_scan_clicked)  # type: ignore
+        self.btn_visual_builder.clicked.connect(self._on_visual_builder_clicked)  # type: ignore
         self.btn_publish.clicked.connect(self._on_publish_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -500,6 +521,37 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         self.batch_preview_artificial_delay_ms = int(os.environ.get("RP_ING_BATCH_DELAY_MS", "0"))
         self._batch_skeleton_last_shown = False  # test visibility flag
+        # Track editor mode: 0=text, 1=visual
+        self._editor_mode = 0
+
+    # ------------------------------------------------------------------
+    # Visual Builder toggle / integration (7.10.A1)
+    def _on_visual_builder_clicked(self) -> None:  # pragma: no cover - exercised in tests
+        if self._editor_mode == 0:
+            self._editor_stack.setCurrentIndex(1)
+            self._editor_mode = 1
+            self.btn_visual_builder.setText("Text Editor")
+        else:
+            # If switching back and visual builder has compiled mapping, optionally merge
+            try:
+                mapping = getattr(self.visual_builder, "compile_to_mapping", lambda: None)()
+            except Exception:
+                mapping = None
+            if mapping:
+                # Append pretty JSON of compiled resources as a convenience (non-destructive append)
+                try:
+                    import json as _json
+
+                    current = self.rule_editor.toPlainText().strip()
+                    snippet = _json.dumps(mapping.get("resources", {}), indent=2, ensure_ascii=False)
+                    if snippet and snippet not in current:
+                        new_text = (current + "\n\n# --- Visual Builder Draft Resources ---\n" + snippet).strip()
+                        self.rule_editor.setPlainText(new_text)
+                except Exception:
+                    pass
+            self._editor_stack.setCurrentIndex(0)
+            self._editor_mode = 0
+            self.btn_visual_builder.setText("Visual Builder")
 
     # ------------------------------------------------------------------
     # Accessibility (7.10.68) helper for tests
