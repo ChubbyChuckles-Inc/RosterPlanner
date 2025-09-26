@@ -55,6 +55,7 @@ import sqlite3
 import hashlib
 from dataclasses import dataclass
 from typing import Dict, Any
+import time
 
 # Field coverage backend (Milestone 7.10.26)
 try:  # pragma: no cover - import guard if module missing in earlier migrations
@@ -363,6 +364,19 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         root.insertWidget(0, self._banner)
         self._last_apply_summary: dict[str, any] = {}
         self._last_version_num: int | None = None  # Version store tracking
+        # Inline performance badge (7.10.45)
+        self.preview_perf_threshold_ms: float = float(
+            os.environ.get("RP_ING_PREVIEW_PERF_THRESHOLD_MS", "120")
+        )  # configurable for tests
+        self._perf_badge = QLabel("")
+        self._perf_badge.setObjectName("ingestionLabPerfBadge")
+        self._perf_badge.setStyleSheet(
+            "#ingestionLabPerfBadge { border:1px solid #c77; background:rgba(200,40,40,0.15);"
+            " padding:2px 6px; border-radius:4px; font-size:11px; color:#a00; }"
+        )
+        self._perf_badge.setVisible(False)
+        self._perf_badge_active: bool = False
+        root.insertWidget(1, self._perf_badge)
         self._register_shortcuts()
         self._configure_keyboard_focus()
 
@@ -554,6 +568,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_preview.setEnabled(enabled)
 
     def _on_preview_clicked(self) -> None:
+        start = self._now()
         items = self.file_tree.selectedItems()
         if not items:
             return
@@ -599,6 +614,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             except Exception:
                 rel_name = "<unknown>"
             self._append_log(f"ERROR preview {rel_name}: {e}")
+        # Performance badge update
+        elapsed_ms = (self._now() - start) * 1000.0
+        self._update_performance_badge(elapsed_ms)
 
     # ------------------------------------------------------------------
     # Logging helper
@@ -1327,7 +1345,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             theme = _svc.try_get("theme_service")
             density = _svc.try_get("density_service")
             rc_mode = _svc.try_get("reduced_color_mode")
-            hc_mode = _svc.try_get("high_contrast_mode")  # optional stub service (bool-ish is_active())
+            hc_mode = _svc.try_get(
+                "high_contrast_mode"
+            )  # optional stub service (bool-ish is_active())
         except Exception:  # pragma: no cover - fallback
             theme = density = rc_mode = hc_mode = None
         # Spacing adjustments
@@ -1386,6 +1406,31 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             )
         if parts:
             self.setStyleSheet("\n".join(parts))
+
+    # ------------------------------------------------------------------
+    # Performance badge helpers (7.10.45)
+    def _now(self) -> float:  # separated for test injection
+        return time.perf_counter()
+
+    def _update_performance_badge(self, elapsed_ms: float) -> None:
+        """Show or hide preview performance badge based on threshold.
+
+        Parameters
+        ----------
+        elapsed_ms: float
+            Measured preview duration in milliseconds.
+        """
+        thresh = self.preview_perf_threshold_ms
+        # Guard: elapsed_ms may be tiny in fast CI; rely on env override in tests
+        if elapsed_ms > thresh:
+            self._perf_badge.setText(
+                f"Preview {elapsed_ms:.1f}ms (> {thresh:.0f}ms threshold)"
+            )
+            self._perf_badge.setVisible(True)
+            self._perf_badge_active = True
+        else:
+            self._perf_badge.setVisible(False)
+            self._perf_badge_active = False
 
     def on_theme_changed(self, theme, changed_keys):  # type: ignore[override]
         # Re-apply full styling (cheap) on any theme change
