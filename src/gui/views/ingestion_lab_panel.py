@@ -167,6 +167,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         self.btn_apply = QPushButton("Apply")
         self.btn_apply.setToolTip("Apply last successful simulation (audit only in this milestone)")
+        self.btn_versions = QPushButton("Versions")
+        self.btn_versions.setToolTip("List stored rule set versions in log")
+        self.btn_rollback = QPushButton("Rollback")
+        self.btn_rollback.setToolTip("Load previous rule version into editor (not yet applied)")
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -213,6 +217,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_quality_gates)
         actions.addWidget(self.btn_simulate)
         actions.addWidget(self.btn_apply)
+        actions.addWidget(self.btn_versions)
+        actions.addWidget(self.btn_rollback)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -282,6 +288,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_quality_gates.clicked.connect(self._on_quality_gates_clicked)  # type: ignore
         self.btn_simulate.clicked.connect(self._on_simulate_clicked)  # type: ignore
         self.btn_apply.clicked.connect(self._on_apply_clicked)  # type: ignore
+        self.btn_versions.clicked.connect(self._on_versions_clicked)  # type: ignore
+        self.btn_rollback.clicked.connect(self._on_rollback_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -307,6 +315,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._banner.setVisible(False)
         root.insertWidget(0, self._banner)
         self._last_apply_summary: dict[str, any] = {}
+        self._last_version_num: int | None = None  # Version store tracking
 
     # ------------------------------------------------------------------
     # File Discovery
@@ -806,6 +815,14 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         except Exception as e:
             self._append_log(f"Apply ERROR: {e}")
             return
+        # Versioning (Milestone 7.10.33 initial storage)
+        from gui.ingestion.rule_versioning import RuleSetVersionStore
+
+        try:
+            store = RuleSetVersionStore(conn)
+            self._last_version_num = store.save_version(raw_payload, text or "{}")
+        except Exception as ve:  # pragma: no cover
+            self._append_log(f"Versioning WARN: {ve}")
         # Build summary (unchanged/skipped placeholders for now)
         inserted_total = sum(result.rows_by_resource.values())
         summary_text = f"Apply Summary sim={result.sim_id} inserted_rows={inserted_total} resources={len(result.rows_by_resource)}"
@@ -817,6 +834,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             "rows_by_resource": dict(result.rows_by_resource),
         }
         self._append_log(summary_text)
+        if self._last_version_num:
+            self._append_log(f"Rule Version: v{self._last_version_num}")
         # Emit event (Milestone 7.10.32) if event bus available
         if _services is not None:
             try:
@@ -838,6 +857,55 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
     # Snapshot for tests
     def apply_summary_snapshot(self) -> Dict[str, Any]:  # pragma: no cover - test helper
         return dict(self._last_apply_summary)
+
+    # ------------------------------------------------------------------
+    # Versioning helpers (7.10.33)
+    def _on_versions_clicked(self) -> None:
+        conn = None
+        if _services is not None:
+            try:
+                conn = _services.try_get("sqlite_conn")
+            except Exception:
+                conn = None
+        if conn is None:
+            self._append_log("Versions: no DB connection")
+            return
+        try:
+            from gui.ingestion.rule_versioning import RuleSetVersionStore
+
+            store = RuleSetVersionStore(conn)
+            versions = store.list_versions()
+            if not versions:
+                self._append_log("Versions: none stored")
+                return
+            self._append_log(f"Versions ({len(versions)}): " + ", ".join(f"v{v.version_num}" for v in versions[:15]))
+            if len(versions) > 15:
+                self._append_log(f"  ... {len(versions)-15} more")
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Versions ERROR: {e}")
+
+    def _on_rollback_clicked(self) -> None:
+        conn = None
+        if _services is not None:
+            try:
+                conn = _services.try_get("sqlite_conn")
+            except Exception:
+                conn = None
+        if conn is None:
+            self._append_log("Rollback: no DB connection")
+            return
+        try:
+            from gui.ingestion.rule_versioning import RuleSetVersionStore
+
+            store = RuleSetVersionStore(conn)
+            prev_json = store.rollback_to_previous()
+            if not prev_json:
+                self._append_log("Rollback: no previous version")
+                return
+            self.rule_editor.setPlainText(prev_json)
+            self._append_log("Rollback loaded previous version into editor (not applied)")
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Rollback ERROR: {e}")
 
     # ------------------------------------------------------------------
     # Accessors used in tests
