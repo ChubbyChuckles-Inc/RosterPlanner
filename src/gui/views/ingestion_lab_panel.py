@@ -1439,6 +1439,28 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 " border-color: #666; }"
             )
         if parts:
+            # Append specific editor/log/preview styling derived from theme tokens when present.
+            if theme and fg and bg:
+                # Derive secondary surfaces (fallbacks if missing)
+                try:
+                    colors = theme.colors()  # type: ignore[attr-defined]
+                except Exception:
+                    colors = {}
+                surf = colors.get("surface.card", colors.get("background.secondary", bg))
+                editor_bg = colors.get("background.editor", surf)
+                log_bg = colors.get("background.console", surf)
+                prev_bg = colors.get("background.preview", surf)
+                border_col = colors.get("border.medium", colors.get("accent.base", fg))
+                mono = "Consolas,'Courier New',monospace"
+                parts.append(
+                    f"QPlainTextEdit#ingestionLabRuleEditor {{ background:{editor_bg}; color:{fg}; border:1px solid {border_col}; font-family:{mono}; font-size:12px; }}"
+                )
+                parts.append(
+                    f"QPlainTextEdit#ingestionLabLog {{ background:{log_bg}; color:{fg}; border:1px solid {border_col}; font-family:{mono}; font-size:12px; }}"
+                )
+                parts.append(
+                    f"QTextEdit#ingestionLabPreview {{ background:{prev_bg}; color:{fg}; border:1px solid {border_col}; font-family:{mono}; font-size:12px; }}"
+                )
             self.setStyleSheet("\n".join(parts))
 
     # ------------------------------------------------------------------

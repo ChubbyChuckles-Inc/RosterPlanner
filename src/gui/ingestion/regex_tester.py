@@ -37,6 +37,12 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 from PyQt6.QtGui import QTextCharFormat, QColor
+
+try:  # pragma: no cover - optional mixin import
+    from gui.components.theme_aware import ThemeAwareMixin
+except Exception:  # pragma: no cover
+    class ThemeAwareMixin:  # type: ignore
+        pass
 from PyQt6.QtCore import Qt
 
 __all__ = ["RegexTesterDialog", "find_regex_matches"]
@@ -98,7 +104,7 @@ except Exception:  # pragma: no cover
     ChromeDialog = object  # type: ignore
 
 
-class RegexTesterDialog(ChromeDialog):  # type: ignore[misc]
+class RegexTesterDialog(ChromeDialog, ThemeAwareMixin):  # type: ignore[misc]
     """Interactive regex tester dialog.
 
     Designed to be lightweight and safe: heavy operations (e.g. catastrophic
@@ -185,6 +191,28 @@ class RegexTesterDialog(ChromeDialog):  # type: ignore[misc]
         self.chk_dotall.stateChanged.connect(self._update_matches)  # type: ignore
 
         self._update_matches()
+
+    # ------------------------------------------------------------------
+    def on_theme_changed(self, theme, changed_keys):  # type: ignore[override]
+        """Apply theme-provided colors to text areas when theme updates.
+
+        Falls back silently if required tokens are missing.
+        """
+        try:  # pragma: no cover - guard
+            colors = theme.colors() if hasattr(theme, "colors") else {}
+            bg = colors.get("background.secondary", colors.get("background.base", "#202020"))
+            surf = colors.get("surface.card", bg)
+            txt = colors.get("text.primary", "#f0f0f0")
+            border = colors.get("border.medium", colors.get("accent.base", txt))
+            mono = "Consolas,'Courier New',monospace"
+            self.text_edit.setStyleSheet(
+                f"QTextEdit#regexTesterSample {{ background:{surf}; color:{txt}; border:1px solid {border}; font-family:{mono}; font-size:12px; }}"
+            )
+            self.match_list.setStyleSheet(
+                f"QListWidget#regexTesterMatches {{ background:{bg}; color:{txt}; border:1px solid {border}; font-family:{mono}; font-size:12px; }}"
+            )
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     def _gather_flags(self) -> int:
