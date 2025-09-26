@@ -1,6 +1,7 @@
 import json
 from gui.ingestion.dependency_graph import build_dependency_graph, topological_order
 
+
 def sample_rules():
     return {
         "version": 1,
@@ -17,7 +18,10 @@ def sample_rules():
                 "fields": {
                     "name": {"selector": ".name"},
                     "live_pz": {"selector": ".lpz"},
-                    "norm_lpz": {"selector": ".lpz", "transforms": [{"kind": "expr", "code": "live_pz - diff"}]},
+                    "norm_lpz": {
+                        "selector": ".lpz",
+                        "transforms": [{"kind": "expr", "code": "live_pz - diff"}],
+                    },
                 },
             },
         },
@@ -44,7 +48,9 @@ def test_topological_order_contains_all():
 
 def test_cycle_detection():
     cyc = sample_rules()
-    cyc["derived"]["points"] = "ratio"  # create backward edge: ratio -> points already? ratio = points / diff => points -> ratio and ratio -> points
+    cyc["derived"][
+        "points"
+    ] = "ratio"  # create backward edge: ratio -> points already? ratio = points / diff => points -> ratio and ratio -> points
     try:
         build_dependency_graph(cyc)
     except ValueError as e:

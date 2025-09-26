@@ -352,7 +352,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.36 Regex tester pane: live highlighting & group extraction preview
  [x] 7.10.37 Derived field composer: define new fields from existing extracted fields (expression builder with validation)
  [x] 7.10.38 Multi-phase dependency graph viewer (which extracted fields feed later transforms)
- [ ] 7.10.39 Parallel parse benchmarking: run selected files across rule variants (A/B) and compare metrics
+ [x] 7.10.39 Parallel parse benchmarking: run selected files across rule variants (A/B) and compare metrics
  [ ] 7.10.40 Caching inspector: show which files were skipped due to unchanged hash under new rules vs forced re-parse
  [ ] 7.10.41 Security sandbox: detect & flag disallowed Python in custom expression transforms
  [ ] 7.10.42 Export / import rule sets (share or version control JSON)

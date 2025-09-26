@@ -182,8 +182,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             "Compose derived fields (expressions referencing existing extracted fields)"
         )
         self.btn_dep_graph = QPushButton("Dep Graph")
-        self.btn_dep_graph.setToolTip(
-            "Show dependency graph (base + derived field relationships)"
+        self.btn_dep_graph.setToolTip("Show dependency graph (base + derived field relationships)")
+        self.btn_benchmark = QPushButton("Benchmark")
+        self.btn_benchmark.setToolTip(
+            "Run A/B parse benchmark comparing two rule variants over a sample of visible files"
         )
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
@@ -237,6 +239,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_regex_tester)
         actions.addWidget(self.btn_derived)
         actions.addWidget(self.btn_dep_graph)
+        actions.addWidget(self.btn_benchmark)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -312,6 +315,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
         self.btn_derived.clicked.connect(self._on_derived_fields_clicked)  # type: ignore
         self.btn_dep_graph.clicked.connect(self._on_dependency_graph_clicked)  # type: ignore
+        self.btn_benchmark.clicked.connect(self._on_benchmark_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -1017,6 +1021,37 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             return
         dlg = DependencyGraphDialog(self.rule_editor.toPlainText(), self)
         dlg.exec()
+
+    # ------------------------------------------------------------------
+    # Parse Benchmark (7.10.39 initial)
+    def _on_benchmark_clicked(self) -> None:
+        try:
+            from gui.ingestion.parse_benchmark import BenchmarkDialog
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Benchmark import failed: {e}")
+            return
+        # Collect a mapping of filename -> html content for visible (non-hidden) files
+        sample_map: dict[str, str] = {}
+        max_files = 50  # safeguard
+        for it in self._all_file_items:
+            if it.isHidden():
+                continue
+            if len(sample_map) >= max_files:
+                break
+            data = it.data(0, Qt.ItemDataRole.UserRole)
+            if not isinstance(data, dict) or "file" not in data:
+                continue
+            fpath = data.get("file")
+            try:
+                with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
+                    sample_map[fpath] = fh.read()
+            except Exception:
+                continue
+        dlg = BenchmarkDialog(self, sample_files=sample_map)
+        dlg.exec()
+        self._append_log(
+            f"Benchmark run ready with {len(sample_map)} sample files (provide A/B rules in dialog)."
+        )
 
     # ------------------------------------------------------------------
     # Versioning helpers (7.10.33)

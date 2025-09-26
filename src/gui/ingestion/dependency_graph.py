@@ -111,8 +111,10 @@ def build_dependency_graph(mapping: Dict) -> Tuple[Dict[str, Set[str]], Dict[str
                         tlist = fval.get("transforms") or []
                         if isinstance(tlist, list):
                             for t in tlist:
-                                if isinstance(t, dict) and t.get("kind") == "expr" and isinstance(
-                                    t.get("code"), str
+                                if (
+                                    isinstance(t, dict)
+                                    and t.get("kind") == "expr"
+                                    and isinstance(t.get("code"), str)
                                 ):
                                     refs = _extract_names_from_expr(t.get("code")) & base_fields
                                     if refs:
