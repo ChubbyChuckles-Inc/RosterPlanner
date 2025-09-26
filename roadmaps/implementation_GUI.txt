@@ -362,18 +362,16 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.44 High-contrast & reduced-color adaptations for complex diff/preview views
  [x] 7.10.45 Inline performance warnings (badge if preview parse > threshold)
  [x] 7.10.46 Loading skeletons for large batch preview operations
- [ ] 7.10.47 Status pills (Parsed / Unchanged / Error / Skipped) for each file row
- [ ] 7.10.48 Toast notifications integration (success, warnings) reusing tokenized styles (no blocking modals)
 
  Persistence & Configuration
- [ ] 7.10.49 Rule set autosave draft state with explicit publish action
- [ ] 7.10.50 Settings: default preview batch size, performance threshold, safety level (disallow custom python)
- [ ] 7.10.51 Telemetry counters (preview runs, applied runs, avg parse time) behind debug flag
+ [x] 7.10.49 Rule set autosave draft state with explicit publish action
+ [x] 7.10.50 Settings: default preview batch size, performance threshold, safety level (disallow custom python)
+ [x] 7.10.51 Telemetry counters (preview runs, applied runs, avg parse time) behind debug flag
 
  Documentation & Tests
- [ ] 7.10.52 Developer guide: rule schema specification + extension points [D]
- [ ] 7.10.53 ADR: Dynamic ingestion rule architecture (& rationale vs static parser classes) [D]
- [ ] 7.10.54 Unit tests: rule validation, transform chaining, mapping diff generation [T]
+ [x] 7.10.52 Developer guide: rule schema specification + extension points [D]
+ [x] 7.10.53 ADR: Dynamic ingestion rule architecture (& rationale vs static parser classes) [D]
+ [x] 7.10.54 Unit tests: rule validation, transform chaining, mapping diff generation [T]
  [ ] 7.10.55 Integration tests: sandbox apply vs real apply produce consistent DB deltas [T]
  [ ] 7.10.56 Performance test: batch preview (N=50 division roster files) < target ms baseline [T]
  [ ] 7.10.57 Visual regression snapshots for diff view & mapping grid [T]

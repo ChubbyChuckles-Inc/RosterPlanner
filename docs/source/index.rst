@@ -14,3 +14,5 @@ documentation for details.
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   ingestion_rule_developer_guide

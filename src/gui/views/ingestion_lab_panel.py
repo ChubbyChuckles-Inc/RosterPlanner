@@ -208,6 +208,11 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_security.setToolTip(
             "Run static security sandbox scan over expression & derived transforms"
         )
+        # Draft / publish (7.10.49)
+        self.btn_publish = QPushButton("Publish")
+        self.btn_publish.setToolTip(
+            "Persist current draft rule set as the active published version (creates new version entry if changed)."
+        )
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -265,6 +270,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_benchmark)
         actions.addWidget(self.btn_cache)
         actions.addWidget(self.btn_security)
+        actions.addWidget(self.btn_publish)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -398,6 +404,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_benchmark.clicked.connect(self._on_benchmark_clicked)  # type: ignore
         self.btn_cache.clicked.connect(self._on_cache_inspector_clicked)  # type: ignore
         self.btn_security.clicked.connect(self._on_security_scan_clicked)  # type: ignore
+        self.btn_publish.clicked.connect(self._on_publish_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -405,7 +412,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
 
         # Internal cache of all file items for filtering without re-scanning
         # Holds all leaf file items for filtering purposes
-        self._all_file_items = []  # type: list[QTreeWidgetItem]
+        self._all_file_items = []  # list of file QTreeWidgetItem
         # Cache last field coverage report for tests (Milestone 7.10.26)
         self._last_field_coverage = None  # type: ignore[assignment]
         # Safe apply guard state (7.10.30/31)
@@ -413,7 +420,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._safe_guard = SafeApplyGuard()
         except Exception:  # pragma: no cover
             self._safe_guard = None
-        self._last_simulation_id: int | None = None
+        self._last_simulation_id = None
         # Inline banner label for post-apply summary (7.10.31)
         self._banner = QLabel("")
         self._banner.setObjectName("ingestionLabBanner")
@@ -422,12 +429,24 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         self._banner.setVisible(False)
         root.insertWidget(0, self._banner)
-        self._last_apply_summary: dict[str, any] = {}
-        self._last_version_num: int | None = None  # Version store tracking
+        self._last_apply_summary = {}
+        self._last_version_num = None  # Version store tracking
         # Inline performance badge (7.10.45)
-        self.preview_perf_threshold_ms: float = float(
-            os.environ.get("RP_ING_PREVIEW_PERF_THRESHOLD_MS", "120")
-        )  # configurable for tests
+        # Performance threshold now sourced from settings service if available (7.10.50)
+        try:  # late import to avoid circulars
+            from gui.services.settings_service import SettingsService  # type: ignore
+
+            self.preview_perf_threshold_ms = float(
+                getattr(
+                    SettingsService.instance,
+                    "ingestion_preview_perf_threshold_ms",
+                    float(os.environ.get("RP_ING_PREVIEW_PERF_THRESHOLD_MS", "120")),
+                )
+            )
+        except Exception:
+            self.preview_perf_threshold_ms = float(
+                os.environ.get("RP_ING_PREVIEW_PERF_THRESHOLD_MS", "120")
+            )  # fallback
         self._perf_badge = QLabel("")
         self._perf_badge.setObjectName("ingestionLabPerfBadge")
         self._perf_badge.setStyleSheet(
@@ -435,10 +454,26 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             " padding:2px 6px; border-radius:4px; font-size:11px; color:#a00; }"
         )
         self._perf_badge.setVisible(False)
-        self._perf_badge_active: bool = False
+        self._perf_badge_active = False
         root.insertWidget(1, self._perf_badge)
         self._register_shortcuts()
         self._configure_keyboard_focus()
+        # Draft autosave (7.10.49)
+        self._draft_path = os.path.join(self._base_dir, ".ingestion_rules_draft.json")
+        self._last_published_hash = None
+        self._draft_autosave_interval_ms = int(os.environ.get("RP_ING_DRAFT_AUTOSAVE_MS", "5000"))
+        self._draft_dirty = False
+        try:
+            from PyQt6.QtCore import QTimer
+
+            self._draft_timer = QTimer(self)
+            self._draft_timer.setInterval(self._draft_autosave_interval_ms)
+            self._draft_timer.timeout.connect(self._autosave_draft)  # type: ignore
+            self._draft_timer.start()
+        except Exception:  # pragma: no cover
+            self._draft_timer = None  # type: ignore
+        self.rule_editor.textChanged.connect(self._on_rule_text_changed)  # type: ignore
+        self._load_existing_draft()
         # Batch preview configuration (env overrides for tests) (7.10.46)
         self.batch_preview_skeleton_min_files = int(
             os.environ.get("RP_ING_BATCH_SKELETON_MIN_FILES", "5")
@@ -578,6 +613,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         _reg_if("ing.export", "Ctrl+E", "Export rules JSON")
         _reg_if("ing.import", "Ctrl+Shift+E", "Import rules JSON")
         _reg_if("ing.hash_impact", "Ctrl+H", "Compute hash impact preview")
+        _reg_if("ing.publish", "Ctrl+B", "Publish current draft rule set")
 
     def _dispatch_shortcut(self, sid: str) -> None:  # pragma: no cover - thin dispatcher
         mapping = {
@@ -590,6 +626,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             "ing.export": self._on_export_rules_clicked,
             "ing.import": self._on_import_rules_clicked,
             "ing.hash_impact": self._on_hash_impact_clicked,
+            "ing.publish": self._on_publish_clicked,
         }
         fn = mapping.get(sid)
         if fn:
@@ -691,6 +728,13 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._append_log(f"ERROR preview {rel_name}: {e}")
         elapsed_ms = (self._now() - start) * 1000.0
         self._update_performance_badge(elapsed_ms)
+        # Telemetry: record preview
+        try:
+            from gui.services.telemetry_service import TelemetryService  # type: ignore
+
+            TelemetryService.instance.record_preview(elapsed_ms)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Batch preview with loading skeleton (7.10.46)
@@ -714,7 +758,14 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             except Exception:
                 pass
         out_lines = [f"Batch Preview ({count} files)"]
-        for idx, it in enumerate(targets[:50]):  # cap to avoid excessive UI size
+        # Cap batch lines using settings (default 50)
+        try:
+            from gui.services.settings_service import SettingsService  # type: ignore
+
+            cap = int(getattr(SettingsService.instance, "ingestion_preview_batch_cap", 50))
+        except Exception:
+            cap = 50
+        for idx, it in enumerate(targets[:cap]):  # cap to avoid excessive UI size
             payload = it.data(0, Qt.ItemDataRole.UserRole)
             fpath = payload.get("file") if isinstance(payload, dict) else None
             if not fpath:
@@ -728,8 +779,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 )
             except Exception as e:  # pragma: no cover
                 out_lines.append(f"[{idx+1}] {fpath} ERROR: {e}")
-        if count > 50:
-            out_lines.append(f"... truncated {count-50} more")
+        if count > cap:
+            out_lines.append(f"... truncated {count-cap} more")
         # Artificial delay to allow skeleton perceptibility in tests / UX (optional)
         delay_ms = self.batch_preview_artificial_delay_ms
         if use_skeleton and delay_ms > 0:
@@ -752,6 +803,12 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._append_log(f"Batch preview complete: {count} files")
         elapsed_ms = (self._now() - start) * 1000.0
         self._update_performance_badge(elapsed_ms)
+        try:  # telemetry
+            from gui.services.telemetry_service import TelemetryService  # type: ignore
+
+            TelemetryService.instance.record_preview(elapsed_ms)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Logging helper
@@ -1137,6 +1194,13 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._append_log(summary_text)
         if self._last_version_num:
             self._append_log(f"Rule Version: v{self._last_version_num}")
+        # Telemetry: record successful apply
+        try:
+            from gui.services.telemetry_service import TelemetryService  # type: ignore
+
+            TelemetryService.instance.record_apply()
+        except Exception:
+            pass
         # Emit event (Milestone 7.10.32) if event bus available
         if _services is not None:
             try:
@@ -1667,3 +1731,123 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
     # For tests
     def filtered_file_count(self) -> int:
         return sum(1 for it in self._all_file_items if not it.isHidden())
+
+    # ------------------------------------------------------------------
+    # Draft autosave & publish (7.10.49)
+    def _on_rule_text_changed(self) -> None:  # pragma: no cover - GUI event
+        # Mark draft dirty; actual write deferred to timer based autosave
+        self._draft_dirty = True
+
+    def _autosave_draft(self) -> None:
+        """Persist current editor text to the draft file if dirty.
+
+        Uses an atomic write pattern (temp file + replace) to avoid partial writes.
+        Silent on errors (but logs a warning) — autosave should never raise.
+        """
+        if not self._draft_dirty:
+            return
+        text = self.rule_editor.toPlainText()
+        # Do not save empty drafts (avoid overwriting an existing draft with blank)
+        if not (text and text.strip()):
+            return
+        try:
+            tmp_path = self._draft_path + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8", errors="ignore") as fh:
+                json.dump({"text": text, "ts": int(time.time())}, fh, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, self._draft_path)
+            self._draft_dirty = False
+            # Provide lightweight feedback (single line; throttled by dirty flag)
+            self._append_log("Draft autosaved")
+        except Exception as e:  # pragma: no cover - best effort
+            try:
+                self._append_log(f"Draft autosave WARN: {e}")
+            except Exception:
+                pass
+
+    def _load_existing_draft(self) -> None:
+        """Load existing draft file into editor if editor currently empty.
+
+        This ensures that interrupted sessions restore work-in-progress content
+        without clobbering any pre-populated editor text (e.g., when loading a
+        previous version or template before instantiation of autosave system).
+        """
+        if not os.path.exists(self._draft_path):
+            return
+        current = self.rule_editor.toPlainText()
+        if current.strip():  # User already has content; do not overwrite implicitly
+            return
+        try:
+            with open(self._draft_path, "r", encoding="utf-8", errors="ignore") as fh:
+                payload = json.load(fh)
+            if isinstance(payload, dict) and isinstance(payload.get("text"), str):
+                self.rule_editor.setPlainText(payload.get("text", ""))
+                self._draft_dirty = False
+                self._append_log("Draft restored")
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Draft restore WARN: {e}")
+
+    def _on_publish_clicked(self) -> None:
+        """Publish current draft: save as formal version (if changed) & clear draft state."""
+        raw = (self.rule_editor.toPlainText() or "").strip()
+        if not raw:
+            self._append_log("Publish: editor empty")
+            return
+        # Compute content hash to detect no-op publishes
+        try:
+            content_hash = hashlib.sha1(raw.encode("utf-8", "ignore")).hexdigest()
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Publish ERROR (hash): {e}")
+            return
+        if content_hash == self._last_published_hash:
+            self._append_log("Publish: no changes since last publish")
+            return
+        # Attempt structured parse to validate before publish
+        try:
+            js = json.loads(raw) if raw else {}
+            if not isinstance(js, dict):
+                raise ValueError("Root must be a JSON object")
+        except Exception as e:
+            self._append_log(f"Publish ERROR (parse): {e}")
+            return
+        # Store as version if version store available
+        conn = None
+        if _services is not None:
+            try:
+                conn = _services.try_get("sqlite_conn")
+            except Exception:
+                conn = None
+        version_num = None
+        if conn is not None:
+            try:
+                from gui.ingestion.rule_versioning import RuleSetVersionStore
+
+                store = RuleSetVersionStore(conn)
+                version_num = store.save_version(js, raw)
+            except Exception as e:  # pragma: no cover
+                self._append_log(f"Publish WARN (version store): {e}")
+        self._last_published_hash = content_hash
+        # Remove draft file (best effort)
+        try:
+            if os.path.exists(self._draft_path):
+                os.remove(self._draft_path)
+        except Exception:  # pragma: no cover
+            pass
+        self._draft_dirty = False
+        msg = f"Published draft (hash={content_hash[:10]})"
+        if version_num is not None:
+            msg += f" -> v{version_num}"
+            self._last_version_num = version_num
+        self._append_log(msg)
+        # Emit publish event (optional, mirrors apply event pattern)
+        if _services is not None:
+            try:
+                from gui.services.event_bus import GUIEvent, EventBus  # local import
+
+                bus: "EventBus" | None = _services.try_get("event_bus")  # type: ignore[name-defined]
+                if bus:
+                    bus.publish(
+                        GUIEvent.INGEST_RULES_PUBLISHED,
+                        {"hash": content_hash, "version": version_num},
+                    )
+            except Exception:  # pragma: no cover
+                pass

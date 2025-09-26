@@ -19,11 +19,19 @@ from typing import ClassVar
 class SettingsService:
     """Runtime settings and feature flags.
 
+    Extended under milestone 7.10.50 to include ingestion lab configuration
+    knobs so tests and future settings UI can control performance and safety
+    without relying on environment variables.
+
     Attributes:
         allow_placeholders: When True, views may render synthetic placeholder
-            data when real ingested data is not available. Default True to
-            avoid breaking current integration tests; can be toggled by the
-            application or test fixtures.
+            data when real ingested data is not available. Default True.
+        ingestion_preview_batch_cap: Max number of files listed in a batch
+            preview output (caps log / UI size). Default 50 (previous constant).
+        ingestion_preview_perf_threshold_ms: Threshold in milliseconds after
+            which a preview operation surfaces a performance badge warning.
+        ingestion_disallow_custom_python: When True, custom python expression
+            transforms in rule payloads are rejected (simulation fails fast).
     """
 
     # singleton convenience instance used in many places in the GUI. Tests
@@ -31,6 +39,9 @@ class SettingsService:
     instance: ClassVar["SettingsService"]
 
     allow_placeholders: bool = True
+    ingestion_preview_batch_cap: int = 50
+    ingestion_preview_perf_threshold_ms: float = 120.0
+    ingestion_disallow_custom_python: bool = False
 
 
 # Initialize default singleton
