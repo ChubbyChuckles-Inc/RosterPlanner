@@ -362,11 +362,9 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.44 High-contrast & reduced-color adaptations for complex diff/preview views
  [x] 7.10.45 Inline performance warnings (badge if preview parse > threshold)
  [x] 7.10.46 Loading skeletons for large batch preview operations
- [ ] 7.10.47 Status pills (Parsed / Unchanged / Error / Skipped) for each file row
- [ ] 7.10.48 Toast notifications integration (success, warnings) reusing tokenized styles (no blocking modals)
 
  Persistence & Configuration
- [ ] 7.10.49 Rule set autosave draft state with explicit publish action
+ [x] 7.10.49 Rule set autosave draft state with explicit publish action
  [ ] 7.10.50 Settings: default preview batch size, performance threshold, safety level (disallow custom python)
  [ ] 7.10.51 Telemetry counters (preview runs, applied runs, avg parse time) behind debug flag
 
