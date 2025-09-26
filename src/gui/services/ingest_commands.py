@@ -109,3 +109,10 @@ def register_ingest_commands() -> None:
 
 # Auto-register on import for convenience (idempotent due to registry guard)
 register_ingest_commands()
+
+# Ensure Ingestion Lab related commands are also registered on general
+# ingestion command import (Milestone 7.10.66 visibility fix)
+try:  # pragma: no cover - import side-effect
+    from . import ingestion_lab_commands  # noqa: F401
+except Exception:
+    pass
