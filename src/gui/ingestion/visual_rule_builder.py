@@ -376,59 +376,117 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
     # UI ------------------------------------------------------------------
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(6)
+
+        # Primary toolbar (compact)
         toolbar = QHBoxLayout()
-        self.btn_add_selector = QPushButton("Add Selector")
-        self.btn_add_field = QPushButton("Add Field")
-        self.btn_add_chain = QPushButton("Add Transform Chain")
-        self.btn_compile = QPushButton("Compile → Editor")
-        self.chk_live = QCheckBox("Live Preview")
+        toolbar.setSpacing(4)
+        self.btn_add_selector = QPushButton("Selector")
+        self.btn_add_selector.setToolTip("Add Selector Node")
+        self.btn_add_field = QPushButton("Field")
+        self.btn_add_field.setToolTip("Add Field Mapping Node")
+        self.btn_add_chain = QPushButton("Chain")
+        self.btn_add_chain.setToolTip("Add Transform Chain Node")
+        self.btn_compile = QPushButton("Compile")
+        self.btn_compile.setToolTip("Compile current canvas to mapping and emit preview")
+        self.chk_live = QCheckBox("Live")
+        self.chk_live.setToolTip("Automatically compile after changes")
         self.chk_live.setObjectName("visualRuleBuilderLivePreview")
         toolbar.addWidget(self.btn_add_selector)
         toolbar.addWidget(self.btn_add_field)
         toolbar.addWidget(self.btn_add_chain)
-        toolbar.addStretch(1)
+        toolbar.addSpacing(8)
         toolbar.addWidget(self.chk_live)
         toolbar.addWidget(self.btn_compile)
+        toolbar.addStretch(1)
         layout.addLayout(toolbar)
 
+        # Node + palette splitter
+        from PyQt6.QtWidgets import QSplitter, QTabWidget, QScrollArea, QWidget as _QW
+        splitter = QSplitter(self)
+        splitter.setOrientation(Qt.Orientation.Vertical)
+
+        # Node list section
+        node_container = _QW()
+        node_v = QVBoxLayout(node_container)
+        node_v.setContentsMargins(0, 0, 0, 0)
+        node_v.setSpacing(4)
         self.list_widget = QListWidget()
         self.list_widget.setObjectName("visualRuleBuilderNodeList")
-        layout.addWidget(self.list_widget, 1)
+        self.list_widget.setMinimumHeight(140)
+        node_v.addWidget(self.list_widget)
 
-        # Transform palette (7.10.A3)
-        self._palette_container = QWidget()
+        # Collapsible palette header
+        palette_header_bar = QHBoxLayout()
+        palette_header_bar.setSpacing(4)
+        self.btn_toggle_palette = QPushButton("Transforms ▾")
+        self.btn_toggle_palette.setCheckable(True)
+        self.btn_toggle_palette.setChecked(True)
+        self.btn_toggle_palette.setObjectName("visualRuleBuilderPaletteToggle")
+        palette_header_bar.addWidget(self.btn_toggle_palette)
+        palette_header_bar.addStretch(1)
+        node_v.addLayout(palette_header_bar)
+
+        # Palette container (tabs)
+        self._palette_container = _QW()
         self._palette_container.setObjectName("visualRuleBuilderTransformPalette")
-        palette_layout = QVBoxLayout(self._palette_container)
-        palette_layout.setContentsMargins(0, 4, 0, 4)
-        palette_layout.setSpacing(4)
+        tab_layout = QVBoxLayout(self._palette_container)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_layout.setSpacing(2)
+        self.palette_tabs = QTabWidget(self._palette_container)
+        self.palette_tabs.setObjectName("visualRuleBuilderTransformTabs")
         self._palette_buttons: Dict[str, List[Any]] = {}
         for category, items in TRANSFORM_PALETTE.items():
-            cat_btn = QPushButton(f"{category}")  # collapsible toggle soon
-            cat_btn.setEnabled(False)
-            palette_layout.addWidget(cat_btn)
-            row = QHBoxLayout()
-            row.setSpacing(4)
+            tab_page = _QW()
+            page_layout = QVBoxLayout(tab_page)
+            page_layout.setContentsMargins(4, 4, 4, 4)
+            page_layout.setSpacing(4)
+            # Use flow-like grid (4 per row)
+            current_row = QHBoxLayout()
+            current_row.setSpacing(4)
+            count = 0
             btn_refs: List[Any] = []
             for spec in items:
                 b = QPushButton(spec["label"])  # type: ignore[arg-type]
                 b.setObjectName(f"transformChip_{spec['kind']}")
-
-                # Bind spec copy to closure
-                def _make_handler(s: Dict[str, Any]):  # noqa: WPS430 - closure factory
-                    def _handler():  # pragma: no cover - UI pathway
+                b.setCursor(Qt.CursorShape.PointingHandCursor)
+                def _make_handler(s: Dict[str, Any]):  # noqa: WPS430
+                    def _handler():  # pragma: no cover
                         self._apply_transform_chip(s)
-
                     return _handler
-
                 b.clicked.connect(_make_handler(spec))  # type: ignore
-                row.addWidget(b)
+                current_row.addWidget(b)
                 btn_refs.append(b)
-            palette_layout.addLayout(row)
+                count += 1
+                if count % 4 == 0:
+                    page_layout.addLayout(current_row)
+                    current_row = QHBoxLayout()
+                    current_row.setSpacing(4)
+            if current_row.count() > 0:
+                page_layout.addLayout(current_row)
+            # Scroll area in case many chips later
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            inner_wrap = _QW()
+            inner_layout = QVBoxLayout(inner_wrap)
+            inner_layout.setContentsMargins(0, 0, 0, 0)
+            inner_layout.setSpacing(0)
+            inner_layout.addWidget(tab_page)
+            scroll.setWidget(inner_wrap)
+            self.palette_tabs.addTab(scroll, category)
             self._palette_buttons[category] = btn_refs
-        layout.addWidget(self._palette_container)
+        tab_layout.addWidget(self.palette_tabs)
+        node_v.addWidget(self._palette_container)
+
+        # Status label at bottom
         self.status_label = QLabel("")
         self.status_label.setObjectName("visualRuleBuilderStatus")
-        layout.addWidget(self.status_label)
+        node_v.addWidget(self.status_label)
+
+        splitter.addWidget(node_container)
+        splitter.setStretchFactor(0, 1)
+        layout.addWidget(splitter, 1)
 
         # Connections
         self.btn_add_selector.clicked.connect(self._on_add_selector)  # type: ignore
@@ -441,6 +499,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.list_widget.currentRowChanged.connect(self._on_selection_changed)  # type: ignore
         except Exception:
             pass
+        self.btn_toggle_palette.toggled.connect(self._on_palette_toggled)  # type: ignore
 
     # Actions -------------------------------------------------------------
     def _on_add_selector(self) -> None:
@@ -511,6 +570,14 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.refresh()
         else:
             self.status_label.setText("Transform not applied (not a field node?)")
+
+    def _on_palette_toggled(self, checked: bool) -> None:  # pragma: no cover - trivial
+        if checked:
+            self._palette_container.show()
+            self.btn_toggle_palette.setText("Transforms ▾")
+        else:
+            self._palette_container.hide()
+            self.btn_toggle_palette.setText("Transforms ▸")
 
     def refresh(self) -> None:
         self.list_widget.clear()
