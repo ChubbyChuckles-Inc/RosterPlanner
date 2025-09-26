@@ -542,6 +542,14 @@ class MainWindow(QMainWindow):  # Dock-based
             "help.shortcuts", "Show Keyboard Shortcuts", self._open_shortcut_cheatsheet
         )
         self._register_core_commands()
+        # Debug hook: auto-open Command Palette if env var set (facilitates crash reproduction)
+        try:
+            import os
+            if os.environ.get("ROSTERPLANNER_DEBUG_OPEN_PALETTE") == "1":
+                from PyQt6.QtCore import QTimer  # type: ignore
+                QTimer.singleShot(600, self._open_command_palette)  # open shortly after init
+        except Exception:
+            pass
 
     def _on_reset_layout(self):
         # Delete persisted layout file
