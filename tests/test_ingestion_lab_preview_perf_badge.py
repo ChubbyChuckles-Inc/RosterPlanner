@@ -41,3 +41,66 @@ def test_preview_perf_badge_triggers(tmp_path, qtbot):
     assert (
         getattr(panel, "_perf_badge_active", True) is False
     ), "Performance badge state flag should be inactive for fast preview"
+
+
+# Add tests for batch preview skeleton (Milestone 7.10.46)
+
+def test_batch_preview_skeleton_shows_and_hides(qtbot, tmp_path, monkeypatch):
+    from gui.views.ingestion_lab_panel import IngestionLabPanel
+
+    # Create temporary HTML files
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    file_paths = []
+    for i in range(6):  # >= default threshold 5
+        p = data_dir / f"sample_{i}.html"
+        p.write_text(f"<html><body><div>File {i}</div></body></html>")
+        file_paths.append(str(p))
+    panel = IngestionLabPanel(str(data_dir))
+    qtbot.addWidget(panel)
+    panel.refresh_file_list()
+
+    # Select multiple child items
+    items = []
+    top_count = panel.file_tree.topLevelItemCount()
+    for r in range(top_count):
+        top = panel.file_tree.topLevelItem(r)
+        for c in range(top.childCount()):
+            items.append(top.child(c))
+    # Ensure we have enough
+    assert len(items) >= 6
+    panel.file_tree.clearSelection()
+    for it in items[:6]:
+        it.setSelected(True)
+    # Force artificial delay small for deterministic skeleton show
+    panel.batch_preview_artificial_delay_ms = 10
+    panel._on_preview_clicked()
+    # Skeleton should have been shown at some point
+    assert panel._batch_skeleton_last_shown is True
+    # After completion stack index should return to preview (0)
+    assert panel._preview_stack.currentIndex() == 0
+    txt = panel.preview_area.toPlainText()
+    assert "Batch Preview" in txt and "6 files" in txt
+
+
+def test_single_preview_unchanged_path(qtbot, tmp_path):
+    from gui.views.ingestion_lab_panel import IngestionLabPanel
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    f = data_dir / "one.html"
+    f.write_text("<html><body><p>Only</p></body></html>")
+    panel = IngestionLabPanel(str(data_dir))
+    qtbot.addWidget(panel)
+    panel.refresh_file_list()
+    # Select first child
+    for r in range(panel.file_tree.topLevelItemCount()):
+        top = panel.file_tree.topLevelItem(r)
+        if top.childCount():
+            child = top.child(0)
+            child.setSelected(True)
+            break
+    panel._on_preview_clicked()
+    assert "File:" in panel.preview_area.toPlainText()
+    # Skeleton flag should remain False
+    assert panel._batch_skeleton_last_shown is False

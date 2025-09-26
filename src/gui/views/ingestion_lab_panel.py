@@ -46,6 +46,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QToolButton,
     QSpinBox,
+    QStackedLayout,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -56,6 +57,12 @@ import hashlib
 from dataclasses import dataclass
 from typing import Dict, Any
 import time
+from PyQt6.QtWidgets import QAbstractItemView
+
+try:  # pragma: no cover - optional import
+    from gui.components.skeleton_loader import SkeletonLoaderWidget
+except Exception:  # pragma: no cover
+    SkeletonLoaderWidget = None  # type: ignore
 
 # Field coverage backend (Milestone 7.10.26)
 try:  # pragma: no cover - import guard if module missing in earlier migrations
@@ -274,6 +281,11 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         # Left: File Navigator (grouped). Replace flat list with tree (phase -> files)
         self.file_tree = QTreeWidget()
         self.file_tree.setObjectName("ingestionLabFileTree")
+        # Enable multi-selection for batch preview operations (7.10.46)
+        try:
+            self.file_tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        except Exception:
+            pass
         # Columns (Milestone 7.10.3): Phase | File | Size (KB) | Hash (short) | Last Ingested | Parser Ver
         self.file_tree.setHeaderLabels(
             ["Phase", "File", "Size (KB)", "Hash", "Last Ingested", "Parser Ver"]
@@ -311,6 +323,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             )
         mid_split.addWidget(self.rule_editor)
 
+        # Preview container (stack: main preview text + batch-loading skeleton) (7.10.46)
+        self._preview_container = QWidget()
+        self._preview_stack = QStackedLayout(self._preview_container)
         self.preview_area = QTextEdit()
         self.preview_area.setObjectName("ingestionLabPreview")
         self.preview_area.setReadOnly(True)
@@ -326,7 +341,18 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self.preview_area.setStyleSheet(
                 "QTextEdit#ingestionLabPreview { background:#111111; color:#e0e0e0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
             )
-        mid_split.addWidget(self.preview_area)
+        self._preview_stack.addWidget(self.preview_area)  # index 0
+        # Batch skeleton (rows adapt later); only if loader component available
+        if SkeletonLoaderWidget:
+            self._batch_skeleton = SkeletonLoaderWidget("table-row", rows=4, shimmer=True)
+            self._preview_stack.addWidget(self._batch_skeleton)  # index 1
+        else:  # pragma: no cover - fallback placeholder label
+            ph = QLabel("Loading batch preview…")
+            ph.setObjectName("ingestionLabBatchFallback")
+            self._batch_skeleton = ph  # type: ignore
+            self._preview_stack.addWidget(ph)
+        self._preview_stack.setCurrentIndex(0)
+        mid_split.addWidget(self._preview_container)
 
         # Right: Execution Log
         self.log_area = QPlainTextEdit()
@@ -413,6 +439,14 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         root.insertWidget(1, self._perf_badge)
         self._register_shortcuts()
         self._configure_keyboard_focus()
+        # Batch preview configuration (env overrides for tests) (7.10.46)
+        self.batch_preview_skeleton_min_files = int(
+            os.environ.get("RP_ING_BATCH_SKELETON_MIN_FILES", "5")
+        )
+        self.batch_preview_artificial_delay_ms = int(
+            os.environ.get("RP_ING_BATCH_DELAY_MS", "0")
+        )
+        self._batch_skeleton_last_shown = False  # test visibility flag
 
     # ------------------------------------------------------------------
     # File Discovery
@@ -602,30 +636,39 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_preview.setEnabled(enabled)
 
     def _on_preview_clicked(self) -> None:
-        start = self._now()
-        items = self.file_tree.selectedItems()
+        items = [
+            it
+            for it in self.file_tree.selectedItems()
+            if isinstance(it.data(0, Qt.ItemDataRole.UserRole), dict)
+            and "file" in it.data(0, Qt.ItemDataRole.UserRole)
+        ]
         if not items:
             return
-        target = items[0]
+        if len(items) == 1:
+            self._single_preview(items[0])
+        else:
+            self._batch_preview(items)
+
+    # ------------------------------------------------------------------
+    # Single-file preview (refactored from _on_preview_clicked) (7.10.46)
+    def _single_preview(self, target) -> None:
+        start = self._now()
         payload = target.data(0, Qt.ItemDataRole.UserRole)
-        if not isinstance(payload, dict) or "file" not in payload:
-            return  # phase node selected
         fpath = payload.get("file")
         try:
             stat = os.stat(fpath)
             with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
                 snippet = fh.read(800)
-            # Retrieve provenance metadata we stashed in column 2 user role
             prov_payload = target.data(2, Qt.ItemDataRole.UserRole) or {}
             if isinstance(prov_payload, dict):
                 hash_full = prov_payload.get("hash")
                 last_ingested = prov_payload.get("last_ingested_at")
                 parser_ver = prov_payload.get("parser_version")
-            else:  # pragma: no cover - defensive
+            else:  # pragma: no cover
                 hash_full = last_ingested = parser_ver = None
             meta = [
                 f"File: {fpath}",
-                f"Size: {stat.st_size} bytes",  # raw bytes
+                f"Size: {stat.st_size} bytes",
                 f"Modified: {int(stat.st_mtime)} (epoch)",
             ]
             if hash_full:
@@ -641,14 +684,74 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             except Exception:
                 rel_name = fpath
             self._append_log(f"Previewed: {rel_name}")
-        except Exception as e:  # pragma: no cover - unlikely
+        except Exception as e:  # pragma: no cover
             self.preview_area.setPlainText(f"Error reading file: {e}")
             try:
                 rel_name = target.text(1) or target.text(0)
             except Exception:
                 rel_name = "<unknown>"
             self._append_log(f"ERROR preview {rel_name}: {e}")
-        # Performance badge update
+        elapsed_ms = (self._now() - start) * 1000.0
+        self._update_performance_badge(elapsed_ms)
+
+    # ------------------------------------------------------------------
+    # Batch preview with loading skeleton (7.10.46)
+    def _batch_preview(self, targets: list) -> None:
+        start = self._now()
+        count = len(targets)
+        use_skeleton = count >= self.batch_preview_skeleton_min_files
+        if use_skeleton:
+            try:
+                # Resize skeleton rows if widget supports simple API
+                if hasattr(self._batch_skeleton, "_rows") and hasattr(
+                    self._batch_skeleton, "start"
+                ):
+                    self._preview_stack.setCurrentIndex(1)
+                    self._batch_skeleton_last_shown = True
+                    if hasattr(self._batch_skeleton, "start"):
+                        try:
+                            self._batch_skeleton.start()  # type: ignore[attr-defined]
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+        out_lines = [f"Batch Preview ({count} files)"]
+        for idx, it in enumerate(targets[:50]):  # cap to avoid excessive UI size
+            payload = it.data(0, Qt.ItemDataRole.UserRole)
+            fpath = payload.get("file") if isinstance(payload, dict) else None
+            if not fpath:
+                continue
+            try:
+                stat = os.stat(fpath)
+                with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
+                    snippet = fh.read(200)
+                out_lines.append(
+                    f"[{idx+1}] {fpath} size={stat.st_size} mod={int(stat.st_mtime)} bytes snippet_len={len(snippet)}"
+                )
+            except Exception as e:  # pragma: no cover
+                out_lines.append(f"[{idx+1}] {fpath} ERROR: {e}")
+        if count > 50:
+            out_lines.append(f"... truncated {count-50} more")
+        # Artificial delay to allow skeleton perceptibility in tests / UX (optional)
+        delay_ms = self.batch_preview_artificial_delay_ms
+        if use_skeleton and delay_ms > 0:
+            target_t = start + (delay_ms / 1000.0)
+            while self._now() < target_t:
+                try:
+                    from PyQt6.QtWidgets import QApplication
+
+                    QApplication.processEvents()
+                except Exception:
+                    break
+        self.preview_area.setPlainText("\n".join(out_lines))
+        if use_skeleton:
+            try:
+                if hasattr(self._batch_skeleton, "stop"):
+                    self._batch_skeleton.stop()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            self._preview_stack.setCurrentIndex(0)
+        self._append_log(f"Batch preview complete: {count} files")
         elapsed_ms = (self._now() - start) * 1000.0
         self._update_performance_badge(elapsed_ms)
 
