@@ -107,3 +107,5 @@ feat(ingestion-lab): backend field coverage computation (Milestone 7.10.26 parti
 feat(ingestion-lab): field coverage UI integration button + logging (Milestone 7.10.26 complete)
 feat(ingestion-lab): orphan field detector backend + UI button (Milestone 7.10.27)
 
+feat(ingestion-lab): data quality gates backend + UI integration button + integration test (Milestone 7.10.28)
+

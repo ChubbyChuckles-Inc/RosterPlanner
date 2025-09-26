@@ -59,9 +59,11 @@ from typing import Dict, Any
 try:  # pragma: no cover - import guard if module missing in earlier migrations
     from gui.ingestion.rule_field_coverage import compute_field_coverage, FieldCoverageReport
     from gui.ingestion.rule_orphan import compute_orphan_fields
+    from gui.ingestion.rule_quality_gates import evaluate_quality_gates
 except Exception:  # pragma: no cover
     compute_field_coverage = None  # type: ignore
     FieldCoverageReport = None  # type: ignore
+    evaluate_quality_gates = None  # type: ignore
 
 # Lazy service locator import (optional; panel should degrade gracefully if unavailable)
 try:  # pragma: no cover - import guard
@@ -154,6 +156,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         self.btn_orphan_fields = QPushButton("Orphan Fields")
         self.btn_orphan_fields.setToolTip("List extracted fields lacking mapping entries")
+        self.btn_quality_gates = QPushButton("Quality Gates")
+        self.btn_quality_gates.setToolTip(
+            "Evaluate minimum non-null ratios (quality gate config under 'quality_gates' in rules JSON)"
+        )
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -197,6 +203,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_hash_impact)
         actions.addWidget(self.btn_field_coverage)
         actions.addWidget(self.btn_orphan_fields)
+        actions.addWidget(self.btn_quality_gates)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -263,6 +270,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_hash_impact.clicked.connect(self._on_hash_impact_clicked)  # type: ignore
         self.btn_field_coverage.clicked.connect(self._on_field_coverage_clicked)  # type: ignore
         self.btn_orphan_fields.clicked.connect(self._on_orphan_fields_clicked)  # type: ignore
+        self.btn_quality_gates.clicked.connect(self._on_quality_gates_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -638,6 +646,49 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._append_log(f"  {o.resource}.{o.field} -> {o.suggestion}")
         if len(orphans) > 25:
             self._append_log(f"  ... {len(orphans)-25} more")
+
+    # ------------------------------------------------------------------
+    # Quality Gates (7.10.28)
+    def _on_quality_gates_clicked(self) -> None:
+        if evaluate_quality_gates is None:  # pragma: no cover
+            self._append_log("Quality Gates backend unavailable")
+            return
+        try:
+            rs = self._parse_ruleset_from_editor()
+        except Exception as e:
+            self._append_log(f"Quality Gates ERROR (rules): {e}")
+            return
+        import json as _json
+        text = (self.rule_editor.toPlainText() or "").strip()
+        gates_cfg = {}
+        try:
+            js = _json.loads(text)
+            gates_cfg = js.get("quality_gates", {}) if isinstance(js, dict) else {}
+            if not isinstance(gates_cfg, dict):
+                gates_cfg = {}
+        except Exception:
+            gates_cfg = {}
+        if not gates_cfg:
+            self._append_log("Quality Gates: no 'quality_gates' config block present")
+            return
+        html_map = self._gather_visible_file_html()
+        if not html_map:
+            self._append_log("Quality Gates: no visible files")
+            return
+        try:
+            report = evaluate_quality_gates(rs, html_map, gates_cfg)
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Quality Gates ERROR (compute): {e}")
+            return
+        status = "PASS" if report.passed else f"FAIL ({report.failed_count} failing)"
+        self._append_log(f"Quality Gates Result: {status}")
+        for r in report.results[:50]:
+            mark = "✅" if r.passed else "❌"
+            self._append_log(
+                f"  {mark} {r.resource}.{r.field} ratio={r.ratio:.2%} threshold={r.threshold:.2%}"
+            )
+        if len(report.results) > 50:
+            self._append_log(f"  ... {len(report.results)-50} more")
 
     # ------------------------------------------------------------------
     # Accessors used in tests

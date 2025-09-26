@@ -337,7 +337,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.25 Quick diff tool: run old vs new rule set over same file set -> side-by-side metrics & row diff counts
  [x] 7.10.26 Field coverage heatmap: which DB columns populated by current rule set (percentage & missing list)
  [x] 7.10.27 Orphan field detector: extracted fields not mapped anywhere (suggest actions)
- [ ] 7.10.28 Data quality gates: min non-null ratio thresholds configurable per column (warn/fail)
+ [x] 7.10.28 Data quality gates: min non-null ratio thresholds configurable per column (warn/fail)
 
  Integration with Existing Pipeline
  [ ] 7.10.29 Adapter layer: convert rule schema -> existing parser calls or dynamic parser objects (strategy pattern registered in IngestionCoordinator)
