@@ -177,6 +177,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         self.btn_regex_tester = QPushButton("Regex Tester")
         self.btn_regex_tester.setToolTip("Open regex tester dialog for pattern experimentation")
+        self.btn_derived = QPushButton("Derived Fields")
+        self.btn_derived.setToolTip(
+            "Compose derived fields (expressions referencing existing extracted fields)"
+        )
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -227,6 +231,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_rollback)
         actions.addWidget(self.btn_selector_picker)
         actions.addWidget(self.btn_regex_tester)
+        actions.addWidget(self.btn_derived)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -300,6 +305,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_rollback.clicked.connect(self._on_rollback_clicked)  # type: ignore
         self.btn_selector_picker.clicked.connect(self._on_selector_picker_clicked)  # type: ignore
         self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
+        self.btn_derived.clicked.connect(self._on_derived_fields_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -966,6 +972,34 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         dlg = RegexTesterDialog(sample_text=sample, parent=self)
         dlg.exec()
         # (No direct side effect into rules; purely exploratory tool.)
+
+    # ------------------------------------------------------------------
+    # Derived Field Composer (7.10.37 initial)
+    def _on_derived_fields_clicked(self) -> None:
+        try:
+            from gui.ingestion.derived_field_composer import (
+                DerivedFieldComposerDialog,
+                update_ruleset_with_derived,
+            )
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Derived Fields import failed: {e}")
+            return
+        rules_txt = self.rule_editor.toPlainText()
+        dlg = DerivedFieldComposerDialog(rules_txt, self)
+        if dlg.exec() != dlg.DialogCode.Accepted:  # type: ignore[attr-defined]
+            self._append_log("Derived Fields: cancelled")
+            return
+        derived_map = dlg.derived_fields()
+        if not derived_map:
+            self._append_log("Derived Fields: none added")
+            return
+        try:
+            new_text = update_ruleset_with_derived(rules_txt, derived_map)
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Derived Fields update failed: {e}")
+            return
+        self.rule_editor.setPlainText(new_text)
+        self._append_log("Derived Fields added: " + ", ".join(sorted(derived_map.keys())))
 
     # ------------------------------------------------------------------
     # Versioning helpers (7.10.33)
