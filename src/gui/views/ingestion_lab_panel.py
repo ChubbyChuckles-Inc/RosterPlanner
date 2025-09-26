@@ -325,13 +325,15 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         def _make_cat_panel(title: str, buttons: list[QWidget]) -> QWidget:
             wrapper = QWidget()
             wrapper.setObjectName("ingLabCatPanel")
+            wrapper.setProperty("catName", title.lower())
             vlay = _QVBoxLayout(wrapper)
-            vlay.setContentsMargins(4, 0, 8, 0)
-            vlay.setSpacing(2)
+            vlay.setContentsMargins(6, 4, 6, 6)
+            vlay.setSpacing(4)
             lab = QLabel(title)
             lab.setObjectName("ingLabGroupLabel")
             lab.setProperty("groupLabel", True)
-            lab.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            # Center category title per user request
+            lab.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
             vlay.addWidget(lab)
             row = QHBoxLayout()
             row.setContentsMargins(0, 0, 0, 0)
@@ -425,12 +427,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             except Exception:  # pragma: no cover
                 pass
 
-        # Panel styling (light dividers) appended once
-        self.setStyleSheet(
-            self.styleSheet()
-            + "\n#ingLabToolbarContainer QWidget#ingLabCatPanel { border-right:1px solid rgba(255,255,255,0.08); }"
-            + "\n#ingLabToolbarContainer QWidget#ingLabCatPanel:last-child { border-right:none; }"
-        )
+        # Remove legacy divider styling; modern panel styling applied in theme hook.
 
         # Overflow menu (non-test mode) replaces visible advanced buttons to save space
         import os as _os
@@ -2244,6 +2241,36 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 )
                 parts.append(
                     f"#ingLabToolbarContainer QToolButton, #ingLabToolbarContainer QPushButton {{ color:{fg}; background:transparent; }}"
+                )
+                # Category panels: subtle border & gradient fill for modern card look
+                parts.append(
+                    "#ingLabToolbarContainer QWidget#ingLabCatPanel {"
+                    " background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 rgba(255,255,255,0.04), stop:1 rgba(255,255,255,0.02));"
+                    f" border:1px solid {border_col}; border-radius:8px;"
+                    " margin:0 4px;"
+                    "}"
+                )
+                parts.append(
+                    "#ingLabToolbarContainer QWidget#ingLabCatPanel:hover {"
+                    " background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 rgba(255,255,255,0.08), stop:1 rgba(255,255,255,0.04));"
+                    "}"
+                )
+                # Category label refined styling (centered already)
+                parts.append(
+                    "#ingLabToolbarContainer QLabel#ingLabGroupLabel {"
+                    " background: transparent; font-size:11px; letter-spacing:0.5px; text-transform:uppercase;"
+                    " font-weight:600; padding:2px 4px 0 4px; color:rgba(255,255,255,0.72);"
+                    "}"
+                )
+                # Buttons inside panels – unified glass feel
+                parts.append(
+                    f"#ingLabToolbarContainer QWidget#ingLabCatPanel QPushButton, #ingLabToolbarContainer QWidget#ingLabCatPanel QToolButton {{ background:rgba(255,255,255,0.05); border:1px solid {border_col}; border-radius:4px; padding:4px 8px; }}"
+                )
+                parts.append(
+                    f"#ingLabToolbarContainer QWidget#ingLabCatPanel QPushButton:hover, #ingLabToolbarContainer QWidget#ingLabCatPanel QToolButton:hover {{ background:rgba(255,255,255,0.10); border-color:{accent if accent else border_col}; }}"
+                )
+                parts.append(
+                    f"#ingLabToolbarContainer QWidget#ingLabCatPanel QPushButton:pressed, #ingLabToolbarContainer QWidget#ingLabCatPanel QToolButton:pressed {{ background:rgba(255,255,255,0.18); }}"
                 )
                 # High-visibility utility buttons (compact / filters / overflow)
                 parts.append(
