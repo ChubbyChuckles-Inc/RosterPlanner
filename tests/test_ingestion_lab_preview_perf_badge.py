@@ -45,6 +45,7 @@ def test_preview_perf_badge_triggers(tmp_path, qtbot):
 
 # Add tests for batch preview skeleton (Milestone 7.10.46)
 
+
 def test_batch_preview_skeleton_shows_and_hides(qtbot, tmp_path, monkeypatch):
     from gui.views.ingestion_lab_panel import IngestionLabPanel
 

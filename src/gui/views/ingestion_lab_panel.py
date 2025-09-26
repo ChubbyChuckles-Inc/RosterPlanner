@@ -443,9 +443,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.batch_preview_skeleton_min_files = int(
             os.environ.get("RP_ING_BATCH_SKELETON_MIN_FILES", "5")
         )
-        self.batch_preview_artificial_delay_ms = int(
-            os.environ.get("RP_ING_BATCH_DELAY_MS", "0")
-        )
+        self.batch_preview_artificial_delay_ms = int(os.environ.get("RP_ING_BATCH_DELAY_MS", "0"))
         self._batch_skeleton_last_shown = False  # test visibility flag
 
     # ------------------------------------------------------------------
