@@ -47,6 +47,7 @@ class GUIEvent(str, Enum):  # Using str subclass for easier JSON/UI usage
     LOG_RECORD_ADDED = "log_record_added"
     UNCAUGHT_EXCEPTION = "uncaught_exception"
     INGEST_RULES_APPLIED = "ingest_rules_applied"  # Milestone 7.10.32
+    RULE_VALIDATION_FAILED = "rule_validation_failed"  # Milestone 7.10.65
 
 
 @dataclass

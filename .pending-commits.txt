@@ -13,6 +13,8 @@ feat(freshness): include active rule_version in DataFreshnessService snapshot & 
 
 feat(export): support *derived placeholder expansion in export presets (7.10.64)
 
+feat(logs): add rule event filters & validation failure event emission (7.10.65)
+
 Implements Milestone 7.10.42: export/import of rule sets. Adds gui.ingestion.rule_export with export_rules/import_rules (validation via RuleSet), integrates Export/Import buttons & handlers in IngestionLabPanel, and provides round‑trip + error tests (tests/test_rule_export_import.py). Roadmap updated.
 feat(ingestion-lab): add security sandbox static analyzer & UI integration (7.10.41)
 

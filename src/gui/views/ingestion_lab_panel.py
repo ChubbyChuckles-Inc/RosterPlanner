@@ -814,6 +814,19 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
     # Logging helper
     def _append_log(self, line: str) -> None:
         self.log_area.appendPlainText(line)
+        # Publish structured events for Logs Dock filtering (7.10.65)
+        try:  # pragma: no cover - robustness
+            from gui.services.service_locator import services as _services
+            from gui.services.event_bus import GUIEvent, EventBus
+
+            bus: EventBus | None = _services.try_get("event_bus")
+            if not bus:
+                return
+            if "Rule validation failed" in line or line.startswith("Rule validation failed"):
+                bus.publish(GUIEvent.RULE_VALIDATION_FAILED, {"error": line})
+            # Could expand with categorization heuristics later.
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Hash Impact Preview (7.10.22)

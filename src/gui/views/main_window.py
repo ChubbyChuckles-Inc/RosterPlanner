@@ -1527,10 +1527,64 @@ class MainWindow(QMainWindow):  # Dock-based
         return w
 
     def _build_logs_dock(self) -> QWidget:
-        w = QWidget()
-        lay = QVBoxLayout(w)
-        lay.addWidget(QLabel("Logs Dock Placeholder (future: live logging panel)"))
-        return w
+        # Functional Logs Dock (Milestone 7.10.65): provides filtering of
+        # ingestion rule events (INGEST_RULES_APPLIED, RULE_VALIDATION_FAILED)
+        from PyQt6.QtWidgets import QPlainTextEdit, QCheckBox, QHBoxLayout, QPushButton
+        from gui.services.service_locator import services as _services
+        from gui.services.event_bus import GUIEvent, EventBus
+
+        container = QWidget()
+        v = QVBoxLayout(container)
+        title = QLabel("Logs")
+        title.setObjectName("viewTitleLabel")
+        v.addWidget(title)
+
+        # Controls row
+        controls = QWidget()
+        h = QHBoxLayout(controls)
+        h.setContentsMargins(0, 0, 0, 0)
+        cb_rules_applied = QCheckBox("Rules Applied")
+        cb_rules_applied.setChecked(True)
+        cb_validation_failed = QCheckBox("Rule Validation Failed")
+        cb_validation_failed.setChecked(True)
+        btn_clear = QPushButton("Clear")
+        h.addWidget(cb_rules_applied)
+        h.addWidget(cb_validation_failed)
+        h.addStretch(1)
+        h.addWidget(btn_clear)
+        v.addWidget(controls)
+
+        log_view = QPlainTextEdit()
+        log_view.setReadOnly(True)
+        v.addWidget(log_view, 1)
+
+        bus: EventBus | None = _services.try_get("event_bus")
+
+        def _append(text: str):  # pragma: no cover - trivial wrapper
+            log_view.appendPlainText(text)
+
+        def _on_event(evt):  # pragma: no cover - UI handler
+            name = evt.name
+            if name == GUIEvent.INGEST_RULES_APPLIED.value and cb_rules_applied.isChecked():
+                payload = evt.payload or {}
+                summary = (
+                    f"Rules Applied v{payload.get('rule_version','?')} parsed={payload.get('parsed')} "
+                    f"skipped={payload.get('skipped')} duration={payload.get('duration_ms','?')}ms"
+                )
+                _append(summary)
+            elif name == GUIEvent.RULE_VALIDATION_FAILED.value and cb_validation_failed.isChecked():
+                err = evt.payload.get("error") if evt.payload else None
+                _append(f"Rule Validation Failed: {err}")
+
+        if bus:
+            bus.subscribe(GUIEvent.INGEST_RULES_APPLIED, _on_event)
+            bus.subscribe(GUIEvent.RULE_VALIDATION_FAILED, _on_event)
+
+        def _clear():  # pragma: no cover - simple
+            log_view.setPlainText("")
+
+        btn_clear.clicked.connect(_clear)  # type: ignore
+        return container
 
     def _build_recent_dock(self) -> QWidget:  # Milestone 4.7
         w = QWidget()
