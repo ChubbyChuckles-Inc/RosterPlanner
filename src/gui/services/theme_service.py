@@ -151,6 +151,28 @@ class ThemeService:
             svc.load_filesystem_themes()
         except Exception:
             pass
+        # --- Filesystem theme persistence fix (Regression 7.10.69) ---------------------
+        # If user previously selected a filesystem theme (exported / custom) its name
+        # would have been persisted to AppConfig.theme_variant, but on startup we only
+        # honored built-in base + overlay variants above. After loading filesystem
+        # themes we now check if the persisted value matches one of the discovered
+        # filesystem overlays; if so we apply it so the UI reflects the user's last
+        # choice. (Low risk: apply_custom already performs diff + event emission.)
+        try:
+            if (
+                persisted
+                and persisted not in (base_variants | overlay_variants)
+                and persisted in getattr(svc, "_cached_filesystem_overlays", {})
+            ):
+                # Apply the filesystem theme overlay
+                svc.apply_filesystem_theme(persisted)  # type: ignore[arg-type]
+                # Record logical variant identity so future persistence keeps the same name
+                try:
+                    svc.manager.variant = persisted  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+        except Exception:
+            pass
         return svc
 
     # Accessors ---------------------------------------------------------
@@ -534,10 +556,30 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
         return loaded
 
     def apply_filesystem_theme(self, name: str) -> bool:
+        """Apply a discovered filesystem theme by name.
+
+        Behavior change (Persistence Fix 7.10.69): Previously this only overlaid
+        colors and did NOT persist the chosen theme name. As a result, selecting
+        a custom/exported theme (e.g. via Theme JSON Editor) reverted to the
+        prior built-in variant on next launch. Now we:
+          - Apply the overlay (via existing apply_custom path for diff + event)
+          - Set manager.variant to the filesystem theme name (logical identity)
+          - Persist AppConfig.theme_variant so it is honored on restart
+        """
         flat = getattr(self, "_cached_filesystem_overlays", {}).get(name)
         if not flat:
             return False
+        # Apply overlay (publishes diff if any changes)
         self.apply_custom(flat)
+        # Record variant identity & persist
+        try:
+            self.manager.variant = name  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        try:
+            self._persist_variant(name)
+        except Exception:
+            pass
         return True
 
     def export_current_theme(self, name: str) -> Path | None:
