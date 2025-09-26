@@ -415,6 +415,22 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  QDockWidget > QWidget#DockTitleBar[dockActive='true'] QLabel#DockTitleLabel {{
      color:{accent};
  }}
+ /* Ingestion Lab Panel (Milestone 7.10.67) */
+ QWidget#ingestionLabPanel {{ background:{bg2}; }}
+ QTreeWidget#ingestionLabFileTree {{ background:{surf}; color:{txt}; border:1px solid {border}; }}
+ QTreeWidget#ingestionLabFileTree::item:selected {{ background:{accent}; color:{bg}; }}
+ QPlainTextEdit#ingestionLabRuleEditor {{ background:{bg2}; color:{txt}; border:1px solid {border}; font-family: Consolas, 'Courier New', monospace; font-size:12px; }}
+ QTextEdit#ingestionLabPreview {{ background:{surf}; color:{txt}; border:1px solid {border}; font-family: Consolas, 'Courier New', monospace; font-size:12px; }}
+ QPlainTextEdit#ingestionLabLog {{ background:{bg2}; color:{txt_muted}; border:1px solid {border}; font-family: Consolas, 'Courier New', monospace; font-size:12px; }}
+ QLabel#ingestionLabBanner {{ background:rgba(0,0,0,0.08); color:{txt}; border:1px solid {border}; border-radius:4px; padding:4px 6px; }}
+ QLabel#ingestionLabPerfBadge {{ background:rgba(200,40,40,0.15); color:{c.get('state.error.fg', accent)}; border:1px solid {c.get('state.error.border', border)}; border-radius:4px; padding:2px 6px; font-size:11px; }}
+ /* Selector Picker Dialog */
+ QDialog#SelectorPickerDialog {{ background:{surf}; border:1px solid {border}; border-radius:6px; }}
+ QDialog#SelectorPickerDialog QTreeWidget {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
+ QDialog#SelectorPickerDialog QTreeWidget::item:selected {{ background:{accent}; color:{bg}; }}
+ QDialog#SelectorPickerDialog QLineEdit {{ background:{bg2}; color:{txt}; border:1px solid {border}; padding:2px 4px; }}
+ QDialog#SelectorPickerDialog QPushButton {{ background:{bg2}; color:{txt}; border:1px solid {border}; padding:4px 8px; }}
+ QDialog#SelectorPickerDialog QPushButton:hover {{ background:{accent}; color:{bg}; }}
  /* High contrast variant adjustments */
  /* Rely on presence of high-contrast token differences (e.g., border.medium) */
 {self._notification_dynamic_qss(c)}
