@@ -108,4 +108,5 @@ feat(ingestion-lab): field coverage UI integration button + logging (Milestone 7
 feat(ingestion-lab): orphan field detector backend + UI button (Milestone 7.10.27)
 
 feat(ingestion-lab): data quality gates backend + UI integration button + integration test (Milestone 7.10.28)
+feat(ingestion-lab): add rule adapter layer (RuleSet -> aggregated resource rows) with tests (Milestone 7.10.29)
 

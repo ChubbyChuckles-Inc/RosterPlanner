@@ -340,7 +340,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.28 Data quality gates: min non-null ratio thresholds configurable per column (warn/fail)
 
  Integration with Existing Pipeline
- [ ] 7.10.29 Adapter layer: convert rule schema -> existing parser calls or dynamic parser objects (strategy pattern registered in IngestionCoordinator)
+ [x] 7.10.29 Adapter layer: convert rule schema -> existing parser calls or dynamic parser objects (strategy pattern registered in IngestionCoordinator)
  [ ] 7.10.30 Safe execution guard: sandbox mode never commits to main DB unless "Apply" pressed & passes validations
  [ ] 7.10.31 Post-apply prompt: show summary (rows upserted/unchanged/skipped) without modal dialogs (inline panel banner)
  [ ] 7.10.32 Emit EVENT: INGEST_RULES_APPLIED with metadata (counts, duration) -> status bar freshness update
