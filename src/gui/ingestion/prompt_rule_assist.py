@@ -36,6 +36,7 @@ Future Extension Ideas
 * Use existing parsed HTML (if available) to attempt smart CSS selection.
 
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -185,14 +186,19 @@ def generate_rule_draft(prompt: str) -> PromptRuleDraft:
     # Build list rule with generic container selectors (user refines later)
     list_rule = ListRule(
         selector=f".{resource_name}",
-        item_selector=f".{resource_name[:-1]}" if resource_name.endswith("s") else f".{resource_name}-item",
+        item_selector=(
+            f".{resource_name[:-1]}" if resource_name.endswith("s") else f".{resource_name}-item"
+        ),
         fields=field_map,
     )
     rs = RuleSet(resources={resource_name: list_rule})
 
     if matched_semantic_tokens:
         explanation.append(
-            "Primary resource determined as '" + resource_name + "' from tokens: " + ", ".join(matched_semantic_tokens)
+            "Primary resource determined as '"
+            + resource_name
+            + "' from tokens: "
+            + ", ".join(matched_semantic_tokens)
         )
 
     explanation.append("Selectors are placeholders – refine them to match actual DOM structure.")
@@ -201,6 +207,7 @@ def generate_rule_draft(prompt: str) -> PromptRuleDraft:
 
 
 # Utility to export to a JSON‑serializable mapping (avoids adding to RuleSet API right now)
+
 
 def ruleset_to_mapping(rs: RuleSet) -> Dict[str, object]:  # pragma: no cover - trivial wrapper
     out: Dict[str, object] = {

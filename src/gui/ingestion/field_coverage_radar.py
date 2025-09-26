@@ -1,6 +1,6 @@
 """Field Coverage Radar Chart (Milestone 7.10.A5)
 
-Provides: 
+Provides:
  - Pure logic layer to aggregate a ``FieldCoverageReport`` into coarse semantic
    categories (identity, performance, schedule, meta).
  - A lightweight PyQt6 widget that renders a radar / spider chart of the
@@ -143,10 +143,15 @@ class FieldCoverageRadarWidget(QWidget):  # pragma: no cover - paint logic visua
         for idx, cat in enumerate(self._categories):
             angle = (360 / axes) * idx - 90  # start top
             rad = angle * 3.14159 / 180
-            end_pt = QPointF(center.x() + radius * float(__import__('math').cos(rad)), center.y() + radius * float(__import__('math').sin(rad)))
+            end_pt = QPointF(
+                center.x() + radius * float(__import__("math").cos(rad)),
+                center.y() + radius * float(__import__("math").sin(rad)),
+            )
             painter.drawLine(center, end_pt)
             # Label
-            text = f"{cat.category}\n{cat.average_ratio:.0%}" if cat.fields else f"{cat.category}\n0%"
+            text = (
+                f"{cat.category}\n{cat.average_ratio:.0%}" if cat.fields else f"{cat.category}\n0%"
+            )
             tw = font_metrics.horizontalAdvance(cat.category)
             painter.drawText(end_pt.x() - tw / 2, end_pt.y(), text)
         # Coverage polygon
@@ -156,7 +161,10 @@ class FieldCoverageRadarWidget(QWidget):  # pragma: no cover - paint logic visua
             angle = (360 / axes) * idx - 90
             rad = angle * 3.14159 / 180
             r = radius * ratio
-            pt = QPointF(center.x() + r * float(__import__('math').cos(rad)), center.y() + r * float(__import__('math').sin(rad)))
+            pt = QPointF(
+                center.x() + r * float(__import__("math").cos(rad)),
+                center.y() + r * float(__import__("math").sin(rad)),
+            )
             poly_points.append(pt)
         painter.setPen(QPen(QColor(90, 170, 255, 200), 2))
         painter.setBrush(QBrush(QColor(90, 170, 255, 60)))
@@ -175,6 +183,7 @@ class FieldCoverageRadarWidget(QWidget):  # pragma: no cover - paint logic visua
             return
         # Determine closest axis by angle
         from math import atan2, degrees
+
         center_x = self.width() / 2.0
         center_y = self.height() / 2.0 + 10
         dx = event.position().x() - center_x
@@ -186,4 +195,6 @@ class FieldCoverageRadarWidget(QWidget):  # pragma: no cover - paint logic visua
         axis_size = 360 / axes
         idx = int((angle + axis_size / 2) // axis_size) % axes
         if 0 <= idx < len(self._categories):
-            QToolTip.showText(event.globalPosition().toPoint(), self._categories[idx].tooltip(), self)
+            QToolTip.showText(
+                event.globalPosition().toPoint(), self._categories[idx].tooltip(), self
+            )

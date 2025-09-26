@@ -1,5 +1,6 @@
 from gui.ingestion.prompt_rule_assist import generate_rule_draft, ruleset_to_mapping
 
+
 def test_generate_rule_draft_empty():
     draft = generate_rule_draft("")
     mapping = ruleset_to_mapping(draft.ruleset)
