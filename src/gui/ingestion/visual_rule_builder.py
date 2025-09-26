@@ -243,6 +243,46 @@ class CanvasModel:
         flush_resource()
         return {"version": 1, "resources": resources}
 
+    # Transform utilities -------------------------------------------------
+    def add_transform_to_field(
+        self,
+        field_id: str,
+        transform: Dict[str, Any],
+        intelligent: bool = True,
+    ) -> bool:
+        """Attach a transform to a FieldMappingNode by id.
+
+        If intelligent is True, auto-prepend common prerequisite cleanups
+        (e.g. 'trim') when adding parsing transforms like 'to_number' or
+        'parse_date'. Returns True if applied, False if field not found.
+        Duplicate (same 'kind' + shallow equality) transforms are skipped.
+        """
+        target: Optional[FieldMappingNode] = None
+        for n in self.nodes:
+            if isinstance(n, FieldMappingNode) and n.id == field_id:
+                target = n
+                break
+        if not target:
+            return False
+        existing_kinds = {t.get("kind") for t in target.transforms}
+        # Intelligent defaults
+        prereqs: List[Dict[str, Any]] = []
+        if intelligent:
+            k = transform.get("kind")
+            if k in {"to_number", "parse_date"} and "trim" not in existing_kinds:
+                prereqs.append({"kind": "trim"})
+            if k == "collapse_whitespace" and "trim" not in existing_kinds:
+                prereqs.append({"kind": "trim"})
+        # Insert prereqs if not duplicates
+        for p in prereqs:
+            if p.get("kind") not in existing_kinds:
+                target.transforms.append(p)
+                existing_kinds.add(p.get("kind"))
+        # Finally add main transform if not duplicate
+        if transform.get("kind") not in existing_kinds:
+            target.transforms.append(transform)
+        return True
+
 
 # ---------------------------------------------------------------------------
 # Qt Widget Layer (thin for first increment)
@@ -312,6 +352,40 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.list_widget = QListWidget()
         self.list_widget.setObjectName("visualRuleBuilderNodeList")
         layout.addWidget(self.list_widget, 1)
+
+        # Transform palette (7.10.A3)
+        self._palette_container = QWidget()
+        self._palette_container.setObjectName("visualRuleBuilderTransformPalette")
+        palette_layout = QVBoxLayout(self._palette_container)
+        palette_layout.setContentsMargins(0, 4, 0, 4)
+        palette_layout.setSpacing(4)
+        try:
+            from PyQt6.QtWidgets import QPushButton  # local import for clarity
+        except Exception:  # pragma: no cover
+            QPushButton = object  # type: ignore
+
+        self._palette_buttons: Dict[str, List[Any]] = {}
+        for category, items in TRANSFORM_PALETTE.items():
+            cat_btn = QPushButton(f"{category}")  # collapsible toggle soon
+            cat_btn.setEnabled(False)
+            palette_layout.addWidget(cat_btn)
+            row = QHBoxLayout()
+            row.setSpacing(4)
+            btn_refs: List[Any] = []
+            for spec in items:
+                b = QPushButton(spec["label"])  # type: ignore[arg-type]
+                b.setObjectName(f"transformChip_{spec['kind']}")
+                # Bind spec copy to closure
+                def _make_handler(s: Dict[str, Any]):  # noqa: WPS430 - closure factory
+                    def _handler():  # pragma: no cover - UI pathway
+                        self._apply_transform_chip(s)
+                    return _handler
+                b.clicked.connect(_make_handler(spec))  # type: ignore
+                row.addWidget(b)
+                btn_refs.append(b)
+            palette_layout.addLayout(row)
+            self._palette_buttons[category] = btn_refs
+        layout.addWidget(self._palette_container)
         self.status_label = QLabel("")
         self.status_label.setObjectName("visualRuleBuilderStatus")
         layout.addWidget(self.status_label)
@@ -322,6 +396,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_add_chain.clicked.connect(self._on_add_chain)  # type: ignore
         self.btn_compile.clicked.connect(self._on_compile_clicked)  # type: ignore
         self.chk_live.stateChanged.connect(self._on_live_preview_toggled)  # type: ignore
+    self.list_widget.currentRowChanged.connect(self._on_selection_changed)  # type: ignore
 
     # Actions -------------------------------------------------------------
     def _on_add_selector(self) -> None:
@@ -371,6 +446,28 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         if getattr(self, "_live_preview_enabled", False):
             self._on_compile_clicked()
 
+    # Selection handling --------------------------------------------------
+    def _on_selection_changed(self, row: int) -> None:  # pragma: no cover
+        self._selected_node_id = None
+        if row < 0 or row >= len(self.model.nodes):
+            return
+        self._selected_node_id = self.model.nodes[row].id
+
+    # Transform chip application -----------------------------------------
+    def _apply_transform_chip(self, spec: Dict[str, Any]) -> None:  # pragma: no cover - thin UI
+        if not getattr(self, "_selected_node_id", None):
+            self.status_label.setText("Select a Field node first")
+            return
+        applied = self.model.add_transform_to_field(self._selected_node_id, dict(spec))
+        if applied:
+            self.status_label.setText(
+                f"Added transform '{spec.get('kind')}' to {self._selected_node_id}"
+            )
+            self._maybe_emit_live()
+            self.refresh()
+        else:
+            self.status_label.setText("Transform not applied (not a field node?)")
+
     def refresh(self) -> None:
         self.list_widget.clear()
         for node in self.model.nodes:
@@ -392,3 +489,23 @@ __all__ = [
     "CanvasModel",
     "VisualRuleBuilder",
 ]
+
+# Palette definition (label & transform spec entries)
+TRANSFORM_PALETTE: Dict[str, List[Dict[str, Any]]] = {
+    "Text Cleanup": [
+        {"kind": "trim", "label": "Trim"},
+        {"kind": "collapse_whitespace", "label": "Collapse WS"},
+    ],
+    "Numeric": [
+        {"kind": "to_number", "label": "To Number"},
+    ],
+    "Date": [
+        {"kind": "parse_date", "format": "%Y-%m-%d", "label": "Parse Date"},
+    ],
+    "Parsing": [
+        {"kind": "regex_extract", "pattern": "(.*)", "group": 1, "label": "Regex"},
+    ],
+    "Expression": [
+        {"kind": "expression", "code": "value", "label": "Expr"},
+    ],
+}

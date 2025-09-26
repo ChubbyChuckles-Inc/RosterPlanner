@@ -366,7 +366,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  Authoring Experience & Assisted Rule Definition (Ease YAML/Schema Complexity)
  [x] 7.10.A1 Visual Rule Builder Canvas: drag-and-drop blocks (Source → Selector → Transforms → Field Mapping) with live JSON preview pane.
  [x] 7.10.A2 Inline Selector Explorer: split preview pane highlights DOM regions while hovering over selector text (debounced, throttled for performance) + auto-suggest narrower/broader variants.
- [ ] 7.10.A3 Transform Palette with Intelligent Defaults: categorized chips (Text Cleanup, Parsing, Numeric, Date, Expression) + one-click add; groups collapse into pill clusters.
+ [x] 7.10.A3 Transform Palette with Intelligent Defaults: categorized chips (Text Cleanup, Parsing, Numeric, Date, Expression) + one-click add; groups collapse into pill clusters.
  [ ] 7.10.A4 Natural Language Prompt Assist [R]: user enters "Extract player names and their live rating" -> generates draft rule blocks (skeleton TableRule/ListRule) for refinement.
  [ ] 7.10.A5 Field Coverage Radar Chart: polar visualization of mapped vs available semantic field categories (identity, performance, schedule, meta) with hover-details.
  [ ] 7.10.A6 Conflict & Overlap Detector: warns when multiple selectors target overlapping node sets; suggests merge or specificity adjustment.
