@@ -55,6 +55,7 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         # Cache widest command text width observed (prevents jittery shrink while filtering)
         self._max_command_px = 0
         self._anim = None  # QPropertyAnimation instance (created lazily)
+        self._debounce_timer = None  # QTimer for resize debounce
         self.search_edit = QLineEdit(self)
         self.search_edit.setObjectName("commandPaletteSearch")
         self.search_edit.setPlaceholderText("Type a command…")
@@ -161,7 +162,7 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
             self.list_widget.setCurrentRow(0)
         # Adjust size after each refresh (width grows to accommodate widest ever; height targets 10 commands)
         try:
-            self._auto_size(center=False, animate=True)
+            self._schedule_resize()
         except Exception:
             pass
 
@@ -258,12 +259,11 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         new_w, new_h = int(target_width), int(target_height)
         if animate:
             try:
-                from PyQt6.QtCore import QPropertyAnimation, QRect
-                # Animate geometry (position unchanged unless centering requested)
+                from PyQt6.QtCore import QPropertyAnimation, QRect, QEasingCurve
+
                 start_geom = self.geometry()
                 end_x, end_y = start_geom.x(), start_geom.y()
                 if center:
-                    # compute centered position first so animation targets that spot
                     try:
                         screen = self.screen()
                         if screen is None and QGuiApplication is not None:
@@ -277,13 +277,34 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
                 end_geom = QRect(end_x, end_y, new_w, new_h)
                 if self._anim is None:
                     self._anim = QPropertyAnimation(self, b"geometry")
-                    self._anim.setDuration(140)
+                # Defaults
+                duration_ms = 140
+                easing = QEasingCurve.Type.OutCubic
+                # Try settings / preferences overrides
+                try:
+                    from gui.services.settings_service import SettingsService  # type: ignore
+                    dur_attr = getattr(SettingsService.instance, "command_palette_anim_duration_ms", None)
+                    easing_attr = getattr(SettingsService.instance, "command_palette_anim_easing", None)
+                    if isinstance(dur_attr, (int, float)) and dur_attr > 0:
+                        duration_ms = int(dur_attr)
+                    if isinstance(easing_attr, str):
+                        mapping = {
+                            "linear": QEasingCurve.Type.Linear,
+                            "outcubic": QEasingCurve.Type.OutCubic,
+                            "incubic": QEasingCurve.Type.InCubic,
+                            "inoutquad": QEasingCurve.Type.InOutQuad,
+                            "elasticout": QEasingCurve.Type.OutElastic,
+                        }
+                        easing = mapping.get(easing_attr.lower(), easing)
+                except Exception:
+                    pass
                 self._anim.stop()
+                self._anim.setDuration(duration_ms)
+                self._anim.setEasingCurve(easing)
                 self._anim.setStartValue(start_geom)
                 self._anim.setEndValue(end_geom)
                 self._anim.start()
             except Exception:
-                # Fallback immediate resize on any failure
                 self.resize(new_w, new_h)
         else:
             self.resize(new_w, new_h)
@@ -300,3 +321,15 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
                     self.move(cx, cy)
             except Exception:
                 pass
+
+    def _schedule_resize(self):  # pragma: no cover - debounce logic
+        try:
+            from PyQt6.QtCore import QTimer
+        except Exception:
+            self._auto_size(center=False, animate=True)
+            return
+        if self._debounce_timer is None:
+            self._debounce_timer = QTimer(self)
+            self._debounce_timer.setSingleShot(True)
+            self._debounce_timer.timeout.connect(lambda: self._auto_size(center=False, animate=True))  # type: ignore[attr-defined]
+        self._debounce_timer.start(70)

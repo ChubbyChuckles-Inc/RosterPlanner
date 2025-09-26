@@ -498,6 +498,16 @@ class MainWindow(QMainWindow):  # Dock-based
         reset_action.triggered.connect(self._on_reset_layout)  # type: ignore[attr-defined]
         palette_action = view_menu.addAction("Command Palette...")
         palette_action.triggered.connect(self._open_command_palette)  # type: ignore[attr-defined]
+        # Preferences dialog
+        act_prefs = view_menu.addAction("Preferences...")
+        def _open_prefs():
+            try:
+                from gui.views.preferences_dialog import PreferencesDialog  # type: ignore
+                dlg = PreferencesDialog(self)
+                dlg.exec()
+            except Exception:
+                pass
+        act_prefs.triggered.connect(_open_prefs)  # type: ignore[attr-defined]
         cheatsheet_action = help_menu.addAction("Keyboard Shortcuts...")
         cheatsheet_action.triggered.connect(self._open_shortcut_cheatsheet)  # type: ignore[attr-defined]
         # Scrape action in Data menu
@@ -593,6 +603,20 @@ class MainWindow(QMainWindow):  # Dock-based
             "Reset Layout",
             lambda: self._on_reset_layout(),
             "Restore default dock arrangement",
+        )
+        # Toggle command palette auto-resize (new enhancement)
+        def _toggle_palette_auto_resize():
+            try:
+                from gui.services.settings_service import SettingsService  # type: ignore
+                cur = SettingsService.instance.command_palette_auto_resize
+                SettingsService.instance.command_palette_auto_resize = not cur
+            except Exception:
+                pass
+        global_command_registry.register(
+            "commandPalette.toggleAutoResize",
+            "Toggle Command Palette Auto-Resize",
+            _toggle_palette_auto_resize,
+            "Enable/disable dynamic sizing + animation of the Command Palette",
         )
         # Theme variant commands (Milestone 5.10.6)
         global_command_registry.register(
