@@ -432,9 +432,21 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._last_apply_summary = {}
         self._last_version_num = None  # Version store tracking
         # Inline performance badge (7.10.45)
-        self.preview_perf_threshold_ms = float(
-            os.environ.get("RP_ING_PREVIEW_PERF_THRESHOLD_MS", "120")
-        )  # configurable for tests
+        # Performance threshold now sourced from settings service if available (7.10.50)
+        try:  # late import to avoid circulars
+            from gui.services.settings_service import SettingsService  # type: ignore
+
+            self.preview_perf_threshold_ms = float(
+                getattr(
+                    SettingsService.instance,
+                    "ingestion_preview_perf_threshold_ms",
+                    float(os.environ.get("RP_ING_PREVIEW_PERF_THRESHOLD_MS", "120")),
+                )
+            )
+        except Exception:
+            self.preview_perf_threshold_ms = float(
+                os.environ.get("RP_ING_PREVIEW_PERF_THRESHOLD_MS", "120")
+            )  # fallback
         self._perf_badge = QLabel("")
         self._perf_badge.setObjectName("ingestionLabPerfBadge")
         self._perf_badge.setStyleSheet(
@@ -601,7 +613,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         _reg_if("ing.export", "Ctrl+E", "Export rules JSON")
         _reg_if("ing.import", "Ctrl+Shift+E", "Import rules JSON")
         _reg_if("ing.hash_impact", "Ctrl+H", "Compute hash impact preview")
-        _reg_if("ing.publish", "Ctrl+P", "Publish current draft rule set")
+        _reg_if("ing.publish", "Ctrl+B", "Publish current draft rule set")
 
     def _dispatch_shortcut(self, sid: str) -> None:  # pragma: no cover - thin dispatcher
         mapping = {
@@ -739,7 +751,14 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             except Exception:
                 pass
         out_lines = [f"Batch Preview ({count} files)"]
-        for idx, it in enumerate(targets[:50]):  # cap to avoid excessive UI size
+        # Cap batch lines using settings (default 50)
+        try:
+            from gui.services.settings_service import SettingsService  # type: ignore
+
+            cap = int(getattr(SettingsService.instance, "ingestion_preview_batch_cap", 50))
+        except Exception:
+            cap = 50
+        for idx, it in enumerate(targets[:cap]):  # cap to avoid excessive UI size
             payload = it.data(0, Qt.ItemDataRole.UserRole)
             fpath = payload.get("file") if isinstance(payload, dict) else None
             if not fpath:
@@ -753,8 +772,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 )
             except Exception as e:  # pragma: no cover
                 out_lines.append(f"[{idx+1}] {fpath} ERROR: {e}")
-        if count > 50:
-            out_lines.append(f"... truncated {count-50} more")
+        if count > cap:
+            out_lines.append(f"... truncated {count-cap} more")
         # Artificial delay to allow skeleton perceptibility in tests / UX (optional)
         delay_ms = self.batch_preview_artificial_delay_ms
         if use_skeleton and delay_ms > 0:
@@ -1804,8 +1823,11 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             try:
                 from gui.services.event_bus import GUIEvent, EventBus  # local import
 
-                bus: 'EventBus' | None = _services.try_get("event_bus")  # type: ignore[name-defined]
+                bus: "EventBus" | None = _services.try_get("event_bus")  # type: ignore[name-defined]
                 if bus:
-                    bus.publish(GUIEvent.INGEST_RULES_PUBLISHED, {"hash": content_hash, "version": version_num})
+                    bus.publish(
+                        GUIEvent.INGEST_RULES_PUBLISHED,
+                        {"hash": content_hash, "version": version_num},
+                    )
             except Exception:  # pragma: no cover
                 pass

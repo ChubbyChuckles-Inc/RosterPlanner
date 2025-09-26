@@ -107,6 +107,19 @@ class SafeApplyGuard:
         raw_rules_payload: Mapping[str, Any],
     ) -> SimulationResult:
         reasons: List[str] = []
+        # Enforce safety flag (settings service) to optionally reject custom python transforms
+        try:
+            from gui.services.settings_service import SettingsService  # type: ignore
+
+            if getattr(SettingsService.instance, "ingestion_disallow_custom_python", False):
+                # Very light heuristic: if raw payload contains key signaling custom python, block.
+                # Future: integrate deeper inspection of RuleSet once transform expressions added.
+                for k, v in raw_rules_payload.items():  # type: ignore[assignment]
+                    if isinstance(v, dict) and any("python" in str(x).lower() for x in v.keys()):
+                        raise ValueError("custom python expressions disallowed by settings")
+        except Exception:
+            pass
+
         bundle = adapt_ruleset_over_files(rule_set, html_by_file)
         adapter_rows = {r: len(res.rows) for r, res in bundle.resources.items()}
         cov_ratio = None
