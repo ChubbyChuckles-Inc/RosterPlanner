@@ -32,6 +32,9 @@ class SettingsService:
             which a preview operation surfaces a performance badge warning.
         ingestion_disallow_custom_python: When True, custom python expression
             transforms in rule payloads are rejected (simulation fails fast).
+        command_palette_auto_resize: When True (default), Command Palette dialog
+            dynamically sizes to fit longest command & up to 10 rows with animation.
+            Users/tests can disable to lock at initial default size.
     """
 
     # singleton convenience instance used in many places in the GUI. Tests
@@ -42,6 +45,7 @@ class SettingsService:
     ingestion_preview_batch_cap: int = 50
     ingestion_preview_perf_threshold_ms: float = 120.0
     ingestion_disallow_custom_python: bool = False
+    command_palette_auto_resize: bool = True
 
 
 # Initialize default singleton

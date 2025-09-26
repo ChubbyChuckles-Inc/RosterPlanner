@@ -54,6 +54,7 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         self._centered_once = False
         # Cache widest command text width observed (prevents jittery shrink while filtering)
         self._max_command_px = 0
+        self._anim = None  # QPropertyAnimation instance (created lazily)
         self.search_edit = QLineEdit(self)
         self.search_edit.setObjectName("commandPaletteSearch")
         self.search_edit.setPlaceholderText("Type a command…")
@@ -74,7 +75,7 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         # Perform initial auto-sizing & centering exactly once on first show
         try:
             if not self._centered_once:
-                self._auto_size(center=True)
+                self._auto_size(center=True, animate=False)
                 self._centered_once = True
         except Exception:
             pass
@@ -160,7 +161,7 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
             self.list_widget.setCurrentRow(0)
         # Adjust size after each refresh (width grows to accommodate widest ever; height targets 10 commands)
         try:
-            self._auto_size(center=False)
+            self._auto_size(center=False, animate=True)
         except Exception:
             pass
 
@@ -189,7 +190,7 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         self.accept()
 
     # Auto-sizing --------------------------------------------------
-    def _auto_size(self, center: bool):  # pragma: no cover - UI sizing logic
+    def _auto_size(self, center: bool, animate: bool):  # pragma: no cover - UI sizing logic
         """Resize dialog to fit content: widest command & 10 command rows.
 
         Width: Longest command text measured (cached so width never shrinks while open)
@@ -197,6 +198,15 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         Height: Title bar + search field + 10 list rows (or fewer if <10 commands) + margins.
         If center=True, dialog is moved to the middle of the active screen.
         """
+        # Respect user setting toggle
+        try:
+            from gui.services.settings_service import SettingsService  # type: ignore
+
+            if not SettingsService.instance.command_palette_auto_resize:
+                return
+        except Exception:
+            pass
+
         lw = self.list_widget
         if lw is None:
             return
@@ -222,6 +232,7 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         try:
             if need_scroll:
                 from PyQt6.QtWidgets import QApplication
+
                 scrollbar_w = QApplication.style().pixelMetric(  # type: ignore[attr-defined]
                     getattr(QApplication, "PM_ScrollBarExtent", 7)  # fallback
                 )
@@ -244,7 +255,38 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         cur_w = self.width()
         if target_width < cur_w:
             target_width = cur_w  # never shrink horizontally during session
-        self.resize(int(target_width), int(target_height))
+        new_w, new_h = int(target_width), int(target_height)
+        if animate:
+            try:
+                from PyQt6.QtCore import QPropertyAnimation, QRect
+                # Animate geometry (position unchanged unless centering requested)
+                start_geom = self.geometry()
+                end_x, end_y = start_geom.x(), start_geom.y()
+                if center:
+                    # compute centered position first so animation targets that spot
+                    try:
+                        screen = self.screen()
+                        if screen is None and QGuiApplication is not None:
+                            screen = QGuiApplication.primaryScreen()
+                        if screen is not None:
+                            geo = screen.availableGeometry()
+                            end_x = geo.center().x() - new_w // 2
+                            end_y = geo.center().y() - new_h // 2
+                    except Exception:
+                        pass
+                end_geom = QRect(end_x, end_y, new_w, new_h)
+                if self._anim is None:
+                    self._anim = QPropertyAnimation(self, b"geometry")
+                    self._anim.setDuration(140)
+                self._anim.stop()
+                self._anim.setStartValue(start_geom)
+                self._anim.setEndValue(end_geom)
+                self._anim.start()
+            except Exception:
+                # Fallback immediate resize on any failure
+                self.resize(new_w, new_h)
+        else:
+            self.resize(new_w, new_h)
         if center:
             try:
                 # Determine active screen geometry
