@@ -37,6 +37,8 @@ from typing import List, Dict, Any, Optional, Mapping, TYPE_CHECKING
 import copy
 from collections import deque
 import json
+import zlib
+import base64
 
 # ---------------------------------------------------------------------------
 # Model Layer
@@ -154,7 +156,9 @@ class CanvasModel:
         return True
 
     # --- History Persistence -------------------------------------------
-    def _serialize_nodes(self, nodes: List[BuilderNode]) -> List[Dict[str, Any]]:  # pragma: no cover
+    def _serialize_nodes(
+        self, nodes: List[BuilderNode]
+    ) -> List[Dict[str, Any]]:  # pragma: no cover
         return [n.to_mapping() for n in nodes]
 
     def export_history(self) -> Dict[str, Any]:  # pragma: no cover - thin
@@ -413,7 +417,7 @@ try:  # pragma: no cover - optional Qt import isolation for headless tests
         QLabel,
         QCheckBox,
     )
-    from PyQt6.QtCore import Qt, pyqtSignal
+    from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 except Exception:  # pragma: no cover
     QWidget = object  # type: ignore
 
@@ -462,6 +466,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         try:
             self._build_ui()
             self._restore_session_state()
+            self._restore_ui_state()  # restores tab & selection if possible
             self.refresh()
         except Exception as e:  # pragma: no cover - UI construction failure surfaced upstream
             self._last_error = f"UI build error: {e}"
@@ -626,9 +631,14 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         fe_layout.addLayout(form)
         layout.addWidget(self._field_editor)
         self._field_editor.hide()
-        try:  # connect change handlers
+        try:  # connect change handlers & debounce wiring
             self.field_name_edit.editingFinished.connect(self._commit_field_name)  # type: ignore
             self.field_selector_edit.editingFinished.connect(self._commit_field_selector)  # type: ignore
+            self._selector_live_timer = QTimer(self)
+            self._selector_live_timer.setInterval(300)
+            self._selector_live_timer.setSingleShot(True)
+            self.field_selector_edit.textChanged.connect(self._on_field_selector_text_changed)  # type: ignore
+            self._selector_live_timer.timeout.connect(self._apply_selector_live_validation)  # type: ignore
         except Exception:  # pragma: no cover
             pass
 
@@ -646,6 +656,10 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         except Exception:
             pass
         self.btn_toggle_palette.toggled.connect(self._on_palette_toggled)  # type: ignore
+        try:
+            self.palette_tabs.currentChanged.connect(self._on_tab_changed)  # type: ignore
+        except Exception:  # pragma: no cover
+            pass
         # Node list context menu
         self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.list_widget.customContextMenuRequested.connect(self._on_list_context_menu)  # type: ignore
@@ -667,8 +681,8 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         QShortcut(QKeySequence("Ctrl+Y"), self, activated=self._on_redo)  # type: ignore
         QShortcut(QKeySequence("Ctrl+Shift+Z"), self, activated=self._on_redo)  # type: ignore
         QShortcut(QKeySequence("Ctrl+/"), self, activated=self._show_cheat_sheet)  # type: ignore
-        # Load persisted palette state
-        self._restore_palette_state()
+
+    # Palette state now restored via _restore_ui_state after build
 
     # Actions -------------------------------------------------------------
     def _on_add_selector(self) -> None:
@@ -737,8 +751,10 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.field_name_edit.blockSignals(False)
             self.field_selector_edit.blockSignals(False)
             self._field_editor.show()
+            self._update_selector_feedback(node.selector)
         else:
             self._field_editor.hide()
+        self._persist_ui_state()
 
     # Transform chip application -----------------------------------------
     def _apply_transform_chip(self, spec: Dict[str, Any]) -> None:  # pragma: no cover - thin UI
@@ -763,6 +779,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self._palette_container.hide()
             self.btn_toggle_palette.setText("Transforms ▸")
         self._persist_palette_state()
+        self._persist_ui_state()
 
     # Drag reorder -------------------------------------------------------
     def _on_rows_moved(self, *_) -> None:  # pragma: no cover - UI event
@@ -856,6 +873,21 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
                 self._update_selector_feedback(sel)
             self._maybe_emit_live()
             self._persist_session_state()
+            self._persist_ui_state()
+
+    # Debounced selector validation (live while typing) -----------------
+    def _on_field_selector_text_changed(self, _text: str):  # pragma: no cover
+        if getattr(self, "_selector_live_timer", None):
+            self._selector_live_timer.start()
+
+    def _apply_selector_live_validation(self):  # pragma: no cover
+        if not getattr(self, "_selected_node_id", None):
+            return
+        node = next((n for n in self.model.nodes if n.id == self._selected_node_id), None)
+        if isinstance(node, FieldMappingNode):
+            text = self.field_selector_edit.text().strip()
+            if text:
+                self._update_selector_feedback(text)
 
     # Undo/Redo handlers -------------------------------------------------
     def _on_undo(self):  # pragma: no cover - UI
@@ -874,6 +906,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
     def _update_selector_feedback(self, selector: str):  # pragma: no cover - GUI heuristic
         try:
             from bs4 import BeautifulSoup  # type: ignore
+
             html_doc = getattr(self, "_active_preview_html", None)
             if html_doc is None:
                 # backward compatibility fallback
@@ -920,29 +953,89 @@ Ctrl+/ — Show this cheat sheet<br>
         self.status_label.setText(f"{len(self.model.nodes)} node(s)")
         # Persist session on any refresh to capture latest state
         self._persist_session_state()
+        # Restore last selected node if any persisted and nothing selected
+        if self.list_widget.currentRow() < 0:
+            self._restore_last_selected_node()
 
     # Session persistence (model + history) -----------------------------
     def _persist_session_state(self) -> None:  # pragma: no cover - simple
         try:
             from PyQt6.QtCore import QSettings
+
             s = QSettings()
             payload = self.model.export_history()
-            s.setValue("visual_builder/session", json.dumps(payload))
+            raw = json.dumps(payload, separators=(",", ":"))
+            if len(raw) > 4096:  # compress large payloads
+                comp = zlib.compress(raw.encode("utf-8"), level=6)
+                raw = "gz:" + base64.b64encode(comp).decode("ascii")
+            s.setValue("visual_builder/session", raw)
         except Exception:
             pass
 
     def _restore_session_state(self) -> None:  # pragma: no cover - simple
         try:
             from PyQt6.QtCore import QSettings
+
             s = QSettings()
             raw = s.value("visual_builder/session", "")
             if not raw:
                 return
+            if isinstance(raw, str) and raw.startswith("gz:"):
+                try:
+                    b = base64.b64decode(raw[3:])
+                    raw = zlib.decompress(b).decode("utf-8")
+                except Exception:
+                    return
             data = json.loads(raw)
             if isinstance(data, dict):
                 self.model.import_history(data)
         except Exception:
             pass
+
+    # UI state persistence (tab index + last selected node) -------------
+    def _persist_ui_state(self):  # pragma: no cover
+        try:
+            from PyQt6.QtCore import QSettings
+
+            s = QSettings()
+            s.setValue("visual_builder/last_tab_index", self.palette_tabs.currentIndex())
+            if getattr(self, "_selected_node_id", None):
+                s.setValue("visual_builder/last_selected_node_id", self._selected_node_id)
+        except Exception:
+            pass
+
+    def _restore_tab_selection(self):  # pragma: no cover
+        try:
+            from PyQt6.QtCore import QSettings
+
+            s = QSettings()
+            idx = s.value("visual_builder/last_tab_index", -1, type=int)
+            if isinstance(idx, int) and 0 <= idx < self.palette_tabs.count():
+                self.palette_tabs.setCurrentIndex(idx)
+        except Exception:
+            pass
+
+    def _restore_last_selected_node(self):  # pragma: no cover
+        try:
+            from PyQt6.QtCore import QSettings
+
+            s = QSettings()
+            nid = s.value("visual_builder/last_selected_node_id", "")
+            if not nid:
+                return
+            for i, node in enumerate(self.model.nodes):
+                if node.id == nid:
+                    self.list_widget.setCurrentRow(i)
+                    break
+        except Exception:
+            pass
+
+    def _restore_ui_state(self):  # pragma: no cover
+        self._restore_tab_selection()
+        self._restore_last_selected_node()
+
+    def _on_tab_changed(self, _index: int):  # pragma: no cover
+        self._persist_ui_state()
 
     # Convenience for tests
     def compile_to_mapping(self) -> Dict[str, Any]:

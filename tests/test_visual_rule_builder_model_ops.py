@@ -11,9 +11,21 @@ from src.gui.ingestion.visual_rule_builder import (
 def build_basic_model():
     model = CanvasModel()
     model.add_node(SelectorNode(id="selector1", kind="selector", label="Sel1", selector="table"))
-    model.add_node(FieldMappingNode(id="field1", kind="field", label="Field1", field_name="f1", selector="td.name"))
-    model.add_node(FieldMappingNode(id="field2", kind="field", label="Field2", field_name="f2", selector="td.score"))
-    model.add_node(TransformChainNode(id="chain1", kind="transform_chain", label="Chain1", transforms=[{"kind": "trim"}]))
+    model.add_node(
+        FieldMappingNode(
+            id="field1", kind="field", label="Field1", field_name="f1", selector="td.name"
+        )
+    )
+    model.add_node(
+        FieldMappingNode(
+            id="field2", kind="field", label="Field2", field_name="f2", selector="td.score"
+        )
+    )
+    model.add_node(
+        TransformChainNode(
+            id="chain1", kind="transform_chain", label="Chain1", transforms=[{"kind": "trim"}]
+        )
+    )
     return model
 
 
