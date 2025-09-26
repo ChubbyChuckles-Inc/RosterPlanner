@@ -191,6 +191,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_cache.setToolTip(
             "Show which files are unchanged (cache hit) vs updated/new/missing based on provenance"
         )
+        self.btn_security = QPushButton("Security Scan")
+        self.btn_security.setToolTip(
+            "Run static security sandbox scan over expression & derived transforms"
+        )
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -245,6 +249,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_dep_graph)
         actions.addWidget(self.btn_benchmark)
         actions.addWidget(self.btn_cache)
+        actions.addWidget(self.btn_security)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -322,6 +327,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_dep_graph.clicked.connect(self._on_dependency_graph_clicked)  # type: ignore
         self.btn_benchmark.clicked.connect(self._on_benchmark_clicked)  # type: ignore
         self.btn_cache.clicked.connect(self._on_cache_inspector_clicked)  # type: ignore
+        self.btn_security.clicked.connect(self._on_security_scan_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -1089,6 +1095,29 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         dlg = CachingInspectorDialog(diff, self)
         dlg.exec()
         self._append_log("Caching Inspector: " + diff.summary())
+
+    # ------------------------------------------------------------------
+    # Security Sandbox Scan (7.10.41)
+    def _on_security_scan_clicked(self) -> None:
+        try:
+            from gui.ingestion.security_sandbox import scan_rules_text
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Security sandbox import failed: {e}")
+            return
+        raw = self.rule_editor.toPlainText()
+        report = scan_rules_text(raw)
+        if report.ok:
+            self._append_log(report.summary())
+            return
+        # Build textual table of issues
+        lines = [report.summary(), "-- Issues --"]
+        for i in report.issues[:100]:  # cap to avoid flooding
+            loc = f" (line {i.lineno}, col {i.col})" if i.lineno is not None else ""
+            field = f" [{i.source}:{i.field}]" if i.field else ""
+            lines.append(f"- {i.category}{field}{loc}: {i.message}")
+        if len(report.issues) > 100:
+            lines.append("(truncated; showing first 100)")
+        self._append_log("\n".join(lines))
 
     # ------------------------------------------------------------------
     # Versioning helpers (7.10.33)
