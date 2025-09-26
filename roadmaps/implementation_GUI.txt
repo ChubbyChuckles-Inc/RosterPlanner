@@ -362,51 +362,49 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.44 High-contrast & reduced-color adaptations for complex diff/preview views
  [x] 7.10.45 Inline performance warnings (badge if preview parse > threshold)
  [x] 7.10.46 Loading skeletons for large batch preview operations
- UI/UX Visual Enhancement Extensions (Post Initial Completion)
- [ ] 7.10.47 Adaptive layout density auto-switch (detect panel width < threshold -> collapse file navigator to icon rail)
- [ ] 7.10.48 Progressive disclosure for advanced transforms (minimal rule editor by default with expandable advanced drawer + smooth slide animation)
- [ ] 7.10.49 Floating command bar (context-aware inline actions: Run Preview, Batch Preview, Apply, Benchmark) with keyboard hint badges
- [ ] 7.10.50 Visual diff heatmap overlay (cell background intensity based on edit frequency / delta magnitude) toggle
- [ ] 7.10.51 Inline sparkline performance trend (last N preview parse times) beside Performance Metrics section
- [ ] 7.10.52 Animated panel transition choreography (staggered fade/translate for navigator, editor, preview panes) respecting reduced-motion
- [ ] 7.10.53 Resizable pane snap points + ghost outline preview (drag handle shows target widths at 25% / 33% / 50%)
- [ ] 7.10.54 Multi-theme contrast stress preview (split preview showing current theme vs high-contrast vs brand-neutral side-by-side)
- [ ] 7.10.55 Color token override inspector (hover a colored region to reveal semantic token + allow temporary override sandbox)
- [ ] 7.10.56 Rule editor semantic lint gutter (icons for unused field, low coverage, risky transform) with tooltip explanations
- [ ] 7.10.57 Contextual empty states (different guidance when no rules, when rules invalid, when preview selection empty) with illustration placeholders
- [ ] 7.10.58 Panel theming live tuner (pop-over to adjust spacing scale & surface elevation tokens; applies only to lab scope) [R]
- [ ] 7.10.59 Accessibility live checker badge (updates as user types selectors; contrast + focusable count diff) real-time
- [ ] 7.10.60 Keyboard command palette sub-scope (Ctrl+P inside lab shows only lab actions + fuzzy field jump)
- [ ] 7.10.61 Inline diff row grouping (collapse unchanged resource rows; expand on demand) with counts chips
- [ ] 7.10.62 Batch preview progressive streaming UI (rows appear incrementally with shimmer until complete)
- [ ] 7.10.63 Animated rule version timeline slider (scrub through version snapshots, preview diffs instantly)
- [ ] 7.10.64 Live selector match count pill next to each selector input (auto-updates, fades when stale)
- [ ] 7.10.65 Mini map overview for large rule documents (scroll bar overlay with colored zones for tables/lists/derived blocks)
- [ ] 7.10.66 Quick layout presets ("Focus Editing", "Diff Analysis", "Performance Benchmark") applying saved pane visibility/ratio profiles
- [ ] 7.10.67 Persistent pane layout analytics (log rearrangements for future UX optimization – behind debug flag)
- [ ] 7.10.68 Enhanced skeleton variants (diff grid placeholder with gradient shimmer & column alignment markers)
- [ ] 7.10.69 Rule author attribution & avatar chip (multi-user future-proofing) placeholder surfaces metadata if present
- [ ] 7.10.70 Multi-select file navigator contextual toolbar (bulk add to batch, open diff, benchmark subset) appears with scale-in animation
- [ ] 7.10.71 Drag-and-drop file reorder to define custom batch ordering (persist ephemeral ordering state)
- [ ] 7.10.72 Focus path breadcrumb within rule editor (section > resource > field) clickable for quick navigation
- [ ] 7.10.73 Integrated color-blindness simulation toggle scoped to preview pane only (override global) [R]
- [ ] 7.10.74 Live transform sandbox popover (hover transform chip -> inline test input/output area)
- [ ] 7.10.75 Auto-grouping of related transform chips (visual cluster with subtle bounding pill + collapse) [R]
- [ ] 7.10.76 Panel-level command latency HUD (ms per major action: preview parse, diff compute) with sparkline
- [ ] 7.10.77 Assisted selector refiner (AI heuristic suggests narrower/broader selector variants with success metrics) [R]
- [ ] 7.10.78 Visual dependency graph incremental layout animation (nodes animate to new positions when rules change)
- [ ] 7.10.79 Inline JSON export diff preview (split view with syntax-highlighted additions/removals) before Apply
- [ ] 7.10.80 Rule complexity score indicator (heuristic scoring factors: transform depth, selector specificity) with guidance thresholds
- [ ] 7.10.81 "What changed since last apply" smart summary banner (chips: +fields, -fields, perf delta, coverage delta)
- [ ] 7.10.82 Multi-pane focus mode (press F to dim non-focused panes with backdrop blur) respecting reduced-color mode
- [ ] 7.10.83 Adaptive tooltips smart delay (instant on re-hover within 5s, else standard delay) for dense rule metadata icons
- [ ] 7.10.84 Unified command & search omni-box inside lab (selectors, fields, actions, recent files) with type-ahead categories
- [ ] 7.10.85 Autosuggest for common table/list column names (learns from existing DB schema usage frequency)
- [ ] 7.10.86 Undo/redo timeline visual strip (scrubbable) for rule edits with diff preview tooltip [R]
- [ ] 7.10.87 Field value sample gallery (thumbnails of first N unique values; click to highlight source nodes)
- [ ] 7.10.88 Persistent problem panel (aggregates lint, coverage, performance warnings) with severity filters
- [ ] 7.10.89 Integrated unit test snippet generator (suggests pytest skeleton for current rule scenario) [R]
- [ ] 7.10.90 Export sharable interactive bundle (rule set + sample HTML + preview capture) packaging helper [R]
+
+ Authoring Experience & Assisted Rule Definition (Ease YAML/Schema Complexity)
+ [ ] 7.10.A1 Visual Rule Builder Canvas: drag-and-drop blocks (Source → Selector → Transforms → Field Mapping) with live JSON preview pane.
+ [ ] 7.10.A2 Inline Selector Explorer: split preview pane highlights DOM regions while hovering over selector text (debounced, throttled for performance) + auto-suggest narrower/broader variants.
+ [ ] 7.10.A3 Transform Palette with Intelligent Defaults: categorized chips (Text Cleanup, Parsing, Numeric, Date, Expression) + one-click add; groups collapse into pill clusters.
+ [ ] 7.10.A4 Natural Language Prompt Assist [R]: user enters "Extract player names and their live rating" -> generates draft rule blocks (skeleton TableRule/ListRule) for refinement.
+ [ ] 7.10.A5 Field Coverage Radar Chart: polar visualization of mapped vs available semantic field categories (identity, performance, schedule, meta) with hover-details.
+ [ ] 7.10.A6 Conflict & Overlap Detector: warns when multiple selectors target overlapping node sets; suggests merge or specificity adjustment.
+ [ ] 7.10.A7 Live Parsing Sandbox Cell: ephemeral inline test input (paste raw HTML fragment) to prototype a single rule resource without mutating main rule set.
+ [ ] 7.10.A8 Multi-Select Bulk Edit Mode: apply a transform (e.g., trim) or selector refinement to several fields simultaneously via batch action bar.
+ [ ] 7.10.A9 Rule Intent Comments Sidebar: structured metadata (purpose, assumptions, TODO) stored separately from executable schema to keep YAML lean.
+ [ ] 7.10.A10 Auto-Generated Example Data Rows: synthetic row sampler shows how transforms normalize varied raw inputs (outlier emphasis styling).
+ [ ] 7.10.A11 Selector Drift Watchlist: user pins critical selectors to monitor; panel shows last success count vs current diff (alerts when zero or >X% drop).
+ [ ] 7.10.A12 One-Click Refactor: convert repeated transform chains into a named macro (re-usable across fields) with macro registry + usage count.
+ [ ] 7.10.A13 Field Dependency Trace: select a derived field to visualize upstream sources & transforms as a linear annotated chain.
+ [ ] 7.10.A14 Rule Complexity Meter: heuristic scoring (selector specificity depth + transform chain length + inheritance depth) with guidance thresholds & color-coded badge.
+ [ ] 7.10.A15 Inline YAML Fragment Editor with Schema Ghost Text: grayed placeholder keys appear for missing recommended attributes (context-aware autocompletion).
+ [ ] 7.10.A16 Undo/Redo Granular Timeline (Authoring Scope): displays consecutive semantic edits (add field, change selector) with diff tooltip; navigable scrub.
+ [ ] 7.10.A17 Snapshot Compare Dropdown: quick switch between last 5 draft autosaves to diff rule evolution without leaving editor.
+ [ ] 7.10.A18 Safe Expression Playground: isolated evaluator with timeout & AST lint; promotes expression to rule only if passes safety + result type inference.
+ [ ] 7.10.A19 Import HTML Snippet As Fixture: capture a DOM fragment directly into a fixtures folder for deterministic selector regression tests.
+ [ ] 7.10.A20 Guided Onboarding Walkthrough: progressive spotlight across navigator → selector explorer → transforms → diff preview (stores completion flag in config).
+ [ ] 7.10.A21 Keyboard Macro Shortcuts: assign user-defined shortcuts to frequently used transform chain templates.
+ [ ] 7.10.A22 Automatic Date/Number Format Inference: sample raw strings to propose parse_date / to_number format hints (locale aware) before user manual entry.
+ [ ] 7.10.A23 Batch Selector Optimization Pass: proposes simplified selectors (removes redundant ancestry) with acceptance diff preview.
+ [ ] 7.10.A24 Dead Field Pruner: suggests removal of fields never populated across last N previews (one-click comment-out vs delete).
+ [ ] 7.10.A25 Migration Assistant: when schema target changes, generates mapping suggestions & highlights unmapped new columns.
+ [ ] 7.10.A26 Accessibility Annotation Helper: allow adding alt/aria-like semantics for derived metadata (future-proofing, annotation export).
+ [ ] 7.10.A27 Multi-Rule Search & Replace with Awareness: refactors selector fragments or transform tokens across resources with dry-run preview.
+ [ ] 7.10.A28 Performance Hotspot Profiler: highlights slowest resources (time & node visit counts) inline in rule list with flame-bar visualization.
+ [ ] 7.10.A29 Partial Preview Cache Layer: reuses unchanged resource extract results when only unrelated sections edited (diff-aware invalidation).
+ [ ] 7.10.A30 YAML Minification & Formatting Optimizer: normalizes ordering (resources alphabetical, fields grouped) + ensures deterministic output for VCS diffs.
+ [ ] 7.10.A31 Collaboration Prep Hooks [R]: abstract rule storage provider interface (future remote sync) while still using local JSON/YAML.
+ [ ] 7.10.A32 Inline Test Assertion Wizard: GUI guided creation of assertion blocks (suggest canonical value samples) appended to rule assertions section.
+ [ ] 7.10.A33 Rule Export Quality Report: summarizes coverage %, complexity, drift risks, hotspots prior to sharing.
+ [ ] 7.10.A34 Smart Paste Normalizer: when user pastes multiple lines of CSS selectors, auto-splits into tentative field entries for quick confirmation.
+ [ ] 7.10.A35 Structural Pattern Library: catalog of reusable selector patterns (tables with header row, key-value lists) insertable as templates.
+ [ ] 7.10.A36 Inline Diff Inline Highlight (Char-Level): fine-grained field value diff highlights inside cells (balanced algorithm) with accessibility fallback.
+ [ ] 7.10.A37 Rule Lint Quick Fixes: lightbulb actions offering fix-ups (add missing transform, convert absolute selector to relative, fill recommended attr).
+ [ ] 7.10.A38 DOM Snapshot Versioning: store slim structural hashes allowing replay of earlier DOM shape for selector robustness testing.
+ [ ] 7.10.A39 Localized Selector Heuristics [R]: experiment with language-aware node text matching for internationalized pages.
+ [ ] 7.10.A40 JSON ↔ YAML Round-Trip Fidelity Tests [T]: ensure visual builder never introduces semantic drift when switching formats.
+
 
  Persistence & Configuration
  [x] 7.10.49 Rule set autosave draft state with explicit publish action

@@ -118,6 +118,7 @@ feat(ingestion-rules): add validation engine for selector coverage (Milestone 7.
 
 feat(ingestion-rules): add live documentation generation helpers (Milestone 7.10.10)
  - Added rule_docs with generate_global_docs / generate_resource_docs (Markdown output)
+chore(roadmap): add Ingestion Lab authoring assistance tasks (7.10.A1–7.10.A40) for visual rule builder, selector explorer, transform palette, AI prompt assist, complexity meter, macro refactor, performance hotspot profiler, and quality report improvements.
  - Includes resource index, transform kind listing, inheritance explanation
  - Per-resource docs show selectors, inheritance parent, columns/fields & transform chains
  - Unit tests cover presence of key sections and transform formatting
@@ -144,7 +145,4 @@ feat(ingestion-lab): add rule adapter layer (RuleSet -> aggregated resource rows
 feat(ingestion-lab): safe execution guard (simulate + apply audit) with tests (Milestone 7.10.30)
 feat(ingestion-lab): add parse benchmark dialog with A/B rule variant execution + optional parallel workers (Milestone 7.10.39)
 feat(ingestion-lab): add caching inspector (hash diff viewer) with dialog + backend diff_provenance (Milestone 7.10.40)
-
-
-chore(roadmap): extend 7.10 Ingestion Lab with advanced UI/UX enhancement tasks (7.10.47–7.10.90)
 
