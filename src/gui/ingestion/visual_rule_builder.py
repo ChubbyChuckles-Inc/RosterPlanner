@@ -404,6 +404,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
 
         # Node + palette splitter
         from PyQt6.QtWidgets import QSplitter, QTabWidget, QScrollArea, QWidget as _QW
+
         splitter = QSplitter(self)
         splitter.setOrientation(Qt.Orientation.Vertical)
 
@@ -451,10 +452,13 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
                 b = QPushButton(spec["label"])  # type: ignore[arg-type]
                 b.setObjectName(f"transformChip_{spec['kind']}")
                 b.setCursor(Qt.CursorShape.PointingHandCursor)
+
                 def _make_handler(s: Dict[str, Any]):  # noqa: WPS430
                     def _handler():  # pragma: no cover
                         self._apply_transform_chip(s)
+
                     return _handler
+
                 b.clicked.connect(_make_handler(spec))  # type: ignore
                 current_row.addWidget(b)
                 btn_refs.append(b)
