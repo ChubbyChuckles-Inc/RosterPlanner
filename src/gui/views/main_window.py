@@ -1507,6 +1507,13 @@ class MainWindow(QMainWindow):  # Dock-based
         base_dir = getattr(self, "data_dir", ".")
         try:
             panel = IngestionLabPanel(base_dir=base_dir)
+            # Register panel for command palette actions (7.10.66)
+            try:
+                from gui.services.service_locator import services as _services
+
+                _services.register("ingestion_lab_panel", panel, allow_override=True)
+            except Exception:
+                pass
             return panel
         except Exception as e:
             box = QWidget()

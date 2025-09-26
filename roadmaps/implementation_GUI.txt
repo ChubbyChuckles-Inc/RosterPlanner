@@ -385,7 +385,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.63 Update DataFreshnessService to include rule version in freshness summary
  [x] 7.10.64 Extend export presets if needed to include rule-set-derived fields
  [x] 7.10.65 Enhance Logs Dock to filter on ingestion rule events (INGEST_RULES_APPLIED, RULE_VALIDATION_FAILED)
- [ ] 7.10.66 Add Command Palette actions: Open Ingestion Lab, Apply Current Rule Set, Revert to Previous Rule Version
+ [x] 7.10.66 Add Command Palette actions: Open Ingestion Lab, Apply Current Rule Set, Revert to Previous Rule Version
  [ ] 7.10.67 Update theme tokens / QSS if new panel introduces novel component patterns (diff grid, selector picker)
  [ ] 7.10.68 Accessibility audit for new panel interactive complexity
 
