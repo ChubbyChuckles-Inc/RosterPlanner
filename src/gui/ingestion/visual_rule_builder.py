@@ -350,8 +350,26 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.model = model or CanvasModel()
         self.setObjectName("visualRuleBuilder")
         self._live_preview_enabled = False
-        self._build_ui()
-        self.refresh()
+        self._headless = False
+        self._last_error: Optional[str] = None
+        # Guard: if no QApplication instance, skip heavy UI (headless import in tests)
+        try:
+            from PyQt6.QtWidgets import QApplication  # type: ignore
+
+            if QApplication.instance() is None:  # pragma: no cover - headless safety
+                self._headless = True
+                self._last_error = "No QApplication instance; VisualRuleBuilder in headless stub mode"
+                return
+        except Exception as _e:  # pragma: no cover
+            # If even QApplication import fails, treat as headless
+            self._headless = True
+            self._last_error = f"Qt import failure: {_e}"
+            return
+        try:
+            self._build_ui()
+            self.refresh()
+        except Exception as e:  # pragma: no cover - UI construction failure surfaced upstream
+            self._last_error = f"UI build error: {e}"
 
     # UI ------------------------------------------------------------------
     def _build_ui(self) -> None:

@@ -363,14 +363,22 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         try:  # pragma: no cover
             from gui.ingestion.visual_rule_builder import VisualRuleBuilder  # type: ignore
 
-            self.visual_builder = VisualRuleBuilder()  # type: ignore[assignment]
-            # Connect live compiled mapping updates (7.10.A2)
-            try:  # pragma: no cover - signal may not exist in headless fallback
-                self.visual_builder.compiledMappingChanged.connect(self._on_visual_builder_live)  # type: ignore
-            except Exception:
-                pass
-        except Exception:  # pragma: no cover
-            self.visual_builder = QLabel("Visual builder unavailable (import error)")  # type: ignore[assignment]
+            vb = VisualRuleBuilder()  # type: ignore[assignment]
+            # If it reported a headless or build error, surface message instead of widget
+            if getattr(vb, "_last_error", None):
+                msg = getattr(vb, "_last_error")
+                self.visual_builder = QLabel(f"Visual builder unavailable: {msg}")  # type: ignore[assignment]
+            else:
+                self.visual_builder = vb  # type: ignore[assignment]
+                try:  # pragma: no cover - signal may not exist in fallback
+                    self.visual_builder.compiledMappingChanged.connect(self._on_visual_builder_live)  # type: ignore
+                except Exception:
+                    pass
+        except Exception as e:  # pragma: no cover
+            import traceback as _tb
+            err = f"{e.__class__.__name__}: {e}"
+            short_tb = "".join(_tb.format_exception_only(type(e), e)).strip()
+            self.visual_builder = QLabel(f"Visual builder import error: {err}\n{short_tb}")  # type: ignore[assignment]
         self._editor_stack.addWidget(self.visual_builder)  # index 1
         mid_split.addWidget(self._editor_stack_container)
 
@@ -616,19 +624,19 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             return
         meta, snippet = parts
         import html as _html
+
         esc_snip = _html.escape(snippet)
         esc_word = _html.escape(word)
         highlighted = esc_snip.replace(
             esc_word,
-            f"<span style=\"background:#364fa3;color:#fff;padding:1px 2px;border-radius:2px;\">{esc_word}</span>",
+            f'<span style="background:#364fa3;color:#fff;padding:1px 2px;border-radius:2px;">{esc_word}</span>',
         )
         broader = word.rsplit(" ", 1)[0] if " " in word else "(n/a)"
         narrower = word + " td" if not word.endswith(" td") else word + " span"
-        suggestion_html = (
-            f"<div style='margin-top:4px;font-size:11px;color:#aaa;'>Broader: <code>{_html.escape(broader)}</code> | Narrower: <code>{_html.escape(narrower)}</code></div>"
-        )
+        suggestion_html = f"<div style='margin-top:4px;font-size:11px;color:#aaa;'>Broader: <code>{_html.escape(broader)}</code> | Narrower: <code>{_html.escape(narrower)}</code></div>"
         full_html = (
-            f"<pre style='font-family:Consolas,monospace;font-size:12px;'>{_html.escape(meta)}--- Snippet ---{highlighted}</pre>" + suggestion_html
+            f"<pre style='font-family:Consolas,monospace;font-size:12px;'>{_html.escape(meta)}--- Snippet ---{highlighted}</pre>"
+            + suggestion_html
         )
         try:
             self.preview_area.setHtml(full_html)
