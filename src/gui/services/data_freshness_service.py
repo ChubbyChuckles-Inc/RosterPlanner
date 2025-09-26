@@ -63,6 +63,7 @@ class DataFreshness:
     last_ingest: Optional[datetime]
     age_since_scrape_seconds: Optional[int]
     age_since_ingest_seconds: Optional[int]
+    rule_version: Optional[int] = None
 
     def human_summary(self) -> str:
         """Return a concise human-readable summary string.
@@ -76,8 +77,8 @@ class DataFreshness:
             if dt is None or age is None:
                 return "never"
             return humanize_age(age)
-
-        return f"Scrape: {_fmt(self.last_scrape, self.age_since_scrape_seconds)} | Ingest: {_fmt(self.last_ingest, self.age_since_ingest_seconds)}"
+        rv = f" | Rules: v{self.rule_version}" if self.rule_version is not None else ""
+        return f"Scrape: {_fmt(self.last_scrape, self.age_since_scrape_seconds)} | Ingest: {_fmt(self.last_ingest, self.age_since_ingest_seconds)}{rv}"
 
 
 def _parse_timestamp(raw: str) -> Optional[datetime]:
@@ -152,11 +153,19 @@ class DataFreshnessService:
         now = datetime.utcnow()
         age_scrape = int((now - last_scrape).total_seconds()) if last_scrape else None
         age_ingest = int((now - last_ingest).total_seconds()) if last_ingest else None
+        # Active rule version (if ingestion lab published one) is stored as a service.
+        try:
+            rule_version = services.try_get("active_rule_version")
+            if not isinstance(rule_version, int):  # type: ignore[unreachable]
+                rule_version = None
+        except Exception:  # pragma: no cover - defensive
+            rule_version = None
         return DataFreshness(
             last_scrape=last_scrape,
             last_ingest=last_ingest,
             age_since_scrape_seconds=age_scrape,
             age_since_ingest_seconds=age_ingest,
+            rule_version=rule_version,
         )
 
     # Internal helpers ------------------------------------------

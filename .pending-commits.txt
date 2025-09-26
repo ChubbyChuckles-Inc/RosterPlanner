@@ -9,6 +9,7 @@ feat(ingestion): record active rule_version in IngestionCoordinator provenance (
 
 feat(ingestion-hook): auto-open Ingestion Lab on first new HTML ingest when no rules exist (7.10.61)
 feat(cache): rule-version aware invalidation for RosterCacheService (7.10.62)
+feat(freshness): include active rule_version in DataFreshnessService snapshot & summary (7.10.63)
 
 Implements Milestone 7.10.42: export/import of rule sets. Adds gui.ingestion.rule_export with export_rules/import_rules (validation via RuleSet), integrates Export/Import buttons & handlers in IngestionLabPanel, and provides round‑trip + error tests (tests/test_rule_export_import.py). Roadmap updated.
 feat(ingestion-lab): add security sandbox static analyzer & UI integration (7.10.41)
