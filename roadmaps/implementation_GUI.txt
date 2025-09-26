@@ -361,7 +361,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.43 Keyboard-first workflow (file selection, rule navigation, execution) with shortcuts cheat sheet
  [x] 7.10.44 High-contrast & reduced-color adaptations for complex diff/preview views
  [x] 7.10.45 Inline performance warnings (badge if preview parse > threshold)
- [ ] 7.10.46 Loading skeletons for large batch preview operations
+ [x] 7.10.46 Loading skeletons for large batch preview operations
  [ ] 7.10.47 Status pills (Parsed / Unchanged / Error / Skipped) for each file row
  [ ] 7.10.48 Toast notifications integration (success, warnings) reusing tokenized styles (no blocking modals)
 
