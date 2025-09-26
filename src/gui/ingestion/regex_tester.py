@@ -136,8 +136,17 @@ class RegexTesterDialog(ChromeDialog):  # type: ignore[misc]
         row2 = QHBoxLayout()
         self.text_edit = QTextEdit()
         self.text_edit.setPlainText(sample_text)
+        # Ensure readable baseline styling irrespective of global theme load order
+        self.text_edit.setObjectName("regexTesterSample")
+        self.text_edit.setStyleSheet(
+            "QTextEdit#regexTesterSample { background:#111111; color:#e8e8e8; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+        )
         row2.addWidget(self.text_edit, 3)
         self.match_list = QListWidget()
+        self.match_list.setObjectName("regexTesterMatches")
+        self.match_list.setStyleSheet(
+            "QListWidget#regexTesterMatches { background:#181818; color:#e0e0e0; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+        )
         row2.addWidget(self.match_list, 2)
         lay.addLayout(row2, 1)
 
