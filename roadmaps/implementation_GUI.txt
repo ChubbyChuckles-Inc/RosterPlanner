@@ -341,7 +341,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
 
  Integration with Existing Pipeline
  [x] 7.10.29 Adapter layer: convert rule schema -> existing parser calls or dynamic parser objects (strategy pattern registered in IngestionCoordinator)
- [ ] 7.10.30 Safe execution guard: sandbox mode never commits to main DB unless "Apply" pressed & passes validations
+ [x] 7.10.30 Safe execution guard: sandbox mode never commits to main DB unless "Apply" pressed & passes validations
  [ ] 7.10.31 Post-apply prompt: show summary (rows upserted/unchanged/skipped) without modal dialogs (inline panel banner)
  [ ] 7.10.32 Emit EVENT: INGEST_RULES_APPLIED with metadata (counts, duration) -> status bar freshness update
  [ ] 7.10.33 Maintain separate rule set versions (versioned JSON docs + rollback capability)
