@@ -246,8 +246,13 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         list_height = row_h * visible_rows
         # Include search edit & spacing/margins/title bar
         search_h = self.search_edit.sizeHint().height()
-        # Content layout margins
-        m_left, m_top, m_right, m_bottom = self.content_layout().contentsMargins().getCoords()
+        # Content layout margins (PyQt6 QMargins has left()/top()/right()/bottom(), not getCoords())
+        try:
+            margins = self.content_layout().contentsMargins()
+            m_top = margins.top()
+            m_bottom = margins.bottom()
+        except Exception:
+            m_top = m_bottom = 0
         content_vertical_margins = m_top + m_bottom
         spacing = self.content_layout().spacing() * 2  # search->list + maybe extra buffer
         title_h = self._title_bar.height() if hasattr(self, "_title_bar") else 28
@@ -331,5 +336,13 @@ class CommandPaletteDialog(ChromeDialog):  # type: ignore[misc]
         if self._debounce_timer is None:
             self._debounce_timer = QTimer(self)
             self._debounce_timer.setSingleShot(True)
-            self._debounce_timer.timeout.connect(lambda: self._auto_size(center=False, animate=True))  # type: ignore[attr-defined]
+            # Guard: only resize if still visible (prevents late call after close)
+            def _do_resize():  # pragma: no cover - GUI timing
+                if not getattr(self, 'isVisible', lambda: False)():
+                    return
+                try:
+                    self._auto_size(center=False, animate=True)
+                except Exception:
+                    pass
+            self._debounce_timer.timeout.connect(_do_resize)  # type: ignore[attr-defined]
         self._debounce_timer.start(70)
