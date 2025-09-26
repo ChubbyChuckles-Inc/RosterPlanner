@@ -38,7 +38,10 @@ def test_scan_rules_text_integration():
             "team": {
                 "fields": {
                     "points": {"selector": ".p"},
-                    "diff": {"selector": ".d", "transforms": [{"kind": "expr", "code": "value + 1"}]},
+                    "diff": {
+                        "selector": ".d",
+                        "transforms": [{"kind": "expr", "code": "value + 1"}],
+                    },
                 }
             }
         },

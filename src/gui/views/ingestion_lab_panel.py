@@ -171,6 +171,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_versions.setToolTip("List stored rule set versions in log")
         self.btn_rollback = QPushButton("Rollback")
         self.btn_rollback.setToolTip("Load previous rule version into editor (not yet applied)")
+        self.btn_export = QPushButton("Export")
+        self.btn_export.setToolTip("Export current rules to a JSON file")
+        self.btn_import = QPushButton("Import")
+        self.btn_import.setToolTip("Import rules from a JSON file (replaces editor contents)")
         self.btn_selector_picker = QPushButton("Pick Selector")
         self.btn_selector_picker.setToolTip(
             "Open visual picker to build CSS selector from sample HTML"
@@ -243,6 +247,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_apply)
         actions.addWidget(self.btn_versions)
         actions.addWidget(self.btn_rollback)
+        actions.addWidget(self.btn_export)
+        actions.addWidget(self.btn_import)
         actions.addWidget(self.btn_selector_picker)
         actions.addWidget(self.btn_regex_tester)
         actions.addWidget(self.btn_derived)
@@ -321,6 +327,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_apply.clicked.connect(self._on_apply_clicked)  # type: ignore
         self.btn_versions.clicked.connect(self._on_versions_clicked)  # type: ignore
         self.btn_rollback.clicked.connect(self._on_rollback_clicked)  # type: ignore
+        self.btn_export.clicked.connect(self._on_export_rules_clicked)  # type: ignore
+        self.btn_import.clicked.connect(self._on_import_rules_clicked)  # type: ignore
         self.btn_selector_picker.clicked.connect(self._on_selector_picker_clicked)  # type: ignore
         self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
         self.btn_derived.clicked.connect(self._on_derived_fields_clicked)  # type: ignore
@@ -1118,6 +1126,38 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         if len(report.issues) > 100:
             lines.append("(truncated; showing first 100)")
         self._append_log("\n".join(lines))
+
+    # ------------------------------------------------------------------
+    # Export / Import (7.10.42)
+    def _on_export_rules_clicked(self) -> None:  # pragma: no cover - UI path
+        try:
+            from gui.ingestion.rule_export import export_rules
+        except Exception as e:
+            self._append_log(f"Export module import failed: {e}")
+            return
+        # For simplicity write to fixed file under project root (future: file dialog)
+        out_path = os.path.join(self._base_dir, "ingestion_rules_export.json")
+        try:
+            export_rules(self.rule_editor.toPlainText(), out_path)
+        except Exception as e:
+            self._append_log(f"Export failed: {e}")
+            return
+        self._append_log(f"Rules exported -> {out_path}")
+
+    def _on_import_rules_clicked(self) -> None:  # pragma: no cover - UI path
+        try:
+            from gui.ingestion.rule_export import import_rules
+        except Exception as e:
+            self._append_log(f"Import module import failed: {e}")
+            return
+        in_path = os.path.join(self._base_dir, "ingestion_rules_export.json")
+        try:
+            text = import_rules(in_path)
+        except Exception as e:
+            self._append_log(f"Import failed: {e}")
+            return
+        self.rule_editor.setPlainText(text)
+        self._append_log(f"Rules imported from {in_path}")
 
     # ------------------------------------------------------------------
     # Versioning helpers (7.10.33)

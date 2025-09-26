@@ -84,7 +84,9 @@ class SandboxReport:
             cats[i.category] = cats.get(i.category, 0) + 1
         cat_part = ", ".join(f"{k}:{v}" for k, v in sorted(cats.items()))
         return (
-            f"Security sandbox: {len(self.issues)} issue(s) across {self.expressions_scanned} expressions [" + cat_part + "]"
+            f"Security sandbox: {len(self.issues)} issue(s) across {self.expressions_scanned} expressions ["
+            + cat_part
+            + "]"
         )
 
 
@@ -146,7 +148,9 @@ _DISALLOWED_CATEGORIES = {
 }
 
 
-def scan_expression(expr: str, *, allowed_names: Optional[Iterable[str]] = None) -> List[SandboxIssue]:
+def scan_expression(
+    expr: str, *, allowed_names: Optional[Iterable[str]] = None
+) -> List[SandboxIssue]:
     """Scan a single expression string.
 
     Parameters
