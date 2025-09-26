@@ -181,6 +181,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_derived.setToolTip(
             "Compose derived fields (expressions referencing existing extracted fields)"
         )
+        self.btn_dep_graph = QPushButton("Dep Graph")
+        self.btn_dep_graph.setToolTip(
+            "Show dependency graph (base + derived field relationships)"
+        )
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -232,6 +236,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_selector_picker)
         actions.addWidget(self.btn_regex_tester)
         actions.addWidget(self.btn_derived)
+        actions.addWidget(self.btn_dep_graph)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -306,6 +311,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_selector_picker.clicked.connect(self._on_selector_picker_clicked)  # type: ignore
         self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
         self.btn_derived.clicked.connect(self._on_derived_fields_clicked)  # type: ignore
+        self.btn_dep_graph.clicked.connect(self._on_dependency_graph_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -1000,6 +1006,17 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             return
         self.rule_editor.setPlainText(new_text)
         self._append_log("Derived Fields added: " + ", ".join(sorted(derived_map.keys())))
+
+    # ------------------------------------------------------------------
+    # Dependency Graph Viewer (7.10.38 initial)
+    def _on_dependency_graph_clicked(self) -> None:
+        try:
+            from gui.ingestion.dependency_graph import DependencyGraphDialog
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Dep Graph import failed: {e}")
+            return
+        dlg = DependencyGraphDialog(self.rule_editor.toPlainText(), self)
+        dlg.exec()
 
     # ------------------------------------------------------------------
     # Versioning helpers (7.10.33)
