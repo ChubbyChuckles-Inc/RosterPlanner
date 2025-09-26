@@ -22,8 +22,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, List
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
     QHBoxLayout,
     QTreeWidget,
     QTreeWidgetItem,
@@ -73,11 +71,22 @@ def build_selector_for_item(item: QTreeWidgetItem) -> str:
     return " > ".join(reversed(parts))
 
 
-class SelectorPickerDialog(QDialog):
+try:  # pragma: no cover - guard for headless tests
+    from gui.components.chrome_dialog import ChromeDialog
+except Exception:  # pragma: no cover
+    ChromeDialog = object  # type: ignore
+
+
+class SelectorPickerDialog(ChromeDialog):  # type: ignore[misc]
     def __init__(self, html: str, parent=None):  # noqa: D401
-        super().__init__(parent)
-        self.setWindowTitle("Selector Picker")
-        lay = QVBoxLayout(self)
+        super().__init__(parent, title="Selector Picker")
+        self.setObjectName("SelectorPickerDialog")
+        lay = self.content_layout() if hasattr(self, "content_layout") else None
+        if lay is None:  # fallback if ChromeDialog import failed
+            from PyQt6.QtWidgets import QVBoxLayout, QWidget  # local import
+
+            container = QWidget(self)
+            lay = QVBoxLayout(container)
         self._tree = QTreeWidget()
         self._tree.setHeaderHidden(True)
         lay.addWidget(self._tree, 1)
@@ -88,16 +97,23 @@ class SelectorPickerDialog(QDialog):
         self.btn_copy = QPushButton("Copy")
         out_row.addWidget(self.btn_copy)
         lay.addLayout(out_row)
+        btns = QHBoxLayout()
         self.btn_ok = QPushButton("OK")
         self.btn_cancel = QPushButton("Cancel")
-        btns = QHBoxLayout()
         btns.addStretch(1)
         btns.addWidget(self.btn_ok)
         btns.addWidget(self.btn_cancel)
         lay.addLayout(btns)
-        self.btn_ok.clicked.connect(self.accept)  # type: ignore
-        self.btn_cancel.clicked.connect(self.reject)  # type: ignore
-        self._tree.itemClicked.connect(self._on_item_clicked)  # type: ignore
+        try:
+            self.btn_ok.clicked.connect(self.accept)  # type: ignore
+            self.btn_cancel.clicked.connect(self.reject)  # type: ignore
+            self._tree.itemClicked.connect(self._on_item_clicked)  # type: ignore
+        except Exception:  # pragma: no cover
+            pass
+        try:
+            self.resize(640, 520)
+        except Exception:
+            pass
         self._populate(html)
 
     # ------------------------------------------------------------------

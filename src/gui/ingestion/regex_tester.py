@@ -26,7 +26,6 @@ from typing import List, Dict, Any
 import re
 
 from PyQt6.QtWidgets import (
-    QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QLineEdit,
@@ -93,7 +92,13 @@ def find_regex_matches(pattern: str, text: str, flags: int = 0) -> List[RegexMat
     return out
 
 
-class RegexTesterDialog(QDialog):
+try:  # pragma: no cover
+    from gui.components.chrome_dialog import ChromeDialog
+except Exception:  # pragma: no cover
+    ChromeDialog = object  # type: ignore
+
+
+class RegexTesterDialog(ChromeDialog):  # type: ignore[misc]
     """Interactive regex tester dialog.
 
     Designed to be lightweight and safe: heavy operations (e.g. catastrophic
@@ -102,10 +107,13 @@ class RegexTesterDialog(QDialog):
     """
 
     def __init__(self, sample_text: str = "", parent=None):  # noqa: D401
-        super().__init__(parent)
-        self.setWindowTitle("Regex Tester")
-        self.resize(700, 520)
-        lay = QVBoxLayout(self)
+        super().__init__(parent, title="Regex Tester")
+        self.setObjectName("RegexTesterDialog")
+        try:
+            self.resize(760, 560)
+        except Exception:
+            pass
+        lay = self.content_layout() if hasattr(self, "content_layout") else QVBoxLayout(self)
         # Pattern row
         prow = QHBoxLayout()
         prow.addWidget(QLabel("Pattern:"))
@@ -133,13 +141,16 @@ class RegexTesterDialog(QDialog):
         row2.addWidget(self.match_list, 2)
         lay.addLayout(row2, 1)
 
-        # Buttons
+        # Buttons / footer
         bbar = QHBoxLayout()
-        bbar.addStretch(1)
         self.btn_close = QPushButton("Close")
+        bbar.addStretch(1)
         bbar.addWidget(self.btn_close)
         lay.addLayout(bbar)
-        self.btn_close.clicked.connect(self.close)  # type: ignore
+        try:
+            self.btn_close.clicked.connect(self.close)  # type: ignore
+        except Exception:  # pragma: no cover
+            pass
 
         # Signals (live update)
         self.pattern_edit.textChanged.connect(self._update_matches)  # type: ignore
