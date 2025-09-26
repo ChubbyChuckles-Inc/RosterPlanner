@@ -285,6 +285,28 @@ class CanvasModel:
 
 
 # ---------------------------------------------------------------------------
+# Transform Palette (define BEFORE widget so _build_ui can reference it)
+
+TRANSFORM_PALETTE: Dict[str, List[Dict[str, Any]]] = {
+    "Text Cleanup": [
+        {"kind": "trim", "label": "Trim"},
+        {"kind": "collapse_whitespace", "label": "Collapse WS"},
+    ],
+    "Numeric": [
+        {"kind": "to_number", "label": "To Number"},
+    ],
+    "Date": [
+        {"kind": "parse_date", "format": "%Y-%m-%d", "label": "Parse Date"},
+    ],
+    "Parsing": [
+        {"kind": "regex_extract", "pattern": "(.*)", "group": 1, "label": "Regex"},
+    ],
+    "Expression": [
+        {"kind": "expression", "code": "value", "label": "Expr"},
+    ],
+}
+
+# ---------------------------------------------------------------------------
 # Qt Widget Layer (thin for first increment)
 
 try:  # pragma: no cover - optional Qt import isolation for headless tests
@@ -495,24 +517,5 @@ __all__ = [
     "FieldMappingNode",
     "CanvasModel",
     "VisualRuleBuilder",
+    "TRANSFORM_PALETTE",
 ]
-
-# Palette definition (label & transform spec entries)
-TRANSFORM_PALETTE: Dict[str, List[Dict[str, Any]]] = {
-    "Text Cleanup": [
-        {"kind": "trim", "label": "Trim"},
-        {"kind": "collapse_whitespace", "label": "Collapse WS"},
-    ],
-    "Numeric": [
-        {"kind": "to_number", "label": "To Number"},
-    ],
-    "Date": [
-        {"kind": "parse_date", "format": "%Y-%m-%d", "label": "Parse Date"},
-    ],
-    "Parsing": [
-        {"kind": "regex_extract", "pattern": "(.*)", "group": 1, "label": "Regex"},
-    ],
-    "Expression": [
-        {"kind": "expression", "code": "value", "label": "Expr"},
-    ],
-}
