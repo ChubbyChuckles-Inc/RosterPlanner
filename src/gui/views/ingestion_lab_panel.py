@@ -60,6 +60,7 @@ try:  # pragma: no cover - import guard if module missing in earlier migrations
     from gui.ingestion.rule_field_coverage import compute_field_coverage, FieldCoverageReport
     from gui.ingestion.rule_orphan import compute_orphan_fields
     from gui.ingestion.rule_quality_gates import evaluate_quality_gates
+    from gui.ingestion.rule_apply_guard import SafeApplyGuard
 except Exception:  # pragma: no cover
     compute_field_coverage = None  # type: ignore
     FieldCoverageReport = None  # type: ignore
@@ -160,6 +161,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_quality_gates.setToolTip(
             "Evaluate minimum non-null ratios (quality gate config under 'quality_gates' in rules JSON)"
         )
+        self.btn_simulate = QPushButton("Simulate")
+        self.btn_simulate.setToolTip("Run safe simulation (adapter + coverage + gates) — no DB writes")
+        self.btn_apply = QPushButton("Apply")
+        self.btn_apply.setToolTip("Apply last successful simulation (audit only in this milestone)")
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -204,6 +209,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_field_coverage)
         actions.addWidget(self.btn_orphan_fields)
         actions.addWidget(self.btn_quality_gates)
+        actions.addWidget(self.btn_simulate)
+        actions.addWidget(self.btn_apply)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -271,6 +278,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_field_coverage.clicked.connect(self._on_field_coverage_clicked)  # type: ignore
         self.btn_orphan_fields.clicked.connect(self._on_orphan_fields_clicked)  # type: ignore
         self.btn_quality_gates.clicked.connect(self._on_quality_gates_clicked)  # type: ignore
+        self.btn_simulate.clicked.connect(self._on_simulate_clicked)  # type: ignore
+        self.btn_apply.clicked.connect(self._on_apply_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -281,6 +290,21 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._all_file_items = []  # type: list[QTreeWidgetItem]
         # Cache last field coverage report for tests (Milestone 7.10.26)
         self._last_field_coverage = None  # type: ignore[assignment]
+        # Safe apply guard state (7.10.30/31)
+        try:
+            self._safe_guard = SafeApplyGuard()
+        except Exception:  # pragma: no cover
+            self._safe_guard = None
+        self._last_simulation_id: int | None = None
+        # Inline banner label for post-apply summary (7.10.31)
+        self._banner = QLabel("")
+        self._banner.setObjectName("ingestionLabBanner")
+        self._banner.setStyleSheet(
+            "#ingestionLabBanner { border:1px solid #888; padding:4px; border-radius:4px; background: rgba(200,200,200,0.15); }"
+        )
+        self._banner.setVisible(False)
+        root.insertWidget(0, self._banner)
+        self._last_apply_summary: dict[str, any] = {}
 
     # ------------------------------------------------------------------
     # File Discovery
@@ -690,6 +714,110 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             )
         if len(report.results) > 50:
             self._append_log(f"  ... {len(report.results)-50} more")
+
+    # ------------------------------------------------------------------
+    # Simulation / Apply (7.10.30 / 7.10.31)
+    def _on_simulate_clicked(self) -> None:
+        if not self._safe_guard:
+            self._append_log("Simulate: guard unavailable")
+            return
+        try:
+            rs = self._parse_ruleset_from_editor()
+        except Exception as e:
+            self._append_log(f"Simulate ERROR (rules): {e}")
+            return
+        import json as _json
+        text = (self.rule_editor.toPlainText() or "").strip()
+        try:
+            raw_payload = _json.loads(text)
+            if not isinstance(raw_payload, dict):
+                raw_payload = {}
+        except Exception:
+            raw_payload = {}
+        html_map = self._gather_visible_file_html()
+        if not html_map:
+            self._append_log("Simulate: no visible files")
+            return
+        try:
+            sim = self._safe_guard.simulate(rs, html_map, raw_payload)
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Simulate ERROR: {e}")
+            return
+        self._last_simulation_id = sim.sim_id
+        status = "PASS" if sim.passed else "FAIL"
+        self._append_log(
+            f"Simulation {sim.sim_id} {status}: rows={sum(sim.adapter_rows.values())} resources={len(sim.adapter_rows)}"
+        )
+        if sim.reasons:
+            for r in sim.reasons[:10]:
+                self._append_log(f"  reason: {r}")
+            if len(sim.reasons) > 10:
+                self._append_log(f"  ... {len(sim.reasons)-10} more")
+        self._banner.setVisible(False)
+
+    def _on_apply_clicked(self) -> None:
+        if not self._safe_guard:
+            self._append_log("Apply: guard unavailable")
+            return
+        if self._last_simulation_id is None:
+            self._append_log("Apply: no prior simulation")
+            return
+        # Acquire connection from services if available; else create transient in-memory
+        conn = None
+        if _services is not None:
+            try:
+                conn = _services.try_get("sqlite_conn")
+            except Exception:
+                conn = None
+        import sqlite3 as _sqlite3
+        if conn is None:
+            try:
+                conn = _sqlite3.connect(":memory:")
+            except Exception:
+                self._append_log("Apply ERROR: no DB connection available")
+                return
+        # Reparse rules payload for hash consistency
+        import json as _json
+        text = (self.rule_editor.toPlainText() or "").strip()
+        try:
+            raw_payload = _json.loads(text)
+            if not isinstance(raw_payload, dict):
+                raw_payload = {}
+        except Exception:
+            raw_payload = {}
+        try:
+            rs = self._parse_ruleset_from_editor()
+        except Exception as e:
+            self._append_log(f"Apply ERROR (rules): {e}")
+            return
+        html_map = self._gather_visible_file_html()
+        if not html_map:
+            self._append_log("Apply: no visible files")
+            return
+        try:
+            result = self._safe_guard.apply(
+                self._last_simulation_id, rs, html_map, raw_payload, conn
+            )
+        except Exception as e:
+            self._append_log(f"Apply ERROR: {e}")
+            return
+        # Build summary (unchanged/skipped placeholders for now)
+        inserted_total = sum(result.rows_by_resource.values())
+        summary_text = (
+            f"Apply Summary sim={result.sim_id} inserted_rows={inserted_total} resources={len(result.rows_by_resource)}"
+        )
+        self._banner.setText(summary_text)
+        self._banner.setVisible(True)
+        self._last_apply_summary = {
+            "sim_id": result.sim_id,
+            "inserted_total": inserted_total,
+            "rows_by_resource": dict(result.rows_by_resource),
+        }
+        self._append_log(summary_text)
+
+    # Snapshot for tests
+    def apply_summary_snapshot(self) -> Dict[str, Any]:  # pragma: no cover - test helper
+        return dict(self._last_apply_summary)
 
     # ------------------------------------------------------------------
     # Accessors used in tests
