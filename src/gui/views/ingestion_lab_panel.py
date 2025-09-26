@@ -58,6 +58,7 @@ from dataclasses import dataclass
 from typing import Dict, Any
 import time
 from PyQt6.QtWidgets import QAbstractItemView
+
 try:  # pragma: no cover - optional internal import
     from gui.ingestion.prompt_rule_assist import generate_rule_draft, ruleset_to_mapping  # type: ignore
 except Exception:  # pragma: no cover
@@ -172,6 +173,12 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_field_coverage.setObjectName("ingLabBtnFieldCoverage")
         self.btn_field_coverage.setToolTip(
             "Compute per-field non-empty ratios across all visible files using current rules"
+        )
+        # Coverage Radar (7.10.A5)
+        self.btn_field_coverage_radar = QPushButton("Coverage Radar")
+        self.btn_field_coverage_radar.setObjectName("ingLabBtnFieldCoverageRadar")
+        self.btn_field_coverage_radar.setToolTip(
+            "Show radar chart of semantic field category coverage (identity/performance/schedule/meta)"
         )
         self.btn_orphan_fields = QPushButton("Orphan Fields")
         self.btn_orphan_fields.setObjectName("ingLabBtnOrphanFields")
@@ -297,6 +304,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_preview)
         actions.addWidget(self.btn_hash_impact)
         actions.addWidget(self.btn_field_coverage)
+        actions.addWidget(self.btn_field_coverage_radar)
         actions.addWidget(self.btn_orphan_fields)
         actions.addWidget(self.btn_quality_gates)
         actions.addWidget(self.btn_simulate)
@@ -460,6 +468,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_preview.clicked.connect(self._on_preview_clicked)  # type: ignore
         self.btn_hash_impact.clicked.connect(self._on_hash_impact_clicked)  # type: ignore
         self.btn_field_coverage.clicked.connect(self._on_field_coverage_clicked)  # type: ignore
+        try:
+            self.btn_field_coverage_radar.clicked.connect(self._on_field_coverage_radar_clicked)  # type: ignore
+        except Exception:
+            pass
         self.btn_orphan_fields.clicked.connect(self._on_orphan_fields_clicked)  # type: ignore
         self.btn_quality_gates.clicked.connect(self._on_quality_gates_clicked)  # type: ignore
         self.btn_simulate.clicked.connect(self._on_simulate_clicked)  # type: ignore
@@ -1183,6 +1195,39 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             )
         # Provide a trailing separator for readability
         self._append_log("— end coverage —")
+
+    # Radar dialog (7.10.A5)
+    def _on_field_coverage_radar_clicked(self) -> None:  # pragma: no cover - UI heavy
+        # Lazy import of radar module (optional for headless tests)
+        try:
+            from gui.ingestion.field_coverage_radar import (
+                categorize_coverage,
+                FieldCoverageRadarWidget,
+            )
+        except Exception as e:
+            self._append_log(f"Radar unavailable: import error {e}")
+            return
+        # Ensure we have a coverage report (reuse last or compute quickly)
+        if not getattr(self, "_last_field_coverage", None):
+            self._on_field_coverage_clicked()
+        if not getattr(self, "_last_field_coverage", None):
+            return
+        report = self._last_field_coverage
+        try:
+            categories = categorize_coverage(report)
+        except Exception as e:
+            self._append_log(f"Radar categorization error: {e}")
+            return
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Field Coverage Radar")
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel("Semantic Category Coverage"))
+        radar = FieldCoverageRadarWidget(categories)
+        lay.addWidget(radar, 1)
+        dlg.resize(480, 360)
+        dlg.exec()
 
     # For tests
     def field_coverage_snapshot(self) -> Dict[str, Any]:
