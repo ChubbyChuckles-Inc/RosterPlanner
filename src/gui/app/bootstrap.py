@@ -199,6 +199,20 @@ def create_app(
         except Exception:
             pass
 
+        # Register schema introspection service (used by Database Panel 7.11.1)
+        try:
+            from gui.services.schema_introspection_service import SchemaIntrospectionService
+
+            if not services.try_get("schema_introspection_service"):
+                conn = services.try_get("sqlite_conn")
+                services.register(
+                    "schema_introspection_service",
+                    SchemaIntrospectionService(conn),
+                    allow_override=True,
+                )
+        except Exception:  # pragma: no cover
+            pass
+
         # -- Milestone 5.9.5 integration: ensure sqlite connection service exists for ingestion
         if ensure_sqlite and data_dir:
             try:

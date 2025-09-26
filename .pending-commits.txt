@@ -1,3 +1,4 @@
+feat(database): add Database Panel scaffold and schema introspection service (7.11.1)
 chore(roadmap): add Milestone 7.11 Database Overview & Management Panel (tasks 7.11.1–7.11.41)
 feat(ingestion-lab): add rule set export/import utilities & UI (7.10.42)
 

@@ -38,3 +38,4 @@ Now, read "roadmaps/implementation_GUI.txt", identify the next unfinished task, 
 
 
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_gui.ps1
+

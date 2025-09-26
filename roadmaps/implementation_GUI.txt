@@ -439,7 +439,7 @@ Milestone 7.11: Database Overview & Management Panel (Comprehensive DB Introspec
 Goal: Insert a power-user dock ("Database") that offers a read-only by default, safety‑gated interface to explore schema objects, inspect table contents, analyze query performance, visualize relationships, and perform controlled maintenance operations. Must respect existing repository abstractions (no ad‑hoc writes bypassing repos) and provide clear diff/confirmation workflows for any mutating action.
 
  Architecture & Panel Shell
- [ ] 7.11.1 Database Panel dock scaffold (split: Schema Tree | Detail Tabs | Action Console)
+ [x] 7.11.1 Database Panel dock scaffold (split: Schema Tree | Detail Tabs | Action Console)
  [ ] 7.11.2 Schema introspection service (tables, columns, PK/FK, indexes, row counts cached)
  [ ] 7.11.3 Lazy data preview model (paginated SELECT w/ LIMIT/OFFSET + cancellation)
  [ ] 7.11.4 Relational graph mini-view (graphviz / ascii fallback) of FK edges (interactive highlight)

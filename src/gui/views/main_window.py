@@ -1567,6 +1567,30 @@ class MainWindow(QMainWindow):  # Dock-based
                 pass
             return box
 
+    def _build_database_dock(self) -> QWidget:
+        """Factory for the Database Panel (Milestone 7.11.1)."""
+        try:
+            from gui.views.database_panel import DatabasePanel
+        except Exception as e:  # pragma: no cover
+            box = QWidget()
+            lay = QVBoxLayout(box)
+            lay.addWidget(QLabel(f"Database Panel unavailable: {e.__class__.__name__}: {e}"))
+            return box
+        try:
+            panel = DatabasePanel()
+            try:
+                from gui.services.service_locator import services as _services
+
+                _services.register("database_panel", panel, allow_override=True)
+            except Exception:  # pragma: no cover
+                pass
+            return panel
+        except Exception as e:  # pragma: no cover
+            box = QWidget()
+            lay = QVBoxLayout(box)
+            lay.addWidget(QLabel(f"Failed to init Database Panel: {e.__class__.__name__}: {e}"))
+            return box
+
     def _build_planner_dock(self) -> QWidget:
         w = QWidget()
         lay = QVBoxLayout(w)
