@@ -366,7 +366,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  Persistence & Configuration
  [x] 7.10.49 Rule set autosave draft state with explicit publish action
  [x] 7.10.50 Settings: default preview batch size, performance threshold, safety level (disallow custom python)
- [ ] 7.10.51 Telemetry counters (preview runs, applied runs, avg parse time) behind debug flag
+ [x] 7.10.51 Telemetry counters (preview runs, applied runs, avg parse time) behind debug flag
 
  Documentation & Tests
  [ ] 7.10.52 Developer guide: rule schema specification + extension points [D]

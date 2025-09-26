@@ -728,6 +728,13 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._append_log(f"ERROR preview {rel_name}: {e}")
         elapsed_ms = (self._now() - start) * 1000.0
         self._update_performance_badge(elapsed_ms)
+        # Telemetry: record preview
+        try:
+            from gui.services.telemetry_service import TelemetryService  # type: ignore
+
+            TelemetryService.instance.record_preview(elapsed_ms)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Batch preview with loading skeleton (7.10.46)
@@ -796,6 +803,12 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._append_log(f"Batch preview complete: {count} files")
         elapsed_ms = (self._now() - start) * 1000.0
         self._update_performance_badge(elapsed_ms)
+        try:  # telemetry
+            from gui.services.telemetry_service import TelemetryService  # type: ignore
+
+            TelemetryService.instance.record_preview(elapsed_ms)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Logging helper
@@ -1181,6 +1194,13 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._append_log(summary_text)
         if self._last_version_num:
             self._append_log(f"Rule Version: v{self._last_version_num}")
+        # Telemetry: record successful apply
+        try:
+            from gui.services.telemetry_service import TelemetryService  # type: ignore
+
+            TelemetryService.instance.record_apply()
+        except Exception:
+            pass
         # Emit event (Milestone 7.10.32) if event bus available
         if _services is not None:
             try:
