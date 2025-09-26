@@ -7,12 +7,19 @@ def test_ruleset_valid_table_and_list():
     payload = {
         "version": 1,
         "resources": {
-            "ranking_table": {"kind": "table", "selector": "table.ranking", "columns": ["team", "points"]},
+            "ranking_table": {
+                "kind": "table",
+                "selector": "table.ranking",
+                "columns": ["team", "points"],
+            },
             "team_roster": {
                 "kind": "list",
                 "selector": "div.roster",
                 "item_selector": "div.player",
-                "fields": {"name": ".name", "rating": {"selector": ".lpz", "transforms": ["trim", "to_number"]}},
+                "fields": {
+                    "name": ".name",
+                    "rating": {"selector": ".lpz", "transforms": ["trim", "to_number"]},
+                },
             },
         },
     }
@@ -27,9 +34,26 @@ def test_ruleset_valid_table_and_list():
     [
         ({"resources": {"t": {"kind": "table", "selector": "", "columns": ["a"]}}}, "selector"),
         ({"resources": {"t": {"kind": "table", "selector": "x", "columns": []}}}, "columns"),
-        ({"resources": {"l": {"kind": "list", "selector": "div", "item_selector": "", "fields": {}}}}, "item_selector"),
-        ({"resources": {"l": {"kind": "list", "selector": "div", "item_selector": "i", "fields": {}}}}, "fields"),
-        ({"resources": {"t": {"kind": "table", "selector": "x", "columns": ["a", "a"]}}}, "Duplicate"),
+        (
+            {
+                "resources": {
+                    "l": {"kind": "list", "selector": "div", "item_selector": "", "fields": {}}
+                }
+            },
+            "item_selector",
+        ),
+        (
+            {
+                "resources": {
+                    "l": {"kind": "list", "selector": "div", "item_selector": "i", "fields": {}}
+                }
+            },
+            "fields",
+        ),
+        (
+            {"resources": {"t": {"kind": "table", "selector": "x", "columns": ["a", "a"]}}},
+            "Duplicate",
+        ),
     ],
 )
 def test_ruleset_invalid_cases(bad_payload, expected_sub):
@@ -45,7 +69,9 @@ def test_transform_expression_disabled():
                 "kind": "list",
                 "selector": "div",
                 "item_selector": "li",
-                "fields": {"name": {"selector": ".n", "transforms": [{"kind": "expr", "code": "value"}]}},
+                "fields": {
+                    "name": {"selector": ".n", "transforms": [{"kind": "expr", "code": "value"}]}
+                },
             }
         }
     }
@@ -61,7 +87,12 @@ def test_transform_expression_enabled():
                 "kind": "list",
                 "selector": "div",
                 "item_selector": "li",
-                "fields": {"name": {"selector": ".n", "transforms": [{"kind": "expr", "code": "value.strip()"}]}},
+                "fields": {
+                    "name": {
+                        "selector": ".n",
+                        "transforms": [{"kind": "expr", "code": "value.strip()"}],
+                    }
+                },
             }
         },
     }

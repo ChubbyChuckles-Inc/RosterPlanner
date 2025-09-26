@@ -51,7 +51,9 @@ def test_apply_integration_multi_resource_and_audit():
     assert sim1.passed and sim1.adapter_rows == {"ranking": 2, "players": 2}
     res1 = guard.apply(sim1.sim_id, rs, html_map, payload, conn)  # type: ignore[arg-type]
     assert res1.applied and res1.rows_by_resource == sim1.adapter_rows
-    cur = conn.execute("SELECT sim_id, resource, row_count, applied_at FROM rule_apply_audit ORDER BY id")
+    cur = conn.execute(
+        "SELECT sim_id, resource, row_count, applied_at FROM rule_apply_audit ORDER BY id"
+    )
     audit_rows_1 = cur.fetchall()
     assert len(audit_rows_1) == 2  # two resources
     assert {r[1] for r in audit_rows_1} == {"ranking", "players"}
@@ -97,4 +99,3 @@ def test_apply_unknown_sim_id_raises():
         assert False, "Expected ValueError for unknown sim id"
     except ValueError as e:  # expected path
         assert "Unknown simulation id" in str(e)
-
