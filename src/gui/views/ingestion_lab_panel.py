@@ -172,7 +172,11 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_rollback = QPushButton("Rollback")
         self.btn_rollback.setToolTip("Load previous rule version into editor (not yet applied)")
         self.btn_selector_picker = QPushButton("Pick Selector")
-        self.btn_selector_picker.setToolTip("Open visual picker to build CSS selector from sample HTML")
+        self.btn_selector_picker.setToolTip(
+            "Open visual picker to build CSS selector from sample HTML"
+        )
+        self.btn_regex_tester = QPushButton("Regex Tester")
+        self.btn_regex_tester.setToolTip("Open regex tester dialog for pattern experimentation")
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -222,6 +226,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_versions)
         actions.addWidget(self.btn_rollback)
         actions.addWidget(self.btn_selector_picker)
+    actions.addWidget(self.btn_regex_tester)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -294,6 +299,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_versions.clicked.connect(self._on_versions_clicked)  # type: ignore
         self.btn_rollback.clicked.connect(self._on_rollback_clicked)  # type: ignore
         self.btn_selector_picker.clicked.connect(self._on_selector_picker_clicked)  # type: ignore
+    self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -933,6 +939,33 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             insertion = f"\n# selector-picked\nselector: '{sel}'\n"
             cursor.insertText(insertion)
             self._append_log(f"Selector Picker inserted: {sel}")
+
+    # ------------------------------------------------------------------
+    # Regex Tester (7.10.36 initial)
+    def _on_regex_tester_clicked(self) -> None:
+        # Use currently previewed text or first visible file snippet as sample
+        sample = self.preview_area.toPlainText() or ""
+        if not sample:
+            # Attempt to load first visible file snippet
+            for it in self._all_file_items:
+                if it.isHidden():
+                    continue
+                data = it.data(0, Qt.ItemDataRole.UserRole)
+                if isinstance(data, dict) and data.get("file"):
+                    try:
+                        with open(data.get("file"), "r", encoding="utf-8", errors="replace") as fh:
+                            sample = fh.read(1200)
+                    except Exception:
+                        sample = ""
+                    break
+        try:
+            from gui.ingestion.regex_tester import RegexTesterDialog
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Regex Tester import failed: {e}")
+            return
+        dlg = RegexTesterDialog(sample_text=sample, parent=self)
+        dlg.exec()
+        # (No direct side effect into rules; purely exploratory tool.)
 
     # ------------------------------------------------------------------
     # Versioning helpers (7.10.33)
