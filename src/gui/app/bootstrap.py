@@ -193,6 +193,12 @@ def create_app(
         # Always provide a fresh EventBus each bootstrap (test isolation)
         services.register("event_bus", EventBus(), allow_override=True)
 
+        # Ensure ingestion + ingestion lab commands are registered early (Milestone 7.10.66 visibility fix)
+        try:  # pragma: no cover - import side-effects only
+            import gui.services.ingest_commands  # noqa: F401
+        except Exception:
+            pass
+
         # -- Milestone 5.9.5 integration: ensure sqlite connection service exists for ingestion
         if ensure_sqlite and data_dir:
             try:

@@ -19,6 +19,8 @@ feat(commands): add Ingestion Lab command palette actions (open/apply/rollback) 
 
 fix(commands): ensure ingestion lab commands auto-register via ingest_commands import
 
+fix(commands): import ingestion command modules during GUI bootstrap for palette visibility
+
 Implements Milestone 7.10.42: export/import of rule sets. Adds gui.ingestion.rule_export with export_rules/import_rules (validation via RuleSet), integrates Export/Import buttons & handlers in IngestionLabPanel, and provides round‑trip + error tests (tests/test_rule_export_import.py). Roadmap updated.
 feat(ingestion-lab): add security sandbox static analyzer & UI integration (7.10.41)
 
