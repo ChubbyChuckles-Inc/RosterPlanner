@@ -162,7 +162,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             "Evaluate minimum non-null ratios (quality gate config under 'quality_gates' in rules JSON)"
         )
         self.btn_simulate = QPushButton("Simulate")
-        self.btn_simulate.setToolTip("Run safe simulation (adapter + coverage + gates) — no DB writes")
+        self.btn_simulate.setToolTip(
+            "Run safe simulation (adapter + coverage + gates) — no DB writes"
+        )
         self.btn_apply = QPushButton("Apply")
         self.btn_apply.setToolTip("Apply last successful simulation (audit only in this milestone)")
         # Search / filter controls (7.10.4)
@@ -727,6 +729,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._append_log(f"Simulate ERROR (rules): {e}")
             return
         import json as _json
+
         text = (self.rule_editor.toPlainText() or "").strip()
         try:
             raw_payload = _json.loads(text)
@@ -770,6 +773,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             except Exception:
                 conn = None
         import sqlite3 as _sqlite3
+
         if conn is None:
             try:
                 conn = _sqlite3.connect(":memory:")
@@ -778,6 +782,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 return
         # Reparse rules payload for hash consistency
         import json as _json
+
         text = (self.rule_editor.toPlainText() or "").strip()
         try:
             raw_payload = _json.loads(text)
@@ -803,9 +808,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             return
         # Build summary (unchanged/skipped placeholders for now)
         inserted_total = sum(result.rows_by_resource.values())
-        summary_text = (
-            f"Apply Summary sim={result.sim_id} inserted_rows={inserted_total} resources={len(result.rows_by_resource)}"
-        )
+        summary_text = f"Apply Summary sim={result.sim_id} inserted_rows={inserted_total} resources={len(result.rows_by_resource)}"
         self._banner.setText(summary_text)
         self._banner.setVisible(True)
         self._last_apply_summary = {
@@ -814,6 +817,23 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             "rows_by_resource": dict(result.rows_by_resource),
         }
         self._append_log(summary_text)
+        # Emit event (Milestone 7.10.32) if event bus available
+        if _services is not None:
+            try:
+                from gui.services.event_bus import GUIEvent, EventBus  # local import
+
+                bus: EventBus | None = _services.try_get("event_bus")
+                if bus:
+                    bus.publish(
+                        GUIEvent.INGEST_RULES_APPLIED,
+                        {
+                            "sim_id": result.sim_id,
+                            "inserted_total": inserted_total,
+                            "rows_by_resource": dict(result.rows_by_resource),
+                        },
+                    )
+            except Exception:  # pragma: no cover - event emission is best effort
+                pass
 
     # Snapshot for tests
     def apply_summary_snapshot(self) -> Dict[str, Any]:  # pragma: no cover - test helper
