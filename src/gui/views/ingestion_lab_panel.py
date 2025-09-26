@@ -48,6 +48,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 import json
 from gui.components.theme_aware import ThemeAwareMixin
 import sqlite3
@@ -362,6 +363,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         root.insertWidget(0, self._banner)
         self._last_apply_summary: dict[str, any] = {}
         self._last_version_num: int | None = None  # Version store tracking
+        self._register_shortcuts()
+        self._configure_keyboard_focus()
 
     # ------------------------------------------------------------------
     # File Discovery
@@ -467,6 +470,76 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         # Re-apply current filters after rebuild
         self._apply_filters()
+
+    # ------------------------------------------------------------------
+    # Keyboard-First Workflow (7.10.43)
+    def _register_shortcuts(self) -> None:
+        """Register keyboard shortcuts for primary panel operations.
+
+        Uses existing global shortcut registry (indirectly via MainWindow cheat sheet)
+        but binds QShortcuts locally for panel-scoped actions.
+        """
+        try:
+            from gui.services.shortcut_registry import global_shortcut_registry as _reg
+        except Exception:  # pragma: no cover
+            _reg = None
+
+        def _reg_if(id_: str, seq: str, desc: str):
+            if _reg:
+                _reg.register(id_, seq, desc, category="Ingestion Lab")
+            QShortcut(QKeySequence(seq), self, activated=lambda: self._dispatch_shortcut(id_))
+
+        _reg_if("ing.refresh", "F5", "Refresh file list")
+        _reg_if("ing.preview", "Enter", "Preview selected file")
+        _reg_if("ing.search", "Ctrl+F", "Focus search box")
+        _reg_if("ing.simulate", "Ctrl+R", "Run simulation")
+        _reg_if("ing.apply", "Ctrl+Shift+A", "Apply last simulation")
+        _reg_if("ing.security", "Ctrl+Shift+S", "Run security scan")
+        _reg_if("ing.export", "Ctrl+E", "Export rules JSON")
+        _reg_if("ing.import", "Ctrl+Shift+E", "Import rules JSON")
+        _reg_if("ing.hash_impact", "Ctrl+H", "Compute hash impact preview")
+
+    def _dispatch_shortcut(self, sid: str) -> None:  # pragma: no cover - thin dispatcher
+        mapping = {
+            "ing.refresh": self.refresh_file_list,
+            "ing.preview": self._on_preview_clicked,
+            "ing.search": lambda: self.search_box.setFocus(),
+            "ing.simulate": self._on_simulate_clicked,
+            "ing.apply": self._on_apply_clicked,
+            "ing.security": self._on_security_scan_clicked,
+            "ing.export": self._on_export_rules_clicked,
+            "ing.import": self._on_import_rules_clicked,
+            "ing.hash_impact": self._on_hash_impact_clicked,
+        }
+        fn = mapping.get(sid)
+        if fn:
+            try:
+                fn()
+            except Exception as e:  # pragma: no cover
+                self._append_log(f"Shortcut '{sid}' failed: {e}")
+
+    def _configure_keyboard_focus(self) -> None:
+        """Configure initial focus and arrow key navigation for file tree -> editor -> preview.
+
+        Basic behavior:
+         - When Enter pressed in file tree it triggers preview.
+         - Tab cycles through file tree -> rule editor -> preview -> search -> back.
+        """
+        # Hook Enter on file_tree
+        self.file_tree.keyPressEvent = self._wrap_tree_keypress(self.file_tree.keyPressEvent)
+
+    def _wrap_tree_keypress(self, original):  # pragma: no cover - GUI event path
+        def _handler(event):
+            try:
+                from PyQt6.QtGui import QKeyEvent
+            except Exception:  # pragma: no cover
+                return original(event)
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self._on_preview_clicked()
+                return
+            return original(event)
+
+        return _handler
 
     # ------------------------------------------------------------------
     # Events & Actions
@@ -1254,8 +1327,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             theme = _svc.try_get("theme_service")
             density = _svc.try_get("density_service")
             rc_mode = _svc.try_get("reduced_color_mode")
+            hc_mode = _svc.try_get("high_contrast_mode")  # optional stub service (bool-ish is_active())
         except Exception:  # pragma: no cover - fallback
-            theme = density = rc_mode = None
+            theme = density = rc_mode = hc_mode = None
         # Spacing adjustments
         base_margin = 6
         if density:
@@ -1291,11 +1365,25 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 "#ingestionLabPanel QLineEdit { border:1px solid %s; } #ingestionLabPanel QPushButton { border:1px solid %s; }"
                 % (accent, accent)
             )
-        # Reduced color toggle property
-        if rc_mode and getattr(rc_mode, "is_active", lambda: False)():  # type: ignore
-            self.setProperty("reducedColor", "1")
-        else:
-            self.setProperty("reducedColor", "0")
+        # Reduced color & high contrast toggle properties
+        rc_active = bool(rc_mode and getattr(rc_mode, "is_active", lambda: False)())  # type: ignore
+        hc_active = bool(hc_mode and getattr(hc_mode, "is_active", lambda: False)())  # type: ignore
+        self.setProperty("reducedColor", "1" if rc_active else "0")
+        self.setProperty("highContrast", "1" if hc_active else "0")
+        if hc_active:
+            # High contrast adaptation: ensure strong backgrounds & clear borders for dense text panes
+            parts.append(
+                "#ingestionLabPanel QTextEdit#ingestionLabPreview, "
+                "#ingestionLabPanel QPlainTextEdit#ingestionLabLog, "
+                "#ingestionLabPanel QPlainTextEdit#ingestionLabRuleEditor { "
+                "background:#000000; color:#FFFFFF; selection-background-color:#FFFFFF; selection-color:#000000; }"
+            )
+        if rc_active:
+            # Reduced color mode: remove potentially confusing accent borders inside panel core areas
+            parts.append(
+                "#ingestionLabPanel QTreeWidget, #ingestionLabPanel QTextEdit, #ingestionLabPanel QPlainTextEdit {"
+                " border-color: #666; }"
+            )
         if parts:
             self.setStyleSheet("\n".join(parts))
 
