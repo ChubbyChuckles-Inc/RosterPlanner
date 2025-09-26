@@ -500,7 +500,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         )
         self.batch_preview_artificial_delay_ms = int(os.environ.get("RP_ING_BATCH_DELAY_MS", "0"))
         self._batch_skeleton_last_shown = False  # test visibility flag
-    
+
     # ------------------------------------------------------------------
     # Accessibility (7.10.68) helper for tests
     def run_accessibility_audit(self):  # pragma: no cover - thin wrapper, exercised in tests

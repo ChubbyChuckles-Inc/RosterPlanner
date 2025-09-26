@@ -34,6 +34,7 @@
       "base": "#3D8BFD",
       "hover": "#65A3FD",
       "active": "#0B6DFC",
+      "foreground": "#000000",
       "on": "#000000"
     },
     "border": {

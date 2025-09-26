@@ -13,6 +13,7 @@ The audit intentionally avoids deep platform accessibility API introspection
 (which would require OS-specific bridges) and focuses on deterministic checks
 we can perform headlessly in tests.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -34,6 +35,7 @@ from PyQt6.QtCore import Qt
 try:  # contrast utility (best effort)
     from gui.design.contrast import contrast_ratio  # type: ignore
 except Exception:  # pragma: no cover
+
     def contrast_ratio(a: str, b: str) -> float:  # type: ignore
         return 10.0  # sentinel high value
 
@@ -114,6 +116,7 @@ def audit_widget_tree(root: QWidget) -> AccessibilityReport:
     # Theme contrast check (optional)
     try:  # best effort; skip if theme service absent
         from gui.services.service_locator import services  # type: ignore
+
         theme = services.try_get("theme_service")
         if theme is not None:
             colors = theme.colors()  # type: ignore[attr-defined]
@@ -123,11 +126,14 @@ def audit_widget_tree(root: QWidget) -> AccessibilityReport:
                 try:
                     cr = contrast_ratio(txt, bg)
                     if cr < 4.5:
-                        rep.contrast_issues.append(f"text.primary vs background.primary contrast {cr:.2f} < 4.5")
+                        rep.contrast_issues.append(
+                            f"text.primary vs background.primary contrast {cr:.2f} < 4.5"
+                        )
                 except Exception:  # pragma: no cover
                     pass
     except Exception:  # pragma: no cover
         pass
     return rep
+
 
 __all__ = ["AccessibilityReport", "audit_widget_tree"]

@@ -5,6 +5,7 @@ from gui.app.config_store import AppConfig, save_config, load_config
 from gui.services.service_locator import services
 from gui.services.theme_service import ThemeService
 
+
 def setup_function(func):
     # Isolate assets/themes directory in a temp folder under tests runtime cwd
     theme_dir = Path(os.getcwd()) / "assets" / "themes"
