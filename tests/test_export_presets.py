@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
 from gui.services.export_service import ExportService, ExportFormat
-from gui.services.export_presets import ExportPresetsService
+from gui.services.export_presets import ExportPresetsService, DERIVED_PLACEHOLDER
+from gui.services.service_locator import services
+import types
 
 
 class DummyTabular:
@@ -39,3 +41,38 @@ def test_apply_missing_preset_falls_back(tmp_path: Path):
     result = presets.apply(export_svc, dummy, ExportFormat.JSON, "does_not_exist")
     # Should include all three fields
     assert "LivePZ" in result.content and "Trend" in result.content
+
+
+def test_derived_placeholder_expands(tmp_path: Path):
+    """Preset containing *derived expands to current derived field names.
+
+    We simulate a rule_version_store service exposing latest() -> object
+    with rules_json containing a 'derived' mapping.
+    """
+    # Fake rule version entry
+    entry = types.SimpleNamespace(
+        rules_json='{"derived": {"FormScore": "expr1", "AggRating": "expr2"}}'
+    )
+    store = types.SimpleNamespace(latest=lambda: entry)
+    services.register("rule_version_store", store, allow_override=True)
+
+    presets = ExportPresetsService(base_dir=str(tmp_path))
+    presets.add_or_replace("with_derived", ["Player", DERIVED_PLACEHOLDER])
+    export_svc = ExportService()
+    # Dummy includes derived columns so expansion is meaningful
+    class DummyWithDerived:
+        def get_export_rows(self):  # pragma: no cover - simple
+            return [
+                "Player",
+                "FormScore",
+                "AggRating",
+                "LivePZ",
+            ], [["A", "1", "200", "1200"], ["B", "2", "180", "1100"]]
+
+    dummy = DummyWithDerived()
+    result = presets.apply(export_svc, dummy, ExportFormat.CSV, "with_derived")
+    first_line = result.content.splitlines()[0]
+    # Expect Player followed by derived fields (order preserved)
+    assert first_line in ("Player,FormScore,AggRating", "Player,AggRating,FormScore")
+    # Cleanup service locator side-effect
+    services.unregister("rule_version_store")
