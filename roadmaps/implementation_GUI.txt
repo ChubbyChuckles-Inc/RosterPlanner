@@ -369,7 +369,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.51 Telemetry counters (preview runs, applied runs, avg parse time) behind debug flag
 
  Documentation & Tests
- [ ] 7.10.52 Developer guide: rule schema specification + extension points [D]
+ [x] 7.10.52 Developer guide: rule schema specification + extension points [D]
  [ ] 7.10.53 ADR: Dynamic ingestion rule architecture (& rationale vs static parser classes) [D]
  [ ] 7.10.54 Unit tests: rule validation, transform chaining, mapping diff generation [T]
  [ ] 7.10.55 Integration tests: sandbox apply vs real apply produce consistent DB deltas [T]
