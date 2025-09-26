@@ -35,6 +35,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Mapping, TYPE_CHECKING
 import copy
+from collections import deque
 
 # ---------------------------------------------------------------------------
 # Model Layer
@@ -126,13 +127,39 @@ class CanvasModel:
     """
 
     nodes: List[BuilderNode] = field(default_factory=list)
+    _undo_stack: deque = field(default_factory=lambda: deque(maxlen=50), repr=False)
+    _redo_stack: deque = field(default_factory=lambda: deque(maxlen=50), repr=False)
+
+    # --- Undo/Redo Core -------------------------------------------------
+    def _snapshot(self) -> List[BuilderNode]:  # pragma: no cover - trivial
+        return copy.deepcopy(self.nodes)
+
+    def _push_undo(self):  # pragma: no cover - trivial
+        self._undo_stack.append(self._snapshot())
+        self._redo_stack.clear()
+
+    def undo(self) -> bool:
+        if not self._undo_stack:
+            return False
+        self._redo_stack.append(self._snapshot())
+        self.nodes = self._undo_stack.pop()
+        return True
+
+    def redo(self) -> bool:
+        if not self._redo_stack:
+            return False
+        self._undo_stack.append(self._snapshot())
+        self.nodes = self._redo_stack.pop()
+        return True
 
     def add_node(self, node: BuilderNode) -> None:
+        self._push_undo()
         if any(n.id == node.id for n in self.nodes):
             raise ValueError(f"Duplicate node id: {node.id}")
         self.nodes.append(node)
 
     def remove_node(self, node_id: str) -> None:
+        self._push_undo()
         self.nodes = [n for n in self.nodes if n.id != node_id]
 
     def to_mapping(self) -> Dict[str, Any]:
@@ -286,6 +313,7 @@ class CanvasModel:
 
     # Duplication --------------------------------------------------------
     def duplicate_node(self, node_id: str) -> Optional[BuilderNode]:
+        self._push_undo()
         """Duplicate a node, inserting the copy immediately after original.
 
         Generates a unique id by appending/incrementing a numeric suffix.
@@ -309,7 +337,11 @@ class CanvasModel:
         if isinstance(new_obj, FieldMappingNode):  # adjust field_name to avoid collision
             fname_base = new_obj.field_name or "field"
             f_suffix = 2
-            existing_fields = {getattr(n, "field_name", None) for n in self.nodes if isinstance(n, FieldMappingNode)}
+            existing_fields = {
+                getattr(n, "field_name", None)
+                for n in self.nodes
+                if isinstance(n, FieldMappingNode)
+            }
             while f"{fname_base}_{f_suffix}" in existing_fields:
                 f_suffix += 1
             new_obj.field_name = f"{fname_base}_{f_suffix}"  # type: ignore
@@ -421,6 +453,19 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_add_field.setToolTip("Add Field Mapping Node")
         self.btn_add_chain = QPushButton("Chain")
         self.btn_add_chain.setToolTip("Add Transform Chain Node")
+        # Icon hooks (design system could set icons later)
+        try:  # pragma: no cover - runtime optional
+            from PyQt6.QtGui import QIcon
+
+            self.btn_add_selector.setIcon(QIcon.fromTheme("list-add"))
+            self.btn_add_field.setIcon(QIcon.fromTheme("add-field"))
+            self.btn_add_chain.setIcon(QIcon.fromTheme("preferences-other"))
+        except Exception:
+            pass
+        self.btn_undo = QPushButton("Undo")
+        self.btn_undo.setToolTip("Undo last edit (Ctrl+Z)")
+        self.btn_redo = QPushButton("Redo")
+        self.btn_redo.setToolTip("Redo")
         self.btn_compile = QPushButton("Compile")
         self.btn_compile.setToolTip("Compile current canvas to mapping and emit preview")
         self.chk_live = QCheckBox("Live")
@@ -429,6 +474,9 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         toolbar.addWidget(self.btn_add_selector)
         toolbar.addWidget(self.btn_add_field)
         toolbar.addWidget(self.btn_add_chain)
+        toolbar.addSpacing(6)
+        toolbar.addWidget(self.btn_undo)
+        toolbar.addWidget(self.btn_redo)
         toolbar.addSpacing(8)
         toolbar.addWidget(self.chk_live)
         toolbar.addWidget(self.btn_compile)
@@ -531,6 +579,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         fe_layout.setContentsMargins(0, 0, 0, 0)
         fe_layout.setSpacing(4)
         from PyQt6.QtWidgets import QFormLayout, QLineEdit
+
         form = QFormLayout()
         form.setContentsMargins(0, 0, 0, 0)
         self.field_name_edit = QLineEdit()
@@ -539,6 +588,11 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.field_selector_edit.setPlaceholderText(".css-selector")
         form.addRow("Name", self.field_name_edit)
         form.addRow("Selector", self.field_selector_edit)
+        # Validation feedback label
+        from PyQt6.QtWidgets import QLabel as _Lbl
+        self.selector_feedback = _Lbl("")
+        self.selector_feedback.setObjectName("visualRuleBuilderSelectorFeedback")
+        form.addRow("Matches", self.selector_feedback)
         fe_layout.addLayout(form)
         layout.addWidget(self._field_editor)
         self._field_editor.hide()
@@ -552,6 +606,8 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_add_selector.clicked.connect(self._on_add_selector)  # type: ignore
         self.btn_add_field.clicked.connect(self._on_add_field)  # type: ignore
         self.btn_add_chain.clicked.connect(self._on_add_chain)  # type: ignore
+        self.btn_undo.clicked.connect(self._on_undo)  # type: ignore
+        self.btn_redo.clicked.connect(self._on_redo)  # type: ignore
         self.btn_compile.clicked.connect(self._on_compile_clicked)  # type: ignore
         self.chk_live.stateChanged.connect(self._on_live_preview_toggled)  # type: ignore
         # Selection change hookup (inside build_ui to avoid NameError at class creation)
@@ -565,6 +621,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.list_widget.customContextMenuRequested.connect(self._on_list_context_menu)  # type: ignore
         # Drag reorder
         from PyQt6.QtWidgets import QAbstractItemView
+
         self.list_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         try:
             self.list_widget.model().rowsMoved.connect(self._on_rows_moved)  # type: ignore
@@ -572,9 +629,13 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             pass
         # Shortcuts
         from PyQt6.QtGui import QShortcut, QKeySequence
+
         QShortcut(QKeySequence("Alt+S"), self, activated=self._on_add_selector)  # type: ignore
         QShortcut(QKeySequence("Alt+F"), self, activated=self._on_add_field)  # type: ignore
         QShortcut(QKeySequence("Alt+C"), self, activated=self._on_add_chain)  # type: ignore
+        QShortcut(QKeySequence("Ctrl+Z"), self, activated=self._on_undo)  # type: ignore
+        QShortcut(QKeySequence("Ctrl+Y"), self, activated=self._on_redo)  # type: ignore
+        QShortcut(QKeySequence("Ctrl+/"), self, activated=self._show_cheat_sheet)  # type: ignore
         # Load persisted palette state
         self._restore_palette_state()
 
@@ -685,6 +746,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
     # Context menu -------------------------------------------------------
     def _on_list_context_menu(self, pos) -> None:  # pragma: no cover - GUI path
         from PyQt6.QtWidgets import QMenu
+
         global_pos = self.list_widget.mapToGlobal(pos)
         menu = QMenu(self.list_widget)
         act_dup = menu.addAction("Duplicate")
@@ -710,6 +772,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
     def _settings(self):  # pragma: no cover - convenience
         try:
             from PyQt6.QtCore import QSettings
+
             return QSettings()
         except Exception:
             return None
@@ -753,8 +816,53 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             sel = self.field_selector_edit.text().strip()
             if sel:
                 node.selector = sel
+                self._update_selector_feedback(sel)
             self._maybe_emit_live()
 
+    # Undo/Redo handlers -------------------------------------------------
+    def _on_undo(self):  # pragma: no cover - UI
+        if self.model.undo():
+            self.refresh()
+            self._maybe_emit_live()
+
+    def _on_redo(self):  # pragma: no cover - UI
+        if self.model.redo():
+            self.refresh()
+            self._maybe_emit_live()
+
+    # Selector validation ------------------------------------------------
+    def _update_selector_feedback(self, selector: str):  # pragma: no cover - GUI heuristic
+        try:
+            # Lazy import bs4 if available (fall back silently if absent)
+            from bs4 import BeautifulSoup  # type: ignore
+            # Heuristic: try last loaded HTML cached externally (IngestionLab may set attr)
+            html_doc = getattr(self.parent(), "_last_preview_html", "") or ""
+            if not html_doc:
+                self.selector_feedback.setText("?")
+                return
+            soup = BeautifulSoup(html_doc, "html.parser")
+            count = len(soup.select(selector))
+            self.selector_feedback.setText(str(count))
+        except Exception:
+            self.selector_feedback.setText("-")
+
+    # Cheat sheet --------------------------------------------------------
+    def _show_cheat_sheet(self):  # pragma: no cover - UI dialog
+        from PyQt6.QtWidgets import QMessageBox
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Visual Builder Shortcuts")
+        msg.setText(
+            """<b>Keyboard Shortcuts</b><br><br>
+Alt+S — Add Selector<br>
+Alt+F — Add Field<br>
+Alt+C — Add Transform Chain<br>
+Ctrl+Z — Undo<br>
+Ctrl+Y — Redo<br>
+Ctrl+/ — Show this cheat sheet<br>
+"""
+        )
+        msg.exec()
 
     def refresh(self) -> None:
         self.list_widget.clear()
