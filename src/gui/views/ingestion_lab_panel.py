@@ -187,6 +187,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_benchmark.setToolTip(
             "Run A/B parse benchmark comparing two rule variants over a sample of visible files"
         )
+        self.btn_cache = QPushButton("Cache Inspect")
+        self.btn_cache.setToolTip(
+            "Show which files are unchanged (cache hit) vs updated/new/missing based on provenance"
+        )
         # Search / filter controls (7.10.4)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search filename or hash…")
@@ -240,6 +244,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         actions.addWidget(self.btn_derived)
         actions.addWidget(self.btn_dep_graph)
         actions.addWidget(self.btn_benchmark)
+        actions.addWidget(self.btn_cache)
         actions.addWidget(self.search_box, 1)
         actions.addWidget(self.phase_filter_button)
         actions.addWidget(QLabel("Size KB:"))
@@ -316,6 +321,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_derived.clicked.connect(self._on_derived_fields_clicked)  # type: ignore
         self.btn_dep_graph.clicked.connect(self._on_dependency_graph_clicked)  # type: ignore
         self.btn_benchmark.clicked.connect(self._on_benchmark_clicked)  # type: ignore
+        self.btn_cache.clicked.connect(self._on_cache_inspector_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -1052,6 +1058,37 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._append_log(
             f"Benchmark run ready with {len(sample_map)} sample files (provide A/B rules in dialog)."
         )
+
+    # ------------------------------------------------------------------
+    # Caching Inspector (7.10.40 initial)
+    def _on_cache_inspector_clicked(self) -> None:
+        try:
+            from gui.ingestion.caching_inspector import (
+                diff_provenance,
+                CachingInspectorDialog,
+            )
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Caching Inspector import failed: {e}")
+            return
+        # Build current file hash map (reuse logic from hash impact but avoid changing cached state)
+        current_map: dict[str, str] = {}
+        for item in self._all_file_items:
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if not isinstance(data, dict) or "file" not in data:
+                continue
+            fpath = data["file"]
+            try:
+                with open(fpath, "rb") as fh:
+                    import hashlib as _hl
+
+                    current_map[fpath] = _hl.sha1(fh.read()).hexdigest()
+            except Exception:
+                continue
+        prov_map = {p: sha for p, (sha, _ts, _ver) in self._last_provenance.items()}
+        diff = diff_provenance(current_map, prov_map)
+        dlg = CachingInspectorDialog(diff, self)
+        dlg.exec()
+        self._append_log("Caching Inspector: " + diff.summary())
 
     # ------------------------------------------------------------------
     # Versioning helpers (7.10.33)

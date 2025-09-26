@@ -111,4 +111,5 @@ feat(ingestion-lab): data quality gates backend + UI integration button + integr
 feat(ingestion-lab): add rule adapter layer (RuleSet -> aggregated resource rows) with tests (Milestone 7.10.29)
 feat(ingestion-lab): safe execution guard (simulate + apply audit) with tests (Milestone 7.10.30)
 feat(ingestion-lab): add parse benchmark dialog with A/B rule variant execution + optional parallel workers (Milestone 7.10.39)
+feat(ingestion-lab): add caching inspector (hash diff viewer) with dialog + backend diff_provenance (Milestone 7.10.40)
 
