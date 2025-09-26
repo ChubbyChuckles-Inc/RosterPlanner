@@ -4,6 +4,7 @@ test(ingestion): add sandbox vs apply integration tests & mark roadmap 7.10.55 c
 test(ingestion-perf): add batch preview performance test (50 files <1.5s) and mark 7.10.56 complete
 test(ingestion-visual): add structural hash visual regression placeholder for diff/mapping grid (7.10.57)
 test(ingestion-security): add security tests blocking disallowed python & expr transforms (7.10.58)
+feat(ingestion-cli): add snapshot extraction baseline generator CLI (7.10.59) with tests
 
 Implements Milestone 7.10.42: export/import of rule sets. Adds gui.ingestion.rule_export with export_rules/import_rules (validation via RuleSet), integrates Export/Import buttons & handlers in IngestionLabPanel, and provides round‑trip + error tests (tests/test_rule_export_import.py). Roadmap updated.
 feat(ingestion-lab): add security sandbox static analyzer & UI integration (7.10.41)

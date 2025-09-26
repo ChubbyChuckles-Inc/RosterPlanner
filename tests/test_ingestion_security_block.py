@@ -24,7 +24,9 @@ from gui.ingestion.rule_apply_guard import SafeApplyGuard
 from gui.ingestion.rule_schema import RuleSet
 
 
-MIN_HTML = {"file.html": "<html><body><div class='row'><span class='val'>5</span></div></body></html>"}
+MIN_HTML = {
+    "file.html": "<html><body><div class='row'><span class='val'>5</span></div></body></html>"
+}
 
 
 def _base_rules_payload():

@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "rule_version": 1
+  },
+  "resources": {
+    "players": {
+      "kind": "list",
+      "row_count": 2,
+      "rows": [
+        {
+          "name": "Alice"
+        },
+        {
+          "name": "Bob"
+        }
+      ]
+    }
+  }
+}

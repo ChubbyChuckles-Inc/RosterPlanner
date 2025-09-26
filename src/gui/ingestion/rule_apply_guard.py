@@ -110,6 +110,7 @@ class SafeApplyGuard:
         # Enforce safety flag (settings service) to optionally reject custom python transforms
         try:
             from gui.services.settings_service import SettingsService  # type: ignore
+
             if getattr(SettingsService.instance, "ingestion_disallow_custom_python", False):
                 # Heuristic 1 (legacy): any top-level mapping containing a key with 'python'
                 for k, v in raw_rules_payload.items():  # type: ignore[assignment]
