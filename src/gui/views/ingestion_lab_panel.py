@@ -156,6 +156,11 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
     # ------------------------------------------------------------------
     # UI Construction
     def _build_ui(self) -> None:
+        from PyQt6.QtWidgets import (
+            QVBoxLayout,
+            QHBoxLayout,
+        )  # local import to avoid circulars during tests
+
         root = QVBoxLayout(self)
         root.setContentsMargins(6, 6, 6, 6)
         root.setSpacing(6)
@@ -667,40 +672,42 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             err = f"{e.__class__.__name__}: {e}"
             short_tb = "".join(_tb.format_exception_only(type(e), e)).strip()
             self.visual_builder = QLabel(f"Visual builder import error: {err}\n{short_tb}")  # type: ignore[assignment]
-    self._editor_stack.addWidget(self.visual_builder)  # index 1
-    # Sandbox inline cell (hidden by default) (7.10.A7)
-    from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout
-    self._editor_region = QWidget()
-    _v = QVBoxLayout(self._editor_region)
-    _v.setContentsMargins(0, 0, 0, 0)
-    _v.setSpacing(4)
-    _v.addWidget(self._editor_stack_inner)
-    self._sandbox_widget = QWidget()
-    self._sandbox_widget.setObjectName("ingestionLabSandbox")
-    self._sandbox_widget.setVisible(False)
-    sb_v = QVBoxLayout(self._sandbox_widget)
-    sb_v.setContentsMargins(4, 4, 4, 4)
-    sb_v.setSpacing(4)
-    from PyQt6.QtWidgets import QLabel, QLineEdit, QPushButton
-    sb_v.addWidget(QLabel("Sandbox HTML Fragment (paste snippet, not full file)"))
-    self.sandbox_html = QPlainTextEdit()
-    self.sandbox_html.setPlaceholderText("<div class='player'>...</div>")
-    self.sandbox_html.setObjectName("ingestionLabSandboxHtml")
-    sb_v.addWidget(self.sandbox_html, 1)
-    row = QHBoxLayout()
-    row.setContentsMargins(0, 0, 0, 0)
-    row.setSpacing(4)
-    self.sandbox_resource = QLineEdit()
-    self.sandbox_resource.setPlaceholderText("Resource name (leave blank = first)")
-    self.sandbox_resource.setObjectName("ingestionLabSandboxResource")
-    self.btn_sandbox_run = QPushButton("Run")
-    self.btn_sandbox_run.setObjectName("ingestionLabSandboxRun")
-    self.btn_sandbox_run.clicked.connect(self._on_sandbox_run_clicked)  # type: ignore
-    row.addWidget(self.sandbox_resource, 1)
-    row.addWidget(self.btn_sandbox_run)
-    sb_v.addLayout(row)
-    _v.addWidget(self._sandbox_widget, 0)
-    mid_split.addWidget(self._editor_region)
+        self._editor_stack.addWidget(self.visual_builder)  # index 1
+        # Sandbox inline cell (hidden by default) (7.10.A7)
+        from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout
+
+        self._editor_region = QWidget()
+        _v = QVBoxLayout(self._editor_region)
+        _v.setContentsMargins(0, 0, 0, 0)
+        _v.setSpacing(4)
+        _v.addWidget(self._editor_stack_inner)
+        self._sandbox_widget = QWidget()
+        self._sandbox_widget.setObjectName("ingestionLabSandbox")
+        self._sandbox_widget.setVisible(False)
+        sb_v = QVBoxLayout(self._sandbox_widget)
+        sb_v.setContentsMargins(4, 4, 4, 4)
+        sb_v.setSpacing(4)
+        from PyQt6.QtWidgets import QLabel, QLineEdit, QPushButton
+
+        sb_v.addWidget(QLabel("Sandbox HTML Fragment (paste snippet, not full file)"))
+        self.sandbox_html = QPlainTextEdit()
+        self.sandbox_html.setPlaceholderText("<div class='player'>...</div>")
+        self.sandbox_html.setObjectName("ingestionLabSandboxHtml")
+        sb_v.addWidget(self.sandbox_html, 1)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(4)
+        self.sandbox_resource = QLineEdit()
+        self.sandbox_resource.setPlaceholderText("Resource name (leave blank = first)")
+        self.sandbox_resource.setObjectName("ingestionLabSandboxResource")
+        self.btn_sandbox_run = QPushButton("Run")
+        self.btn_sandbox_run.setObjectName("ingestionLabSandboxRun")
+        self.btn_sandbox_run.clicked.connect(self._on_sandbox_run_clicked)  # type: ignore
+        row.addWidget(self.sandbox_resource, 1)
+        row.addWidget(self.btn_sandbox_run)
+        sb_v.addLayout(row)
+        _v.addWidget(self._sandbox_widget, 0)
+        mid_split.addWidget(self._editor_region)
 
         # Preview container (stack: main preview text + batch-loading skeleton) (7.10.46)
         self._preview_container = QWidget()
@@ -1805,7 +1812,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             return
         try:
             from gui.ingestion.rule_parse_preview import generate_parse_preview  # type: ignore
-            preview = generate_parse_preview(rs, fragment, apply_transforms=True, capture_performance=False)
+
+            preview = generate_parse_preview(
+                rs, fragment, apply_transforms=True, capture_performance=False
+            )
         except Exception as e:  # pragma: no cover
             self._append_log(f"Sandbox ERROR (compute): {e}")
             return
