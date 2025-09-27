@@ -164,11 +164,15 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._action_container = QWidget()
         self._action_container.setObjectName("ingLabToolbarContainer")
         toolbar_v = QVBoxLayout(self._action_container)
+        # Leave internal bottom margin minimal; we will instead reserve space via
+        # the scroll area's viewport margin to avoid scrollbar overlap.
         toolbar_v.setContentsMargins(0, 0, 0, 0)
         toolbar_v.setSpacing(2)
         # Row1 (primary) and Row2 (wrap for lower-priority groups when constrained)
         actions = QHBoxLayout()
-        actions.setContentsMargins(4, 4, 4, 2)
+        # Slightly larger bottom margin (4) to give baseline breathing room even
+        # when no scrollbar is present.
+        actions.setContentsMargins(4, 4, 4, 4)
         actions.setSpacing(4)
         self._toolbar_row2 = QHBoxLayout()
         self._toolbar_row2.setContentsMargins(4, 0, 4, 4)
@@ -204,6 +208,12 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_quality_gates.setObjectName("ingLabBtnQualityGates")
         self.btn_quality_gates.setToolTip(
             "Evaluate minimum non-null ratios (quality gate config under 'quality_gates' in rules JSON)"
+        )
+        # Conflict / Overlap Detector (7.10.A6)
+        self.btn_overlap = QPushButton("Conflicts")
+        self.btn_overlap.setObjectName("ingLabBtnOverlap")
+        self.btn_overlap.setToolTip(
+            "Detect overlapping selectors among resources (potential redundancy/conflicts)."
         )
         self.btn_simulate = QPushButton("Simulate")
         self.btn_simulate.setObjectName("ingLabBtnSimulate")
@@ -372,6 +382,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 self.btn_field_coverage_radar,
                 self.btn_quality_gates,
                 self.btn_orphan_fields,
+                self.btn_overlap,
             ],
         )
         # Advanced buttons (may be hidden into overflow outside test mode)
@@ -531,6 +542,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         scroll_bar.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         # Use action container directly to avoid re-parenting the layout
         scroll_bar.setWidget(self._action_container)
+        # Reserve a small bottom inset so any horizontal scrollbar that appears
+        # won't visually overlap / truncate button glyph descenders.
+        scroll_bar.setViewportMargins(0, 0, 0, -4)
         root.addWidget(scroll_bar)
 
         # Compact mode toggle (density) (visual polish extension)
@@ -728,6 +742,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_benchmark.clicked.connect(self._on_benchmark_clicked)  # type: ignore
         self.btn_cache.clicked.connect(self._on_cache_inspector_clicked)  # type: ignore
         self.btn_security.clicked.connect(self._on_security_scan_clicked)  # type: ignore
+        self.btn_overlap.clicked.connect(self._on_overlap_clicked)  # type: ignore
         self.btn_visual_builder.clicked.connect(self._on_visual_builder_clicked)  # type: ignore
         self.btn_publish.clicked.connect(self._on_publish_clicked)  # type: ignore
         self.btn_toggle_density.clicked.connect(lambda _v: None)  # placeholder for test hook
@@ -1665,6 +1680,58 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._append_log(f"  ... {len(report.results)-50} more")
 
     # ------------------------------------------------------------------
+    # Conflict / Overlap Detector (7.10.A6)
+    def _on_overlap_clicked(self) -> None:
+        # Lazy import (keeps startup light if feature unused)
+        try:
+            from gui.ingestion.rule_overlap import detect_overlaps  # type: ignore
+        except Exception as e:  # pragma: no cover - import robustness
+            self._append_log(f"Conflicts unavailable: import error {e}")
+            return
+        try:
+            rs = self._parse_ruleset_from_editor()
+        except Exception as e:
+            self._append_log(f"Conflicts ERROR (rules): {e}")
+            return
+        html_map = self._gather_visible_file_html()
+        if not html_map:
+            self._append_log("Conflicts: no visible HTML files")
+            return
+        # Prefer currently selected file as representative sample; fallback to first.
+        sample_html = None
+        try:
+            sel_items = [
+                it
+                for it in self.file_tree.selectedItems()
+                if isinstance(it.data(0, Qt.ItemDataRole.UserRole), dict)
+                and "file" in it.data(0, Qt.ItemDataRole.UserRole)
+            ]
+            if sel_items:
+                fpath = sel_items[0].data(0, Qt.ItemDataRole.UserRole).get("file")  # type: ignore[index]
+                sample_html = html_map.get(fpath)
+        except Exception:
+            sample_html = None
+        if not sample_html:
+            # Take first file's HTML
+            sample_html = next(iter(html_map.values()))
+        try:
+            overlaps = detect_overlaps(rs, sample_html, min_jaccard=0.0)
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Conflicts ERROR (compute): {e}")
+            return
+        if not overlaps:
+            self._append_log("Conflicts: none")
+            return
+        self._append_log(f"Conflicts ({len(overlaps)}) – top {min(len(overlaps), 30)} shown:")
+        for rec in overlaps[:30]:
+            self._append_log(
+                f"  {rec.resource_a} vs {rec.resource_b} overlap={rec.overlap} jaccard={rec.jaccard:.3f} (|A|={rec.count_a} |B|={rec.count_b})"
+            )
+        if len(overlaps) > 30:
+            self._append_log(f"  ... {len(overlaps)-30} more")
+        self._append_log("— end conflicts —")
+
+    # ------------------------------------------------------------------
     # Simulation / Apply (7.10.30 / 7.10.31)
     def _on_simulate_clicked(self) -> None:
         if not self._safe_guard:
@@ -2290,8 +2357,10 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 parts.append(
                     f"QLineEdit#ingestionLabSearch {{ background:{alt}; color:{fg}; border:1px solid {border_col}; }}"
                 )
+                # Qt stylesheet doesn't support CSS box-shadow; prior attempt logged warnings.
+                # Emulate focus emphasis by increasing border opacity / color only.
                 parts.append(
-                    f"QLineEdit#ingestionLabSearch:focus {{ border-color:{border_col}; box-shadow:0 0 0 1px {border_col}; }}"
+                    f"QLineEdit#ingestionLabSearch:focus {{ border-color:{accent if accent else border_col}; }}"
                 )
                 parts.append(
                     f"QDialog#promptAssistDialog, QWidget#promptAssistDialog {{ background:{surf}; color:{fg}; }}"
