@@ -251,6 +251,12 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_dep_graph = QPushButton("Dep Graph")
         self.btn_dep_graph.setObjectName("ingLabBtnDepGraph")
         self.btn_dep_graph.setToolTip("Show dependency graph (base + derived field relationships)")
+        # Live Parsing Sandbox Cell (7.10.A7)
+        self.btn_sandbox = QPushButton("Sandbox")
+        self.btn_sandbox.setObjectName("ingLabBtnSandbox")
+        self.btn_sandbox.setToolTip(
+            "Open inline HTML sandbox to test a single resource on a pasted fragment (no file writes)."
+        )
         self.btn_benchmark = QPushButton("Benchmark")
         self.btn_benchmark.setObjectName("ingLabBtnBenchmark")
         self.btn_benchmark.setToolTip(
@@ -373,6 +379,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 self.btn_visual_builder,
                 self.btn_derived,
                 self.btn_dep_graph,
+                self.btn_sandbox,
             ],
         )
         analysis_panel = _make_cat_panel(
@@ -617,9 +624,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         mid_split = QSplitter(Qt.Orientation.Vertical, self)
         splitter.addWidget(mid_split)
 
-        # Middle upper area becomes a stacked editor: text editor / visual builder
-        self._editor_stack_container = QWidget()
-        self._editor_stack = QStackedLayout(self._editor_stack_container)
+        # Middle upper area becomes a stacked editor: text editor / visual builder (+ sandbox container)
+        self._editor_stack_inner = QWidget()
+        self._editor_stack = QStackedLayout(self._editor_stack_inner)
         self.rule_editor = QPlainTextEdit()
         self.rule_editor.setObjectName("ingestionLabRuleEditor")
         self.rule_editor.setPlaceholderText(
@@ -660,8 +667,40 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             err = f"{e.__class__.__name__}: {e}"
             short_tb = "".join(_tb.format_exception_only(type(e), e)).strip()
             self.visual_builder = QLabel(f"Visual builder import error: {err}\n{short_tb}")  # type: ignore[assignment]
-        self._editor_stack.addWidget(self.visual_builder)  # index 1
-        mid_split.addWidget(self._editor_stack_container)
+    self._editor_stack.addWidget(self.visual_builder)  # index 1
+    # Sandbox inline cell (hidden by default) (7.10.A7)
+    from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout
+    self._editor_region = QWidget()
+    _v = QVBoxLayout(self._editor_region)
+    _v.setContentsMargins(0, 0, 0, 0)
+    _v.setSpacing(4)
+    _v.addWidget(self._editor_stack_inner)
+    self._sandbox_widget = QWidget()
+    self._sandbox_widget.setObjectName("ingestionLabSandbox")
+    self._sandbox_widget.setVisible(False)
+    sb_v = QVBoxLayout(self._sandbox_widget)
+    sb_v.setContentsMargins(4, 4, 4, 4)
+    sb_v.setSpacing(4)
+    from PyQt6.QtWidgets import QLabel, QLineEdit, QPushButton
+    sb_v.addWidget(QLabel("Sandbox HTML Fragment (paste snippet, not full file)"))
+    self.sandbox_html = QPlainTextEdit()
+    self.sandbox_html.setPlaceholderText("<div class='player'>...</div>")
+    self.sandbox_html.setObjectName("ingestionLabSandboxHtml")
+    sb_v.addWidget(self.sandbox_html, 1)
+    row = QHBoxLayout()
+    row.setContentsMargins(0, 0, 0, 0)
+    row.setSpacing(4)
+    self.sandbox_resource = QLineEdit()
+    self.sandbox_resource.setPlaceholderText("Resource name (leave blank = first)")
+    self.sandbox_resource.setObjectName("ingestionLabSandboxResource")
+    self.btn_sandbox_run = QPushButton("Run")
+    self.btn_sandbox_run.setObjectName("ingestionLabSandboxRun")
+    self.btn_sandbox_run.clicked.connect(self._on_sandbox_run_clicked)  # type: ignore
+    row.addWidget(self.sandbox_resource, 1)
+    row.addWidget(self.btn_sandbox_run)
+    sb_v.addLayout(row)
+    _v.addWidget(self._sandbox_widget, 0)
+    mid_split.addWidget(self._editor_region)
 
         # Preview container (stack: main preview text + batch-loading skeleton) (7.10.46)
         self._preview_container = QWidget()
@@ -744,6 +783,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_security.clicked.connect(self._on_security_scan_clicked)  # type: ignore
         self.btn_overlap.clicked.connect(self._on_overlap_clicked)  # type: ignore
         self.btn_visual_builder.clicked.connect(self._on_visual_builder_clicked)  # type: ignore
+        self.btn_sandbox.clicked.connect(self._on_sandbox_clicked)  # type: ignore
         self.btn_publish.clicked.connect(self._on_publish_clicked)  # type: ignore
         self.btn_toggle_density.clicked.connect(lambda _v: None)  # placeholder for test hook
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
@@ -1730,6 +1770,53 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         if len(overlaps) > 30:
             self._append_log(f"  ... {len(overlaps)-30} more")
         self._append_log("— end conflicts —")
+
+    # ------------------------------------------------------------------
+    # Sandbox Cell (7.10.A7)
+    def _on_sandbox_clicked(self) -> None:
+        # Toggle visibility
+        vis = not self._sandbox_widget.isVisible()
+        self._sandbox_widget.setVisible(vis)
+        if vis:
+            self.sandbox_html.setFocus()
+            self._append_log("Sandbox: opened (paste fragment & press Run)")
+        else:
+            self._append_log("Sandbox: closed")
+
+    def _on_sandbox_run_clicked(self) -> None:
+        fragment = (self.sandbox_html.toPlainText() or "").strip()
+        if not fragment:
+            self._append_log("Sandbox: HTML fragment empty")
+            return
+        try:
+            rs = self._parse_ruleset_from_editor()
+        except Exception as e:
+            self._append_log(f"Sandbox ERROR (rules): {e}")
+            return
+        target = (self.sandbox_resource.text() or "").strip()
+        if not target:
+            # default to first resource name
+            if not rs.resources:
+                self._append_log("Sandbox: rule set has no resources")
+                return
+            target = sorted(rs.resources.keys())[0]
+        if target not in rs.resources:
+            self._append_log(f"Sandbox: unknown resource '{target}'")
+            return
+        try:
+            from gui.ingestion.rule_parse_preview import generate_parse_preview  # type: ignore
+            preview = generate_parse_preview(rs, fragment, apply_transforms=True, capture_performance=False)
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Sandbox ERROR (compute): {e}")
+            return
+        rows = preview.extracted_records.get(target, [])
+        self._append_log(
+            f"Sandbox Result: resource={target} rows={len(rows)} warnings={next((s.warnings for s in preview.summaries if s.resource==target), [])}"
+        )
+        for r in rows[:10]:
+            self._append_log(f"  row: {r}")
+        if len(rows) > 10:
+            self._append_log(f"  ... {len(rows)-10} more")
 
     # ------------------------------------------------------------------
     # Simulation / Apply (7.10.30 / 7.10.31)

@@ -370,7 +370,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.A4 Natural Language Prompt Assist [R]: user enters "Extract player names and their live rating" -> generates draft rule blocks (heuristic list rule) for refinement (implemented prompt_rule_assist with token mapping + tests).
  [x] 7.10.A5 Field Coverage Radar Chart: polar visualization of mapped vs available semantic field categories (identity, performance, schedule, meta) with hover-details (implemented field_coverage_radar with categorize_coverage + widget + integration button/dialog).
  [x] 7.10.A6 Conflict & Overlap Detector: warns when multiple selectors target overlapping node sets; suggests merge or specificity adjustment. (implemented detect_overlaps + UI button & log output)
- [ ] 7.10.A7 Live Parsing Sandbox Cell: ephemeral inline test input (paste raw HTML fragment) to prototype a single rule resource without mutating main rule set.
+ [x] 7.10.A7 Live Parsing Sandbox Cell: ephemeral inline test input (paste raw HTML fragment) to prototype a single rule resource without mutating main rule set. (inline panel + run button)
  [ ] 7.10.A8 Multi-Select Bulk Edit Mode: apply a transform (e.g., trim) or selector refinement to several fields simultaneously via batch action bar.
  [ ] 7.10.A9 Rule Intent Comments Sidebar: structured metadata (purpose, assumptions, TODO) stored separately from executable schema to keep YAML lean.
  [ ] 7.10.A10 Auto-Generated Example Data Rows: synthetic row sampler shows how transforms normalize varied raw inputs (outlier emphasis styling).

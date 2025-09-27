@@ -20,6 +20,7 @@ by first matching its `selector` (container) then selecting
 Returned overlaps enumerate unordered pairs (A,B) (A< B lexicographically)
 with counts and Jaccard index (|A∩B| / |A∪B|).
 """
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
