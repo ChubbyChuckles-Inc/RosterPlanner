@@ -122,7 +122,6 @@ _ALLOWED_NODE_TYPES = (
 )
 
 _DISALLOWED_CATEGORIES = {
-    ast.Call: "function_call",
     ast.Attribute: "attribute_access",
     ast.Subscript: "subscript",
     ast.Lambda: "lambda",
@@ -146,6 +145,8 @@ _DISALLOWED_CATEGORIES = {
     ast.YieldFrom: "yield",
     ast.Starred: "starred",
 }
+
+_ALLOWED_FUNCTION_CALLS = {"len", "min", "max", "sum"}
 
 
 def scan_expression(
@@ -184,7 +185,23 @@ def scan_expression(
         )
         return issues
     allowed_set = set(allowed_names or [])
+    if allowed_names is not None:
+        allowed_set.update(_ALLOWED_FUNCTION_CALLS)
     for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name) and func.id in _ALLOWED_FUNCTION_CALLS:
+                continue
+            issues.append(
+                SandboxIssue(
+                    expr=expr,
+                    message=f"Disallowed syntax: {node.__class__.__name__}",
+                    category="function_call",
+                    lineno=getattr(node, "lineno", None),
+                    col=getattr(node, "col_offset", None),
+                )
+            )
+            continue
         if isinstance(node, tuple(_DISALLOWED_CATEGORIES.keys())):
             issues.append(
                 SandboxIssue(

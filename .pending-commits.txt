@@ -1,4 +1,10 @@
 
+feat(ingestion-lab): add Safe Expression Playground dialog (7.10.A18)
+Adds gui.ingestion.safe_expression_playground with lint+evaluate helpers, thread timeout, type inference,
+and a PyQt6 dialog that inserts vetted expression transforms with metadata comments. Integrates launcher button
+into the Authoring toolbar, updates ToolDialogsMixin, and extends security_sandbox to allow safe builtin calls.
+Includes unit tests for playground helpers, sandbox call allowlist, and roadmap update marking 7.10.A18 complete.
+
 feat(authoring): add Visual Rule Builder Canvas scaffold (7.10.A1)
 Introduces visual_rule_builder module with CanvasModel + node types and a minimal VisualRuleBuilder QWidget.
 Integrates toggle button into IngestionLabPanel (stacked editor view), allows switching between text and visual modes,

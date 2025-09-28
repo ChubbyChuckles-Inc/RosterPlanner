@@ -78,6 +78,44 @@ class ToolDialogsMixin:
         dlg = RegexTesterDialog(sample_text=sample, parent=self)
         dlg.exec()
 
+    def _on_expression_playground_clicked(self) -> None:
+        try:
+            from gui.ingestion.safe_expression_playground import SafeExpressionPlaygroundDialog
+        except Exception as exc:  # pragma: no cover
+            self._append_log(f"Expression Playground import failed: {exc}")
+            return
+        cursor = self.rule_editor.textCursor()
+        selected_expr = cursor.selectedText().strip()
+        sample_text = getattr(self, "_last_preview_plain", "") or ""
+        if not sample_text:
+            try:
+                sample_text = self.sandbox_output.toPlainText().strip()
+            except Exception:
+                sample_text = ""
+        if not sample_text:
+            try:
+                sample_text = self.preview_area.toPlainText().strip()
+            except Exception:
+                sample_text = ""
+        try:
+            dlg = SafeExpressionPlaygroundDialog(
+                sample_text=sample_text,
+                initial_expression=selected_expr,
+                parent=self,
+            )
+        except RuntimeError as exc:
+            self._append_log(f"Expression Playground unavailable: {exc}")
+            return
+        if dlg.exec() != dlg.DialogCode.Accepted:  # type: ignore[attr-defined]
+            self._append_log("Expression Playground: cancelled")
+            return
+        snippet = dlg.selected_snippet()
+        if not snippet:
+            self._append_log("Expression Playground: no snippet produced")
+            return
+        cursor.insertText(snippet)
+        self._append_log("Expression Playground: inserted expr transform")
+
     def _on_inline_yaml_editor_clicked(self) -> None:
         rules_text = self.rule_editor.toPlainText()
         if not rules_text.strip():

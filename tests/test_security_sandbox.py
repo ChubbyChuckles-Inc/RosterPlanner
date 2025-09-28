@@ -16,9 +16,14 @@ def test_scan_expression_empty():
 
 
 def test_scan_expression_disallowed_call():
-    issues = scan_expression("sum(values)")
-    # function call should be flagged regardless of name allow list
+    issues = scan_expression("danger(value)")
+    # Unknown function call should be flagged regardless of name allow list
     assert any(i.category == "function_call" for i in issues)
+
+
+def test_scan_expression_allowed_builtin_call():
+    issues = scan_expression("len(value)", allowed_names={"value"})
+    assert issues == []
 
 
 def test_scan_expression_attribute_and_subscript():

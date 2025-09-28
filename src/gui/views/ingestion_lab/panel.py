@@ -224,6 +224,11 @@ class IngestionLabPanel(
         self.btn_regex_tester = QPushButton("Regex Tester")
         self.btn_regex_tester.setObjectName("ingLabBtnRegexTester")
         self.btn_regex_tester.setToolTip("Open regex tester dialog for pattern experimentation")
+        self.btn_expr_playground = QPushButton("Expr Playground")
+        self.btn_expr_playground.setObjectName("ingLabBtnExprPlayground")
+        self.btn_expr_playground.setToolTip(
+            "Open safe sandbox to lint + execute expression transforms before inserting into rules"
+        )
         self.btn_inline_yaml = QPushButton("Edit YAML")
         self.btn_inline_yaml.setObjectName("ingLabBtnInlineYaml")
         self.btn_inline_yaml.setToolTip("Open inline YAML fragment editor with schema ghost text")
@@ -345,6 +350,7 @@ class IngestionLabPanel(
             [
                 self.btn_selector_picker,
                 self.btn_regex_tester,
+                self.btn_expr_playground,
                 self.btn_inline_yaml,
                 self.btn_prompt_assist,
                 self.btn_visual_builder,
@@ -726,6 +732,7 @@ class IngestionLabPanel(
         self.btn_import.clicked.connect(self._on_import_rules_clicked)  # type: ignore
         self.btn_selector_picker.clicked.connect(self._on_selector_picker_clicked)  # type: ignore
         self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
+        self.btn_expr_playground.clicked.connect(self._on_expression_playground_clicked)  # type: ignore
         self.btn_inline_yaml.clicked.connect(self._on_inline_yaml_editor_clicked)  # type: ignore
         self.btn_derived.clicked.connect(self._on_derived_fields_clicked)  # type: ignore
         self.btn_dep_graph.clicked.connect(self._on_dependency_graph_clicked)  # type: ignore
