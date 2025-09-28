@@ -6,7 +6,7 @@ import os
 import time
 from typing import Any, Dict, Optional
 
-from PyQt6.QtCore import Qt, QSettings
+from PyQt6.QtCore import Qt, QSettings, QTimer
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QAbstractButton,
@@ -40,6 +40,14 @@ from gui.ingestion.selector_watchlist_store import (
 )
 from gui.views.rule_intent_sidebar import RuleIntentSidebar
 from gui.views.selector_watchlist_panel import SelectorWatchlistPanel
+
+from gui.ingestion.onboarding_coach import (
+    OnboardingCoach,
+    OnboardingStep,
+    mark_onboarding_complete,
+    mark_onboarding_skipped,
+    should_run_onboarding,
+)
 
 from .analysis import AnalysisMixin
 from .constants import OTHER_PHASE_ID, PHASE_PATTERNS
@@ -119,11 +127,13 @@ class IngestionLabPanel(
         self._watchlist_panel.set_entries(self._watchlist_store.entries())
         self._last_provenance: Dict[str, tuple[str, str, int]] = {}
         self._last_hash_impact: HashImpactResult | None = None
+        self._onboarding_coach: OnboardingCoach | None = None
         self.refresh_file_list()
         try:
             self._apply_density_and_theme()
         except Exception:
             pass
+        QTimer.singleShot(700, self._maybe_launch_onboarding)
 
     def _build_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -1195,6 +1205,85 @@ class IngestionLabPanel(
                 bus.publish(GUIEvent.RULE_VALIDATION_FAILED, {"error": line})
         except Exception:
             pass
+
+    def _maybe_launch_onboarding(self) -> None:
+        if self._onboarding_coach is not None:
+            return
+        if not self.isVisible():
+            QTimer.singleShot(700, self._maybe_launch_onboarding)
+            return
+        if not should_run_onboarding():
+            return
+        steps = self._build_onboarding_steps()
+        if not steps:
+            return
+        try:
+            coach = OnboardingCoach(self, steps, on_finish=self._on_onboarding_finished)
+        except Exception as exc:
+            self._append_log(f"Onboarding unavailable: {exc}")
+            return
+        self._onboarding_coach = coach
+        self._onboarding_coach.start()
+        self._append_log("Onboarding: started guided walkthrough")
+
+    def _build_onboarding_steps(self) -> list[OnboardingStep]:
+        steps: list[OnboardingStep] = []
+        if getattr(self, "file_tree", None):
+            steps.append(
+                OnboardingStep(
+                    widget=self.file_tree,
+                    title="1. Browse HTML assets",
+                    body=(
+                        "Select ranking tables, rosters, or club pages in the navigator to focus your "
+                        "authoring session. Multi-select to preview batches."
+                    ),
+                )
+            )
+        if getattr(self, "btn_selector_picker", None):
+            steps.append(
+                OnboardingStep(
+                    widget=self.btn_selector_picker,
+                    title="2. Inspect selectors visually",
+                    body=(
+                        "Launch the selector explorer to highlight DOM nodes and copy CSS selectors "
+                        "directly into the rule editor."
+                    ),
+                )
+            )
+        if getattr(self, "btn_expr_playground", None):
+            steps.append(
+                OnboardingStep(
+                    widget=self.btn_expr_playground,
+                    title="3. Prototype transforms safely",
+                    body=(
+                        "Use the expression playground to lint and execute transforms before committing "
+                        "them to your rule set."
+                    ),
+                )
+            )
+        if getattr(self, "preview_area", None):
+            steps.append(
+                OnboardingStep(
+                    widget=self.preview_area,
+                    title="4. Review previews & diffs",
+                    body=(
+                        "Generate previews to inspect extracted rows and compare drafts against prior "
+                        "snapshots using the diff controls above."
+                    ),
+                )
+            )
+        return steps
+
+    def _on_onboarding_finished(self, state: str) -> None:
+        if state == "complete":
+            mark_onboarding_complete()
+            self._append_log("Onboarding: completed walkthrough")
+        else:
+            mark_onboarding_skipped()
+            self._append_log(
+                "Onboarding: skipped (reset 'onboarding_state_v1' in settings to replay)"
+            )
+        self._onboarding_coach = None
 
     def base_dir(self) -> str:
         return self._base_dir
