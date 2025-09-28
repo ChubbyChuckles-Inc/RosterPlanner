@@ -251,6 +251,12 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_dep_graph = QPushButton("Dep Graph")
         self.btn_dep_graph.setObjectName("ingLabBtnDepGraph")
         self.btn_dep_graph.setToolTip("Show dependency graph (base + derived field relationships)")
+        # Bulk Edit (7.10.A8)
+        self.btn_bulk_edit = QPushButton("Bulk Edit")
+        self.btn_bulk_edit.setObjectName("ingLabBtnBulkEdit")
+        self.btn_bulk_edit.setToolTip(
+            "Open multi-select bulk edit dialog to apply transforms or selector refinement across fields"
+        )
         self.btn_benchmark = QPushButton("Benchmark")
         self.btn_benchmark.setObjectName("ingLabBtnBenchmark")
         self.btn_benchmark.setToolTip(
@@ -371,6 +377,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 self.btn_regex_tester,
                 self.btn_prompt_assist,
                 self.btn_visual_builder,
+                self.btn_bulk_edit,
                 self.btn_derived,
                 self.btn_dep_graph,
             ],
@@ -433,13 +440,17 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
 
         self.btn_sandbox_parse = QPushButton("Parse")
         self.btn_sandbox_parse.setObjectName("ingLabBtnSandboxParse")
-        self.btn_sandbox_parse.setToolTip("Parse fragment with current rules (no transforms unless enabled)")
+        self.btn_sandbox_parse.setToolTip(
+            "Parse fragment with current rules (no transforms unless enabled)"
+        )
         self.btn_sandbox_clear = QPushButton("Clear")
         self.btn_sandbox_clear.setObjectName("ingLabBtnSandboxClear")
         self.btn_sandbox_clear.setToolTip("Clear fragment and output")
         self.chk_sandbox_transforms = QCheckBox("Apply transforms")
         self.chk_sandbox_transforms.setObjectName("ingLabChkSandboxTransforms")
-        self.chk_sandbox_transforms.setToolTip("If checked, run transform chains for list field values")
+        self.chk_sandbox_transforms.setToolTip(
+            "If checked, run transform chains for list field values"
+        )
 
         # Layout grid: controls row then two editors stacked vertically
         _sgl.addWidget(self.btn_sandbox_parse, 0, 0, 1, 1)
@@ -814,6 +825,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_security.clicked.connect(self._on_security_scan_clicked)  # type: ignore
         self.btn_overlap.clicked.connect(self._on_overlap_clicked)  # type: ignore
         self.btn_visual_builder.clicked.connect(self._on_visual_builder_clicked)  # type: ignore
+        self.btn_bulk_edit.clicked.connect(self._on_bulk_edit_clicked)  # type: ignore
         self.btn_publish.clicked.connect(self._on_publish_clicked)  # type: ignore
         self.btn_toggle_density.clicked.connect(lambda _v: None)  # placeholder for test hook
         # Sandbox connections (7.10.A7)
@@ -872,6 +884,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 "btn_publish": "upload",
                 "btn_toggle_density": "density",
                 "btn_field_coverage_radar": "radar",
+                "btn_bulk_edit": "edit",
             }
             for attr, name in icon_map.items():
                 btn = getattr(self, attr, None)
@@ -1040,6 +1053,36 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self._append_log(
             f"Sandbox parsed fragment (resources={len(preview.summaries)} total_records={sum(s.record_count for s in preview.summaries)})"
         )
+
+    # ------------------------------------------------------------------
+    # Bulk Edit (7.10.A8)
+    def _on_bulk_edit_clicked(self) -> None:  # pragma: no cover - UI invocation path
+        try:
+            import json as _json
+            from gui.ingestion.bulk_edit_dialog import BulkEditDialog  # type: ignore
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Bulk edit import failed: {e}")
+            return
+        # Parse current rules text (text mode only for now)
+        try:
+            if self._editor_mode == 1:
+                rules = self._extract_visual_builder_json() or {}
+            else:
+                txt = self.rule_editor.toPlainText() or "{}"
+                rules = _json.loads(txt)
+        except Exception as e:
+            self._append_log(f"Bulk edit aborted: rule parse error: {e}")
+            return
+        dlg = BulkEditDialog(rules, self)
+        if dlg.exec():
+            modified = dlg.modified_rules()
+            if modified:
+                try:
+                    pretty = _json.dumps(modified, indent=2, sort_keys=True)
+                except Exception:
+                    pretty = _json.dumps(modified)
+                self.rule_editor.setPlainText(pretty)
+                self._append_log("Bulk edit applied to selected fields")
 
     def _reflow_toolbar(self):  # heuristic reflow
         if not hasattr(self, "_toolbar_row2"):
