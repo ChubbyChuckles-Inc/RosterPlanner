@@ -373,7 +373,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.A7 Live Parsing Sandbox Cell: ephemeral inline test input (paste raw HTML fragment) to prototype a single rule resource without mutating main rule set.
  [x] 7.10.A8 Multi-Select Bulk Edit Mode: apply a transform (e.g., trim) or selector refinement to several fields simultaneously via batch action bar.
 [x] 7.10.A9 Rule Intent Comments Sidebar: structured metadata (purpose, assumptions, TODO) stored separately from executable schema to keep YAML lean.
- [ ] 7.10.A10 Auto-Generated Example Data Rows: synthetic row sampler shows how transforms normalize varied raw inputs (outlier emphasis styling).
+[x] 7.10.A10 Auto-Generated Example Data Rows: synthetic row sampler shows how transforms normalize varied raw inputs (outlier emphasis styling).
  [ ] 7.10.A11 Selector Drift Watchlist: user pins critical selectors to monitor; panel shows last success count vs current diff (alerts when zero or >X% drop).
  [ ] 7.10.A12 One-Click Refactor: convert repeated transform chains into a named macro (re-usable across fields) with macro registry + usage count.
  [ ] 7.10.A13 Field Dependency Trace: select a derived field to visualize upstream sources & transforms as a linear annotated chain.
