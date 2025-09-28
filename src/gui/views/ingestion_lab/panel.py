@@ -43,6 +43,7 @@ from gui.views.selector_watchlist_panel import SelectorWatchlistPanel
 
 from .analysis import AnalysisMixin
 from .constants import OTHER_PHASE_ID, PHASE_PATTERNS
+from .complexity import ComplexityMeterMixin
 from .drafts import DraftingMixin
 from .file_discovery import FileDiscoveryMixin
 from .filters import FilteringMixin
@@ -81,6 +82,7 @@ class IngestionLabPanel(
     AnalysisMixin,
     SimulationMixin,
     ToolDialogsMixin,
+    ComplexityMeterMixin,
     DraftingMixin,
     SandboxMixin,
     FilteringMixin,
@@ -437,6 +439,7 @@ class IngestionLabPanel(
         actions.addWidget(core_panel)
         actions.addWidget(authoring_panel)
         actions.addWidget(analysis_panel)
+        self._install_complexity_meter(actions)
 
         self.btn_advanced_menu = QToolButton()
         self.btn_advanced_menu.setText("Advanced")
@@ -857,6 +860,7 @@ class IngestionLabPanel(
         except Exception:
             self._draft_timer = None  # type: ignore
         self.rule_editor.textChanged.connect(self._on_rule_text_changed)  # type: ignore
+        self._force_complexity_refresh()
         self._load_existing_draft()
         self._refresh_intent_resources()
         self.batch_preview_skeleton_min_files = int(

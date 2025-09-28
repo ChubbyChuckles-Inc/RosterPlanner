@@ -40,6 +40,20 @@ import json
 import zlib
 import base64
 
+from gui.ingestion.rule_complexity_meter import (
+    RuleComplexityError,
+    compute_rule_complexity,
+)
+
+_COMPLEXITY_BADGE_BASE = "padding:3px 10px; border-radius:10px; font-weight:600;"
+_COMPLEXITY_BADGE_STYLES = {
+    "low": "background-color: rgba(67, 160, 71, 0.85); color: #f7fff7;",
+    "moderate": "background-color: rgba(255, 179, 0, 0.85); color: #211600;",
+    "high": "background-color: rgba(229, 57, 53, 0.88); color: #fff;",
+    "warning": "background-color: rgba(255, 112, 67, 0.75); color: #1f120d;",
+    "neutral": "background-color: rgba(128, 128, 128, 0.3); color: #f0f0f0;",
+}
+
 # ---------------------------------------------------------------------------
 # Model Layer
 
@@ -543,6 +557,8 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self._live_preview_enabled = False
         self._headless = False
         self._last_error: Optional[str] = None
+        self._last_complexity_report = None
+        self._last_compiled: Optional[Dict[str, Any]] = None
         # Guard: if no QApplication instance, skip heavy UI (headless import in tests)
         try:
             from PyQt6.QtWidgets import QApplication  # type: ignore
@@ -610,6 +626,17 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         toolbar.addWidget(self.chk_live)
         toolbar.addWidget(self.btn_compile)
         toolbar.addStretch(1)
+        self._complexity_badge = QLabel("Complexity: —")
+        self._complexity_badge.setObjectName("visualRuleBuilderComplexityBadge")
+        self._complexity_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._complexity_badge.setMinimumWidth(150)
+        self._complexity_badge.setStyleSheet(
+            _COMPLEXITY_BADGE_BASE + _COMPLEXITY_BADGE_STYLES["neutral"]
+        )
+        self._complexity_badge.setToolTip(
+            "Heuristic complexity score derived from selector depth, transform chains, and inheritance depth."
+        )
+        toolbar.addWidget(self._complexity_badge)
         layout.addLayout(toolbar)
 
         # Node + palette splitter
@@ -779,6 +806,60 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
 
     # Palette state now restored via _restore_ui_state after build
 
+    # Complexity meter --------------------------------------------------
+    def _set_complexity_badge(self, level: str, text: str, tooltip: str) -> None:
+        if not hasattr(self, "_complexity_badge"):
+            return
+        style = _COMPLEXITY_BADGE_STYLES.get(level, _COMPLEXITY_BADGE_STYLES["neutral"])
+        self._complexity_badge.setStyleSheet(_COMPLEXITY_BADGE_BASE + style)
+        self._complexity_badge.setText(text)
+        self._complexity_badge.setToolTip(tooltip)
+        try:
+            self._complexity_badge.setProperty("complexityLevel", level)
+            self._complexity_badge.style().unpolish(self._complexity_badge)
+            self._complexity_badge.style().polish(self._complexity_badge)
+        except Exception:  # pragma: no cover - style engine best effort
+            pass
+
+    def _update_complexity_badge(self, mapping: Optional[Dict[str, Any]] | None = None) -> None:
+        if getattr(self, "_headless", False) or not hasattr(self, "_complexity_badge"):
+            return
+        if mapping is None:
+            try:
+                mapping = self.model.to_rule_set_mapping()
+            except Exception as exc:  # pragma: no cover - defensive
+                self._last_complexity_report = None
+                self._set_complexity_badge(
+                    "warning",
+                    "Complexity: n/a",
+                    f"Cannot compile mapping: {exc}",
+                )
+                return
+        try:
+            report = compute_rule_complexity(mapping)
+        except RuleComplexityError as exc:
+            self._last_complexity_report = None
+            self._set_complexity_badge(
+                "warning",
+                "Complexity: n/a",
+                f"Complexity unavailable: {exc}",
+            )
+            return
+        self._last_complexity_report = report
+        tooltip_lines = [
+            f"Overall score: {report.overall_score:.1f}",
+            f"Peak field score: {report.max_score}",
+            f"Avg selector depth: {report.selector_avg:.1f}",
+            f"Avg transform count: {report.transform_avg:.1f}",
+            f"Avg inheritance depth: {report.inheritance_avg:.1f}",
+            f"Fields analyzed: {report.field_count}",
+            "",
+            report.guidance,
+        ]
+        text_summary = f"Complexity: {report.grade} ({report.overall_score:.1f})"
+        badge = report.badge or "neutral"
+        self._set_complexity_badge(badge, text_summary, "\n".join(tooltip_lines))
+
     # Actions -------------------------------------------------------------
     def _on_add_selector(self) -> None:
         idx = len([n for n in self.model.nodes if isinstance(n, SelectorNode)]) + 1
@@ -820,6 +901,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.status_label.setText(f"Compiled {len(mapping.get('resources', {}))} resource(s)")
         self._last_compiled = mapping  # stored for tests
         self.compiledMappingChanged.emit(mapping)
+        self._update_complexity_badge(mapping)
 
     def _on_live_preview_toggled(self) -> None:
         self._live_preview_enabled = bool(self.chk_live.isChecked())
@@ -1051,6 +1133,7 @@ Ctrl+/ — Show this cheat sheet<br>
         # Restore last selected node if any persisted and nothing selected
         if self.list_widget.currentRow() < 0:
             self._restore_last_selected_node()
+        self._update_complexity_badge()
 
     # Session persistence (model + history) -----------------------------
     def _persist_session_state(self) -> None:  # pragma: no cover - simple
