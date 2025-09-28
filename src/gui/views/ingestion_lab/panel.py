@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from PyQt6.QtCore import Qt, QSettings
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
+    QAbstractButton,
     QAbstractItemView,
     QCheckBox,
     QGroupBox,
@@ -129,6 +130,9 @@ class IngestionLabPanel(
         actions.setContentsMargins(4, 4, 4, 4)
         actions.setSpacing(4)
         self._actions_layout = actions
+        self._button_text_cache: dict[QAbstractButton, str] = {}
+        self._icon_buttons: list[QAbstractButton] = []
+        self._toolbutton_style_cache: dict[QToolButton, Qt.ToolButtonStyle] = {}
 
         self._toolbar_row2 = QHBoxLayout()
         self._toolbar_row2.setContentsMargins(4, 0, 4, 4)
@@ -561,34 +565,17 @@ class IngestionLabPanel(
         self.btn_toggle_density.setToolTip("Toggle compact density for action bar buttons")
         actions.insertWidget(0, self.btn_toggle_density)
 
-        def _apply_density() -> None:
-            compact = self.btn_toggle_density.isChecked()
-            pad = 2 if compact else 4
-            font_size = 11 if compact else 12
-            try:
-                self._action_density_css_dynamic = f"QPushButton, QToolButton {{ padding:{pad}px {pad+2}px; font-size:{font_size}px; }}"
-                self.setStyleSheet(
-                    self._base_inglab_stylesheet + "\n" + self._action_density_css_dynamic
-                )
-                s = QSettings("RosterPlanner", "IngestionLab")
-                s.setValue("compact_density", bool(compact))
-            except Exception:
-                pass
+        def _handle_density_toggle(state: bool) -> None:
+            self._on_density_toggled(state)
 
-        self.btn_toggle_density.toggled.connect(lambda _c: _apply_density())  # type: ignore
+        self.btn_toggle_density.toggled.connect(_handle_density_toggle)  # type: ignore
         try:
             s = QSettings("RosterPlanner", "IngestionLab")
             dens = s.value("compact_density", False, type=bool)
             self.btn_toggle_density.setChecked(bool(dens))
         except Exception:
             pass
-        self._icon_only_targets = [
-            self.btn_field_coverage,
-            self.btn_field_coverage_radar,
-            self.btn_quality_gates,
-            self.btn_orphan_fields,
-        ]
-        _apply_density()
+        self._on_density_toggled(self.btn_toggle_density.isChecked(), persist=False)
 
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
         root.addWidget(splitter, 1)
@@ -817,11 +804,40 @@ class IngestionLabPanel(
             for attr, name in icon_map.items():
                 btn = getattr(self, attr, None)
                 if btn:
+                    if isinstance(btn, QAbstractButton) and btn not in self._button_text_cache:
+                        self._button_text_cache[btn] = btn.text()
+                    if isinstance(btn, QToolButton) and btn not in self._toolbutton_style_cache:
+                        try:
+                            self._toolbutton_style_cache[btn] = btn.toolButtonStyle()
+                        except Exception:
+                            pass
                     ic = get_icon(name, size=16)
                     if ic:
                         btn.setIcon(ic)
+                        if isinstance(btn, QAbstractButton) and btn not in self._icon_buttons:
+                            self._icon_buttons.append(btn)
         except Exception:
             pass
+
+        for btn in self.findChildren(QAbstractButton):
+            if btn not in self._button_text_cache:
+                try:
+                    self._button_text_cache[btn] = btn.text()
+                except Exception:
+                    continue
+            if isinstance(btn, QToolButton) and btn not in self._toolbutton_style_cache:
+                try:
+                    self._toolbutton_style_cache[btn] = btn.toolButtonStyle()
+                except Exception:
+                    pass
+            try:
+                ic = btn.icon()
+                if ic and not ic.isNull() and btn not in self._icon_buttons:
+                    self._icon_buttons.append(btn)
+            except Exception:
+                continue
+
+        self._update_compact_icon_labels()
 
         self._last_apply_summary = {}
         self._last_version_num = None
@@ -1187,6 +1203,42 @@ class IngestionLabPanel(
         except Exception:
             pass
 
+    def _on_density_toggled(self, checked: bool, persist: bool = True) -> None:
+        try:
+            if persist:
+                s = QSettings("RosterPlanner", "IngestionLab")
+                s.setValue("compact_density", bool(checked))
+        except Exception:
+            pass
+        self._update_compact_icon_labels()
+        self._apply_density_and_theme()
+
+    def _update_compact_icon_labels(self) -> None:
+        compact = bool(
+            getattr(self, "btn_toggle_density", None) and self.btn_toggle_density.isChecked()
+        )
+        icon_buttons = getattr(self, "_icon_buttons", [])
+        text_map = getattr(self, "_button_text_cache", {})
+        style_map = getattr(self, "_toolbutton_style_cache", {})
+        for btn, original in text_map.items():
+            has_icon = btn in icon_buttons
+            try:
+                if compact and has_icon:
+                    if btn.text():
+                        btn.setText("")
+                    if not btn.toolTip():
+                        btn.setToolTip(original)
+                    if isinstance(btn, QToolButton):
+                        btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+                else:
+                    if btn.text() != original:
+                        btn.setText(original)
+                    if isinstance(btn, QToolButton):
+                        restore = style_map.get(btn, Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+                        btn.setToolButtonStyle(restore)
+            except Exception:
+                continue
+
     def _apply_density_and_theme(self) -> None:
         try:
             from gui.services.service_locator import services as _svc
@@ -1246,6 +1298,14 @@ class IngestionLabPanel(
                 "#ingestionLabPanel QTreeWidget, #ingestionLabPanel QTextEdit, #ingestionLabPanel QPlainTextEdit {"
                 " border-color: #666; }"
             )
+        compact = bool(
+            getattr(self, "btn_toggle_density", None) and self.btn_toggle_density.isChecked()
+        )
+        pad = 2 if compact else 4
+        font_size = 11 if compact else 12
+        parts.append(
+            f"#ingLabToolbarContainer QPushButton, #ingLabToolbarContainer QToolButton {{ padding:{pad}px {pad+2}px; font-size:{font_size}px; }}"
+        )
         if parts:
             if theme and fg and bg:
                 try:
