@@ -68,3 +68,5 @@ List all new files with their full code. For each file: Start with python filena
 
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_gui.ps1
 
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_gui.ps1 -IgnoreLock -VerboseStartup
+

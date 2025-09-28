@@ -78,6 +78,35 @@ class ToolDialogsMixin:
         dlg = RegexTesterDialog(sample_text=sample, parent=self)
         dlg.exec()
 
+    def _on_inline_yaml_editor_clicked(self) -> None:
+        rules_text = self.rule_editor.toPlainText()
+        if not rules_text.strip():
+            self._append_log("Inline YAML: rule editor is empty")
+            return
+        try:
+            from gui.ingestion.inline_yaml_editor import InlineYamlFragmentDialog
+            from gui.ingestion.rule_yaml_fragment import FragmentError
+        except Exception as e:  # pragma: no cover
+            self._append_log(f"Inline YAML import failed: {e}")
+            return
+        try:
+            dlg = InlineYamlFragmentDialog(rules_text, self)
+        except FragmentError as exc:
+            self._append_log(f"Inline YAML: {exc}")
+            return
+        if dlg.exec() != dlg.DialogCode.Accepted:  # type: ignore[attr-defined]
+            self._append_log("Inline YAML: cancelled")
+            return
+        new_text = dlg.updated_rules_text()
+        if not new_text:
+            self._append_log("Inline YAML: no changes")
+            return
+        if new_text == rules_text:
+            self._append_log("Inline YAML: no changes applied")
+            return
+        self.rule_editor.setPlainText(new_text)
+        self._append_log("Inline YAML: fragment merged into rules editor")
+
     def _on_derived_fields_clicked(self) -> None:
         try:
             from gui.ingestion.derived_field_composer import (
