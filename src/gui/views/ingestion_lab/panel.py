@@ -148,54 +148,111 @@ class IngestionLabPanel(
         self.btn_preview.setEnabled(False)
         self.btn_example_rows = QPushButton("Example Rows")
         self.btn_example_rows.setObjectName("ingLabBtnExampleRows")
+        self.btn_example_rows.setToolTip(
+            "Generate synthetic example rows that illustrate transform outcomes."
+        )
         self.btn_watchlist = QPushButton("Watchlist")
         self.btn_watchlist.setObjectName("ingLabBtnWatchlist")
+        self.btn_watchlist.setToolTip(
+            "Run the selector drift watchlist and open the monitoring panel."
+        )
         self.btn_hash_impact = QPushButton("Hash Impact")
         self.btn_hash_impact.setObjectName("ingLabBtnHashImpact")
+        self.btn_hash_impact.setToolTip("Compute which files would trigger ingest (hash changes)")
         self.btn_field_coverage = QPushButton("Field Coverage")
         self.btn_field_coverage.setObjectName("ingLabBtnFieldCoverage")
+        self.btn_field_coverage.setToolTip(
+            "Compute per-field non-empty ratios across all visible files using current rules"
+        )
         self.btn_field_coverage_radar = QPushButton("Coverage Radar")
         self.btn_field_coverage_radar.setObjectName("ingLabBtnFieldCoverageRadar")
+        self.btn_field_coverage_radar.setToolTip(
+            "Show radar chart of semantic field category coverage (identity/performance/schedule/meta)"
+        )
         self.btn_orphan_fields = QPushButton("Orphan Fields")
         self.btn_orphan_fields.setObjectName("ingLabBtnOrphanFields")
+        self.btn_orphan_fields.setToolTip("List extracted fields lacking mapping entries")
         self.btn_quality_gates = QPushButton("Quality Gates")
         self.btn_quality_gates.setObjectName("ingLabBtnQualityGates")
+        self.btn_quality_gates.setToolTip(
+            "Evaluate minimum non-null ratios (quality gate config under 'quality_gates' in rules JSON)"
+        )
         self.btn_overlap = QPushButton("Conflicts")
         self.btn_overlap.setObjectName("ingLabBtnOverlap")
+        self.btn_overlap.setToolTip(
+            "Detect overlapping selectors among resources (potential redundancy/conflicts)."
+        )
         self.btn_simulate = QPushButton("Simulate")
         self.btn_simulate.setObjectName("ingLabBtnSimulate")
+        self.btn_simulate.setToolTip(
+            "Run safe simulation (adapter + coverage + gates) — no DB writes"
+        )
         self.btn_apply = QPushButton("Apply")
         self.btn_apply.setObjectName("ingLabBtnApply")
+        self.btn_apply.setToolTip("Apply last successful simulation (audit only in this milestone)")
         self.btn_versions = QPushButton("Versions")
         self.btn_versions.setObjectName("ingLabBtnVersions")
+        self.btn_versions.setToolTip("List stored rule set versions in log")
         self.btn_rollback = QPushButton("Rollback")
         self.btn_rollback.setObjectName("ingLabBtnRollback")
+        self.btn_rollback.setToolTip("Load previous rule version into editor (not yet applied)")
         self.btn_export = QPushButton("Export")
         self.btn_export.setObjectName("ingLabBtnExport")
+        self.btn_export.setToolTip("Export current rules to a JSON file")
         self.btn_import = QPushButton("Import")
         self.btn_import.setObjectName("ingLabBtnImport")
+        self.btn_import.setToolTip("Import rules from a JSON file (replaces editor contents)")
         self.btn_selector_picker = QPushButton("Pick Selector")
         self.btn_selector_picker.setObjectName("ingLabBtnSelectorPicker")
+        self.btn_selector_picker.setToolTip(
+            "Open visual picker to build CSS selector from sample HTML"
+        )
         self.btn_regex_tester = QPushButton("Regex Tester")
         self.btn_regex_tester.setObjectName("ingLabBtnRegexTester")
+        self.btn_regex_tester.setToolTip("Open regex tester dialog for pattern experimentation")
         self.btn_derived = QPushButton("Derived Fields")
         self.btn_derived.setObjectName("ingLabBtnDerived")
+        self.btn_derived.setToolTip(
+            "Compose derived fields (expressions referencing existing extracted fields)"
+        )
         self.btn_dep_graph = QPushButton("Dep Graph")
         self.btn_dep_graph.setObjectName("ingLabBtnDepGraph")
+        self.btn_dep_graph.setToolTip("Show dependency graph (base + derived field relationships)")
         self.btn_bulk_edit = QPushButton("Bulk Edit")
         self.btn_bulk_edit.setObjectName("ingLabBtnBulkEdit")
+        self.btn_bulk_edit.setToolTip(
+            "Open multi-select bulk edit dialog to apply transforms or selector refinement across fields"
+        )
         self.btn_benchmark = QPushButton("Benchmark")
         self.btn_benchmark.setObjectName("ingLabBtnBenchmark")
+        self.btn_benchmark.setToolTip(
+            "Run A/B parse benchmark comparing two rule variants over a sample of visible files"
+        )
         self.btn_cache = QPushButton("Cache Inspect")
         self.btn_cache.setObjectName("ingLabBtnCache")
+        self.btn_cache.setToolTip(
+            "Show which files are unchanged (cache hit) vs updated/new/missing based on provenance"
+        )
         self.btn_security = QPushButton("Security Scan")
         self.btn_security.setObjectName("ingLabBtnSecurity")
+        self.btn_security.setToolTip(
+            "Run static security sandbox scan over expression & derived transforms"
+        )
         self.btn_visual_builder = QPushButton("Visual Builder")
         self.btn_visual_builder.setObjectName("ingLabBtnVisualBuilder")
+        self.btn_visual_builder.setToolTip(
+            "Open visual rule builder canvas (drag/drop authoring scaffold)"
+        )
         self.btn_prompt_assist = QPushButton("Prompt Assist")
         self.btn_prompt_assist.setObjectName("ingLabBtnPromptAssist")
+        self.btn_prompt_assist.setToolTip(
+            "Generate draft rules from a natural language description (heuristic)."
+        )
         self.btn_publish = QPushButton("Publish")
         self.btn_publish.setObjectName("ingLabBtnPublish")
+        self.btn_publish.setToolTip(
+            "Persist current draft rule set as the active published version (creates new version entry if changed)."
+        )
         try:
             self.btn_prompt_assist.clicked.connect(self._on_prompt_assist)  # type: ignore
         except Exception:
@@ -227,12 +284,15 @@ class IngestionLabPanel(
         self.min_size = QSpinBox()
         self.min_size.setPrefix(">= ")
         self.min_size.setMaximum(10_000)
+        self.min_size.setToolTip("Minimum size (KB)")
         self.max_size = QSpinBox()
         self.max_size.setPrefix("<= ")
         self.max_size.setMaximum(10_000)
+        self.max_size.setToolTip("Maximum size (KB; 0 = no limit)")
         self.modified_within_hours = QSpinBox()
         self.modified_within_hours.setPrefix("< ")
         self.modified_within_hours.setMaximum(720)
+        self.modified_within_hours.setToolTip("Show files modified within last N hours (0 = any)")
 
         def _make_cat_panel(title: str, buttons: list[QWidget]) -> QWidget:
             wrapper = QWidget()
@@ -330,10 +390,17 @@ class IngestionLabPanel(
 
         self.btn_sandbox_parse = QPushButton("Parse")
         self.btn_sandbox_parse.setObjectName("ingLabBtnSandboxParse")
+        self.btn_sandbox_parse.setToolTip(
+            "Parse fragment with current rules (no transforms unless enabled)"
+        )
         self.btn_sandbox_clear = QPushButton("Clear")
         self.btn_sandbox_clear.setObjectName("ingLabBtnSandboxClear")
+        self.btn_sandbox_clear.setToolTip("Clear fragment and output")
         self.chk_sandbox_transforms = QCheckBox("Apply transforms")
         self.chk_sandbox_transforms.setObjectName("ingLabChkSandboxTransforms")
+        self.chk_sandbox_transforms.setToolTip(
+            "If checked, run transform chains for list field values"
+        )
 
         sandbox_layout.addWidget(self.btn_sandbox_parse, 0, 0, 1, 1)
         sandbox_layout.addWidget(self.btn_sandbox_clear, 0, 1, 1, 1)
@@ -455,6 +522,9 @@ class IngestionLabPanel(
         self.btn_toggle_filters.setCheckable(True)
         self.btn_toggle_filters.setChecked(True)
         self.btn_toggle_filters.setObjectName("ingLabBtnToggleFilters")
+        self.btn_toggle_filters.setToolTip(
+            "Show / hide filter inputs (search, phase, size, modified)"
+        )
         actions.addWidget(self.btn_toggle_filters)
         actions.addWidget(self._filters_widget)
         actions.addStretch(2)
@@ -468,14 +538,14 @@ class IngestionLabPanel(
             except Exception:
                 pass
 
-            self.btn_toggle_filters.toggled.connect(_toggle_filters)  # type: ignore
-            try:
-                s = QSettings("RosterPlanner", "IngestionLab")
-                val = s.value("filters_visible", True, type=bool)
-                self.btn_toggle_filters.setChecked(bool(val))
-                _toggle_filters()
-            except Exception:
-                pass
+        self.btn_toggle_filters.toggled.connect(_toggle_filters)  # type: ignore
+        try:
+            s = QSettings("RosterPlanner", "IngestionLab")
+            val = s.value("filters_visible", True, type=bool)
+            self.btn_toggle_filters.setChecked(bool(val))
+            _toggle_filters()
+        except Exception:
+            pass
 
         scroll_bar = QScrollArea()
         scroll_bar.setWidgetResizable(True)
@@ -881,6 +951,38 @@ class IngestionLabPanel(
             self._editor_mode = 0
             self.btn_visual_builder.setText("Visual Builder")
 
+    def _on_bulk_edit_clicked(self) -> None:  # pragma: no cover - UI invocation path
+        try:
+            import json as _json
+            from gui.ingestion.bulk_edit_dialog import BulkEditDialog  # type: ignore
+        except Exception as exc:  # pragma: no cover - optional dependency missing
+            self._append_log(f"Bulk edit import failed: {exc}")
+            return
+
+        try:
+            if getattr(self, "_editor_mode", 0) == 1:
+                rules_payload = self._extract_visual_builder_json() or {}
+            else:
+                txt = self.rule_editor.toPlainText() or "{}"
+                rules_payload = _json.loads(txt)
+        except Exception as exc:
+            self._append_log(f"Bulk edit aborted: rule parse error: {exc}")
+            return
+
+        dlg = BulkEditDialog(rules_payload, self)
+        if not dlg.exec():
+            return
+        modified = dlg.modified_rules()
+        if not modified:
+            return
+        try:
+            pretty = _json.dumps(modified, indent=2, sort_keys=True)
+        except Exception:
+            pretty = _json.dumps(modified)
+        self.rule_editor.setPlainText(pretty)
+        self._refresh_intent_resources()
+        self._append_log("Bulk edit applied to selected fields")
+
     def _inject_visual_builder_snippet(self, mapping: dict | None, force: bool = False) -> None:
         if not mapping:
             return
@@ -888,7 +990,8 @@ class IngestionLabPanel(
             import json as _json
 
             resources = mapping.get("resources", {})
-            snippet = _json.dumps(resources, indent=2, ensure_ascii=False)
+            payload = _json.dumps(resources, indent=2, ensure_ascii=False)
+            snippet = "# Visual Builder Draft Resources\n" + payload
         except Exception:
             return
         full = self.rule_editor.toPlainText()
@@ -904,6 +1007,34 @@ class IngestionLabPanel(
                 return
             new_text = full.rstrip() + f"\n\n{begin}\n{snippet}\n{end}\n"
         self.rule_editor.setPlainText(new_text)
+
+    def _extract_visual_builder_json(self) -> dict | None:
+        begin, end = self._vb_marker_begin, self._vb_marker_end
+        text = self.rule_editor.toPlainText()
+        if begin not in text or end not in text:
+            return None
+        try:
+            _, rest = text.split(begin, 1)
+            block, _ = rest.split(end, 1)
+        except ValueError:
+            return None
+        snippet = block.strip()
+        if not snippet:
+            return None
+        try:
+            import json as _json
+
+            cleaned = "\n".join(
+                line for line in snippet.splitlines() if not line.strip().startswith("#")
+            ).strip()
+            if not cleaned:
+                return None
+            resources = _json.loads(cleaned)
+        except Exception:
+            return None
+        if not isinstance(resources, dict):
+            return None
+        return {"resources": resources}
 
     def _on_visual_builder_live(self, mapping: dict) -> None:  # pragma: no cover
         self._inject_visual_builder_snippet(mapping, force=False)
@@ -1033,6 +1164,9 @@ class IngestionLabPanel(
                 bus.publish(GUIEvent.RULE_VALIDATION_FAILED, {"error": line})
         except Exception:
             pass
+
+    def base_dir(self) -> str:
+        return self._base_dir
 
     def _now(self) -> float:
         return time.perf_counter()

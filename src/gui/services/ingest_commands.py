@@ -113,6 +113,9 @@ register_ingest_commands()
 # Ensure Ingestion Lab related commands are also registered on general
 # ingestion command import (Milestone 7.10.66 visibility fix)
 try:  # pragma: no cover - import side-effect
-    from . import ingestion_lab_commands  # noqa: F401
+    from . import ingestion_lab_commands as _ing_lab_cmds
+
+    if hasattr(_ing_lab_cmds, "register_ingestion_lab_commands"):
+        _ing_lab_cmds.register_ingestion_lab_commands()
 except Exception:
     pass
