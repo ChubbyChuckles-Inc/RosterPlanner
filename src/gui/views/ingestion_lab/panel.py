@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
     QCheckBox,
-    QGroupBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -352,15 +351,6 @@ class IngestionLabPanel(
             ],
         )
 
-        self.sandbox_group = QGroupBox("Sandbox")
-        self.sandbox_group.setCheckable(True)
-        self.sandbox_group.setChecked(False)
-        self.sandbox_group.setObjectName("ingLabSandboxGroup")
-        sandbox_layout = QGridLayout(self.sandbox_group)
-        sandbox_layout.setContentsMargins(6, 4, 6, 6)
-        sandbox_layout.setHorizontalSpacing(4)
-        sandbox_layout.setVerticalSpacing(4)
-
         self.sandbox_input = QPlainTextEdit()
         self.sandbox_input.setObjectName("ingestionLabSandboxFragment")
         self.sandbox_input.setPlaceholderText(
@@ -405,13 +395,30 @@ class IngestionLabPanel(
         self.chk_sandbox_transforms.setToolTip(
             "If checked, run transform chains for list field values"
         )
+        self._sandbox_tab = QWidget()
+        self._sandbox_tab.setObjectName("ingLabSandboxTab")
+        sandbox_layout = QVBoxLayout(self._sandbox_tab)
+        sandbox_layout.setContentsMargins(8, 6, 8, 8)
+        sandbox_layout.setSpacing(6)
 
-        sandbox_layout.addWidget(self.btn_sandbox_parse, 0, 0, 1, 1)
-        sandbox_layout.addWidget(self.btn_sandbox_clear, 0, 1, 1, 1)
-        sandbox_layout.addWidget(self.chk_sandbox_transforms, 0, 2, 1, 1)
-        sandbox_layout.addWidget(self.sandbox_input, 1, 0, 1, 3)
-        sandbox_layout.addWidget(self.sandbox_output, 2, 0, 1, 3)
-        sandbox_layout.setColumnStretch(2, 1)
+        sandbox_actions = QHBoxLayout()
+        sandbox_actions.setContentsMargins(0, 0, 0, 0)
+        sandbox_actions.setSpacing(6)
+        sandbox_actions.addWidget(self.btn_sandbox_parse)
+        sandbox_actions.addWidget(self.btn_sandbox_clear)
+        sandbox_actions.addWidget(self.chk_sandbox_transforms)
+        sandbox_actions.addStretch(1)
+        sandbox_layout.addLayout(sandbox_actions)
+
+        self._sandbox_split = QSplitter(Qt.Orientation.Vertical, self._sandbox_tab)
+        self._sandbox_split.setChildrenCollapsible(False)
+        self.sandbox_input.setParent(self._sandbox_split)
+        self.sandbox_output.setParent(self._sandbox_split)
+        self._sandbox_split.addWidget(self.sandbox_input)
+        self._sandbox_split.addWidget(self.sandbox_output)
+        self._sandbox_split.setStretchFactor(0, 3)
+        self._sandbox_split.setStretchFactor(1, 2)
+        sandbox_layout.addWidget(self._sandbox_split)
 
         self._advanced_buttons = [
             self.btn_hash_impact,
@@ -423,61 +430,27 @@ class IngestionLabPanel(
             self.btn_cache,
             self.btn_security,
         ]
-
-        import os as _os_env
-
-        if _os_env.environ.get("RP_TEST_MODE"):
-            advanced_panel = _make_cat_panel("Advanced", self._advanced_buttons)
-        else:
-            advanced_panel = _make_cat_panel("Advanced", [])
+        for _btn in self._advanced_buttons:
+            _btn.setParent(self)
+            _btn.setVisible(False)
 
         actions.addWidget(core_panel)
         actions.addWidget(authoring_panel)
         actions.addWidget(analysis_panel)
-        actions.addWidget(advanced_panel)
-        actions.addWidget(self.sandbox_group)
+
+        self.btn_advanced_menu = QToolButton()
+        self.btn_advanced_menu.setText("Advanced")
+        self.btn_advanced_menu.setObjectName("ingLabBtnAdvancedMenu")
+        self.btn_advanced_menu.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.btn_advanced_menu.setToolTip("Advanced utilities and export actions")
+        self._advanced_menu = QMenu(self.btn_advanced_menu)
+        for button in self._advanced_buttons:
+            act = self._advanced_menu.addAction(button.text())
+            act.triggered.connect(button.click)  # type: ignore
+        self.btn_advanced_menu.setMenu(self._advanced_menu)
+        actions.addWidget(self.btn_advanced_menu)
 
         self._analysis_panel = analysis_panel
-
-        if _os_env.environ.get("RP_TEST_MODE"):
-            self.btn_toggle_advanced = QToolButton()
-            self.btn_toggle_advanced.setText("Hide")
-            self.btn_toggle_advanced.setCheckable(True)
-            self.btn_toggle_advanced.setChecked(True)
-            self.btn_toggle_advanced.setObjectName("ingLabBtnToggleAdvanced")
-            actions.addWidget(self.btn_toggle_advanced)
-
-            def _toggle_adv():
-                vis = self.btn_toggle_advanced.isChecked()
-                self.btn_toggle_advanced.setText("Hide" if vis else "Show")
-                for b in self._advanced_buttons:
-                    b.setVisible(vis)
-                try:
-                    s = QSettings("RosterPlanner", "IngestionLab")
-                    s.setValue("advanced_visible", bool(vis))
-                except Exception:
-                    pass
-
-            self.btn_toggle_advanced.toggled.connect(_toggle_adv)  # type: ignore
-            try:
-                s = QSettings("RosterPlanner", "IngestionLab")
-                adv_vis = s.value("advanced_visible", True, type=bool)
-                self.btn_toggle_advanced.setChecked(bool(adv_vis))
-                _toggle_adv()
-            except Exception:
-                pass
-        else:
-            self.btn_overflow = QToolButton()
-            self.btn_overflow.setText("⋮")
-            self.btn_overflow.setObjectName("ingLabBtnOverflow")
-            self.btn_overflow.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-            self.btn_overflow.setToolTip("Additional advanced actions")
-            self._overflow_menu = QMenu(self)
-            for button in self._advanced_buttons:
-                act = self._overflow_menu.addAction(button.text())
-                act.triggered.connect(button.click)  # type: ignore
-            self.btn_overflow.setMenu(self._overflow_menu)
-            actions.addWidget(self.btn_overflow)
 
         try:
             import os as _os_temp
@@ -494,7 +467,7 @@ class IngestionLabPanel(
                     QPushButton, QToolButton {\n  padding: 4px 6px;\n  border: 1px solid rgba(255,255,255,0.07);\n  background: rgba(255,255,255,0.04);\n  border-radius: 4px;\n}\n
                     QPushButton:hover, QToolButton:hover {\n  background: rgba(120,180,255,0.18);\n  border-color: rgba(140,200,255,0.35);\n}\n
                     QPushButton:pressed, QToolButton:pressed {\n  background: rgba(120,180,255,0.30);\n}\n
-                    QToolButton#ingLabBtnToggleAdvanced {\n  font-weight: bold;\n}\n                    """
+                    QToolButton#ingLabBtnAdvancedMenu {\n  font-weight: bold;\n}\n                    """
                 )
         except Exception:
             pass
@@ -649,6 +622,7 @@ class IngestionLabPanel(
         self._side_tabs.setObjectName("ingestionLabSideTabs")
         self._side_tabs.addTab(self._intent_sidebar, "Intent")
         self._side_tabs.addTab(self._watchlist_panel, "Watchlist")
+        self._side_tabs.addTab(self._sandbox_tab, "Sandbox")
         self._editor_split = QSplitter(Qt.Orientation.Horizontal, self)
         self._editor_split.addWidget(self._editor_stack_container)
         self._editor_split.addWidget(self._side_tabs)
