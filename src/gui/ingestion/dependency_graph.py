@@ -21,7 +21,7 @@ The dialog intentionally avoids external graph libs to keep dependencies minimal
 
 from __future__ import annotations
 
-from typing import Dict, Set, Tuple, List
+from typing import Dict, Set, Tuple, List, Mapping
 import json
 import ast
 
@@ -31,12 +31,25 @@ except Exception:  # pragma: no cover
     ChromeDialog = object  # type: ignore[misc]
 
 from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QTabWidget,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QHBoxLayout,
     QListWidget,
     QListWidgetItem,
     QPushButton,
     QLabel,
+    QWidget,
+)
+
+from .field_dependency_trace import (
+    FieldTraceStep,
+    TraceBuildError,
+    build_field_trace,
+    list_derived_fields,
 )
 
 __all__ = [
@@ -178,18 +191,20 @@ def topological_order(adjacency: Dict[str, Set[str]]) -> List[str]:
 
 class DependencyGraphDialog(ChromeDialog):  # type: ignore[misc]
     def __init__(self, rules_text: str, parent=None):  # noqa: D401
-        super().__init__(parent, title="Dependency Graph")
+        super().__init__(parent, title="Field Dependencies")
         self.setObjectName("DependencyGraphDialog")
+        self._rules_text = rules_text
+        self._mapping = self._load_mapping(rules_text)
+        self._current_trace: List[FieldTraceStep] = []
         try:
-            self.resize(640, 520)
+            self.resize(720, 560)
         except Exception:  # pragma: no cover
             pass
         lay = self.content_layout() if hasattr(self, "content_layout") else QVBoxLayout(self)
-        self.list_nodes = QListWidget()
-        lay.addWidget(QLabel("Adjacency (field -> dependents):"))
-        lay.addWidget(self.list_nodes, 1)
-        self.lbl_order = QLabel("Order:")
-        lay.addWidget(self.lbl_order)
+        self._tabs = QTabWidget()
+        lay.addWidget(self._tabs, 1)
+        self._build_graph_tab()
+        self._build_trace_tab()
         btn_row = QHBoxLayout()
         self.btn_close = QPushButton("Close")
         btn_row.addStretch(1)
@@ -199,20 +214,165 @@ class DependencyGraphDialog(ChromeDialog):  # type: ignore[misc]
             self.btn_close.clicked.connect(self.close)  # type: ignore[attr-defined]
         except Exception:
             pass
-        self._populate(rules_text)
 
-    def _populate(self, rules_text: str) -> None:
+    # --- setup helpers -------------------------------------------------
+    def _load_mapping(self, rules_text: str) -> Mapping[str, object]:
         try:
-            mapping = json.loads(rules_text or "{}")
+            data = json.loads(rules_text or "{}")
         except Exception:
-            mapping = {}
+            return {}
+        if isinstance(data, Mapping):
+            return data
+        return {}
+
+    def _build_graph_tab(self) -> None:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.addWidget(QLabel("Adjacency (field -> dependents):"))
+        self.list_nodes = QListWidget()
+        layout.addWidget(self.list_nodes, 1)
+        self.lbl_order = QLabel("Order:")
+        layout.addWidget(self.lbl_order)
+        self._tabs.addTab(tab, "Graph")
+        self._populate_graph()
+
+    def _populate_graph(self) -> None:
+        self.list_nodes.clear()
         try:
-            adjacency, _rev = build_dependency_graph(mapping)
-        except ValueError as e:
-            QListWidgetItem(f"ERROR: {e}", self.list_nodes)
+            adjacency, _rev = build_dependency_graph(self._mapping)
+        except ValueError as exc:
+            QListWidgetItem(f"ERROR: {exc}", self.list_nodes)
+            self.lbl_order.setText("Order: (error)")
             return
         for src in sorted(adjacency.keys()):
             outs = sorted(adjacency.get(src, set()))
             QListWidgetItem(f"{src} -> {', '.join(outs) if outs else '(none)'}", self.list_nodes)
         order = topological_order(adjacency)
         self.lbl_order.setText("Order: " + (" -> ".join(order) if order else "(cycle)"))
+
+    def _build_trace_tab(self) -> None:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        header = QHBoxLayout()
+        header.addWidget(QLabel("Derived Field:"))
+        self.trace_combo = QComboBox()
+        header.addWidget(self.trace_combo, 1)
+        layout.addLayout(header)
+        self.trace_tree = QTreeWidget()
+        self.trace_tree.setColumnCount(4)
+        self.trace_tree.setHeaderLabels(["Field", "Type", "Details", "Transforms"])
+        layout.addWidget(self.trace_tree, 1)
+        info_row = QHBoxLayout()
+        self.trace_status = QLabel("Select a derived field to inspect its upstream chain.")
+        info_row.addWidget(self.trace_status, 1)
+        self.btn_copy_trace = QPushButton("Copy Trace")
+        self.btn_copy_trace.setEnabled(False)
+        info_row.addWidget(self.btn_copy_trace)
+        layout.addLayout(info_row)
+        self._tabs.addTab(tab, "Field Trace")
+        try:  # pragma: no cover - headless safe
+            self.trace_combo.currentTextChanged.connect(self._on_trace_field_changed)  # type: ignore[attr-defined]
+            self.btn_copy_trace.clicked.connect(self._copy_trace_to_clipboard)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        self._populate_trace_options()
+
+    # --- trace logic ---------------------------------------------------
+    def _populate_trace_options(self) -> None:
+        fields = list_derived_fields(self._mapping)
+        self.trace_combo.blockSignals(True)
+        self.trace_combo.clear()
+        for name in fields:
+            self.trace_combo.addItem(name)
+        self.trace_combo.blockSignals(False)
+        if not fields:
+            self.trace_combo.setEnabled(False)
+            self.trace_tree.setDisabled(True)
+            self.btn_copy_trace.setEnabled(False)
+            self.trace_status.setText("No derived fields defined in the rule set.")
+        else:
+            self.trace_combo.setEnabled(True)
+            self.trace_tree.setDisabled(False)
+            self.trace_status.setText("Select a derived field to inspect its upstream chain.")
+            self._on_trace_field_changed(self.trace_combo.currentText())
+
+    def _on_trace_field_changed(self, name: str) -> None:
+        if not name:
+            self.trace_tree.clear()
+            self.btn_copy_trace.setEnabled(False)
+            return
+        try:
+            steps = build_field_trace(self._mapping, name)
+        except TraceBuildError as exc:
+            self.trace_tree.clear()
+            self.btn_copy_trace.setEnabled(False)
+            self.trace_status.setText(f"Trace error: {exc}")
+            self._current_trace = []
+            return
+        self._current_trace = steps
+        self._render_trace_steps(steps)
+        self.trace_status.setText("Trace ready. Use Copy to place a text summary on the clipboard.")
+        self.btn_copy_trace.setEnabled(True)
+
+    def _render_trace_steps(self, steps: List[FieldTraceStep]) -> None:
+        self.trace_tree.clear()
+        parents: List[QTreeWidgetItem] = []
+        for step in steps:
+            item = QTreeWidgetItem()
+            item.setText(0, step.name)
+            item.setText(1, step.type.replace("_", " "))
+            item.setText(2, self._format_step_detail(step))
+            item.setText(3, self._format_step_transforms(step))
+            if step.note:
+                item.setToolTip(0, step.note)
+                item.setToolTip(2, step.note)
+            while len(parents) > step.depth:
+                parents.pop()
+            if step.depth == 0 or not parents:
+                self.trace_tree.addTopLevelItem(item)
+                parents = [item]
+            else:
+                parents[-1].addChild(item)
+                parents.append(item)
+        self.trace_tree.expandAll()
+
+    def _format_step_detail(self, step: FieldTraceStep) -> str:
+        if step.type == "derived":
+            detail = step.expression or ""
+        elif step.type == "list_field":
+            selector = step.selector or "(no selector)"
+            detail = f"{step.resource} → {selector}" if step.resource else selector
+        elif step.type == "table_column":
+            detail = f"{step.resource} (table column)" if step.resource else "table column"
+        else:
+            detail = step.note or ""
+        return detail
+
+    def _format_step_transforms(self, step: FieldTraceStep) -> str:
+        if not step.transforms:
+            return ""
+        parts = [transform.describe() for transform in step.transforms]
+        return ", ".join(parts)
+
+    def _copy_trace_to_clipboard(self) -> None:
+        if not self._current_trace:
+            return
+        lines: List[str] = []
+        for step in self._current_trace:
+            indent = "  " * step.depth
+            line = f"{indent}- {step.name} [{step.type}]"
+            detail = self._format_step_detail(step)
+            if detail:
+                line += f" :: {detail}"
+            transforms = self._format_step_transforms(step)
+            if transforms:
+                line += f" | transforms: {transforms}"
+            if step.note and step.note not in detail:
+                line += f" ({step.note})"
+            lines.append(line)
+        text = "\n".join(lines)
+        try:  # pragma: no cover
+            QApplication.clipboard().setText(text)
+            self.trace_status.setText("Trace copied to clipboard.")
+        except Exception:
+            self.trace_status.setText("Failed to access clipboard.")
