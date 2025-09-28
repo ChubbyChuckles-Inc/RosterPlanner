@@ -108,16 +108,19 @@ class FieldMappingNode(BuilderNode):
     selector: str = ""
     # For this initial increment we inline transforms rather than referencing chain nodes
     transforms: List[Dict[str, Any]] = field(default_factory=list)
+    macros: List[str] = field(default_factory=list)
 
     def to_mapping(self) -> Dict[str, Any]:  # noqa: D401
         m = super().to_mapping()
-        m.update(
-            {
-                "field_name": self.field_name,
-                "selector": self.selector,
-                "transforms": list(self.transforms) if self.transforms else [],
-            }
-        )
+        payload: Dict[str, Any] = {
+            "field_name": self.field_name,
+            "selector": self.selector,
+        }
+        if self.transforms:
+            payload["transforms"] = list(self.transforms)
+        if self.macros:
+            payload["macros"] = list(self.macros)
+        m.update(payload)
         return m
 
 
@@ -125,17 +128,25 @@ class FieldMappingNode(BuilderNode):
 class CanvasModel:
     """Container representing the entire visual builder canvas state.
 
-    The model maintains a simple ordered list of nodes. Validation rules are
-    intentionally light for this first version.
+    The model maintains a simple ordered list of nodes plus a registry of named
+    transform macros that can be referenced by multiple fields.
     """
 
     nodes: List[BuilderNode] = field(default_factory=list)
+    macros: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
     _undo_stack: deque = field(default_factory=lambda: deque(maxlen=50), repr=False)
     _redo_stack: deque = field(default_factory=lambda: deque(maxlen=50), repr=False)
 
     # --- Undo/Redo Core -------------------------------------------------
-    def _snapshot(self) -> List[BuilderNode]:  # pragma: no cover - trivial
-        return copy.deepcopy(self.nodes)
+    def _snapshot(self) -> Dict[str, Any]:  # pragma: no cover - trivial
+        return {
+            "nodes": copy.deepcopy(self.nodes),
+            "macros": copy.deepcopy(self.macros),
+        }
+
+    def _apply_snapshot(self, snapshot: Mapping[str, Any]) -> None:
+        self.nodes = copy.deepcopy(snapshot.get("nodes", []))
+        self.macros = copy.deepcopy(snapshot.get("macros", {}))
 
     def _push_undo(self):  # pragma: no cover - trivial
         self._undo_stack.append(self._snapshot())
@@ -145,14 +156,14 @@ class CanvasModel:
         if not self._undo_stack:
             return False
         self._redo_stack.append(self._snapshot())
-        self.nodes = self._undo_stack.pop()
+        self._apply_snapshot(self._undo_stack.pop())
         return True
 
     def redo(self) -> bool:
         if not self._redo_stack:
             return False
         self._undo_stack.append(self._snapshot())
-        self.nodes = self._redo_stack.pop()
+        self._apply_snapshot(self._redo_stack.pop())
         return True
 
     # --- History Persistence -------------------------------------------
@@ -161,25 +172,45 @@ class CanvasModel:
     ) -> List[Dict[str, Any]]:  # pragma: no cover
         return [n.to_mapping() for n in nodes]
 
-    def export_history(self) -> Dict[str, Any]:  # pragma: no cover - thin
+    def _serialize_snapshot(self, snapshot: Mapping[str, Any]) -> Dict[str, Any]:
         return {
-            "current": self._serialize_nodes(self.nodes),
-            "undo": [self._serialize_nodes(s) for s in list(self._undo_stack)],
-            "redo": [self._serialize_nodes(s) for s in list(self._redo_stack)],
+            "nodes": self._serialize_nodes(snapshot.get("nodes", [])),
+            "macros": copy.deepcopy(snapshot.get("macros", {})),
+        }
+
+    def export_history(self) -> Dict[str, Any]:  # pragma: no cover - thin
+        current_snapshot = {"nodes": self.nodes, "macros": self.macros}
+        return {
+            "current": self._serialize_snapshot(current_snapshot),
+            "undo": [self._serialize_snapshot(s) for s in list(self._undo_stack)],
+            "redo": [self._serialize_snapshot(s) for s in list(self._redo_stack)],
         }
 
     def import_history(self, payload: Mapping[str, Any]) -> None:  # pragma: no cover - thin
         try:
-            from_nodes = payload.get("current", [])
+            raw_current = payload.get("current", {})
+            if isinstance(raw_current, list):
+                raw_current = {"nodes": raw_current}
+            current = raw_current
             undo_nodes = payload.get("undo", [])
             redo_nodes = payload.get("redo", [])
-            self.nodes = CanvasModel.from_mapping({"nodes": from_nodes}).nodes
+            current_model = CanvasModel.from_mapping(current)
+            self.nodes = current_model.nodes
+            self.macros = current_model.macros
             self._undo_stack.clear()
             for snap in undo_nodes:
-                self._undo_stack.append(CanvasModel.from_mapping({"nodes": snap}).nodes)
+                snapshot_payload = snap if isinstance(snap, Mapping) else {"nodes": snap}
+                model = CanvasModel.from_mapping(snapshot_payload)
+                self._undo_stack.append(
+                    {"nodes": copy.deepcopy(model.nodes), "macros": copy.deepcopy(model.macros)}
+                )
             self._redo_stack.clear()
             for snap in redo_nodes:
-                self._redo_stack.append(CanvasModel.from_mapping({"nodes": snap}).nodes)
+                snapshot_payload = snap if isinstance(snap, Mapping) else {"nodes": snap}
+                model = CanvasModel.from_mapping(snapshot_payload)
+                self._redo_stack.append(
+                    {"nodes": copy.deepcopy(model.nodes), "macros": copy.deepcopy(model.macros)}
+                )
         except Exception:
             pass
 
@@ -194,7 +225,11 @@ class CanvasModel:
         self.nodes = [n for n in self.nodes if n.id != node_id]
 
     def to_mapping(self) -> Dict[str, Any]:
-        return {"nodes": [n.to_mapping() for n in self.nodes]}
+        data: Dict[str, Any] = {"nodes": [n.to_mapping() for n in self.nodes]}
+        if self.macros:
+            data["macros"] = copy.deepcopy(self.macros)
+            data["macro_usage"] = self.macro_usage_counts()
+        return data
 
     @staticmethod
     def from_mapping(data: Mapping[str, Any]) -> "CanvasModel":
@@ -227,9 +262,61 @@ class CanvasModel:
                         field_name=obj.get("field_name", ""),
                         selector=obj.get("selector", ""),
                         transforms=list(obj.get("transforms", [])),
+                        macros=list(obj.get("macros", [])),
                     )
                 )
-        return CanvasModel(nodes=nodes)
+        macros_payload = data.get("macros", {})
+        macros: Dict[str, List[Dict[str, Any]]] = {}
+        if isinstance(macros_payload, Mapping):
+            for name, chain in macros_payload.items():
+                if not isinstance(name, str):
+                    continue
+                if isinstance(chain, list):
+                    macros[name] = [copy.deepcopy(spec) for spec in chain]
+        return CanvasModel(nodes=nodes, macros=macros)
+
+    # Macro utilities ----------------------------------------------------
+    def macro_usage_counts(self) -> Dict[str, int]:
+        counts: Dict[str, int] = {name: 0 for name in self.macros.keys()}
+        for node in self.nodes:
+            if isinstance(node, FieldMappingNode):
+                for macro_name in node.macros:
+                    counts[macro_name] = counts.get(macro_name, 0) + 1
+        return counts
+
+    def promote_transform_chain_to_macro(self, macro_name: str, field_ids: List[str]) -> bool:
+        """Promote identical field transform chains into a shared macro."""
+
+        macro_id = (macro_name or "").strip()
+        if not macro_id:
+            raise ValueError("macro_name cannot be empty")
+        if macro_id in self.macros:
+            raise ValueError(f"Macro '{macro_id}' already exists")
+        if not field_ids:
+            return False
+        target_fields: List[FieldMappingNode] = []
+        for fid in field_ids:
+            node = next(
+                (n for n in self.nodes if isinstance(n, FieldMappingNode) and n.id == fid),
+                None,
+            )
+            if node is None:
+                return False
+            target_fields.append(node)
+        base_chain = target_fields[0].transforms
+        if not base_chain:
+            raise ValueError("Cannot promote empty transform chain to macro")
+        for field in target_fields[1:]:
+            if field.transforms != base_chain:
+                raise ValueError("All selected fields must share identical transform chains")
+
+        self._push_undo()
+        self.macros[macro_id] = copy.deepcopy(base_chain)
+        for field in target_fields:
+            field.transforms = []
+            if macro_id not in field.macros:
+                field.macros.append(macro_id)
+        return True
 
     # Compilation -----------------------------------------------------------------
     def to_rule_set_mapping(self) -> Dict[str, Any]:
@@ -262,6 +349,8 @@ class CanvasModel:
                     for fname, spec in pending_fields.items():
                         # transform list already in spec
                         fm: Dict[str, Any] = {"selector": spec["selector"]}
+                        if spec.get("macros"):
+                            fm["macros"] = spec["macros"]
                         if spec.get("transforms"):
                             fm["transforms"] = spec["transforms"]
                         fields_mapping[fname] = fm
@@ -291,16 +380,22 @@ class CanvasModel:
                 if not current_selector:
                     # Field without selector context; skip (authoring error) but do not raise
                     continue
-                transforms = node.transforms
-                if not transforms and last_chain:
-                    transforms = last_chain.transforms
+                transforms = list(node.transforms)
+                macros = list(node.macros)
+                if not transforms and not macros and last_chain:
+                    transforms = list(last_chain.transforms)
                 pending_fields[node.field_name or node.label or node.id] = {
                     "selector": node.selector,
                     "transforms": transforms,
+                    "macros": macros,
                 }
         # Flush trailing
         flush_resource()
-        return {"version": 1, "resources": resources}
+        compiled: Dict[str, Any] = {"version": 1, "resources": resources}
+        if self.macros:
+            compiled["transform_macros"] = copy.deepcopy(self.macros)
+            compiled["macro_usage"] = self.macro_usage_counts()
+        return compiled
 
     # Transform utilities -------------------------------------------------
     def add_transform_to_field(

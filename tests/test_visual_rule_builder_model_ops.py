@@ -61,3 +61,78 @@ def test_transform_intelligent_prereq():
     applied = model.add_transform_to_field("f", {"kind": "to_number"})
     assert applied is True
     assert [t["kind"] for t in f.transforms] == ["trim", "to_number"]
+
+
+def test_promote_transform_chain_to_macro():
+    model = CanvasModel()
+    selector = SelectorNode(
+        id="s",
+        kind="selector",
+        label="Roster",
+        selector="div.roster",
+        mode="list",
+        item_selector="div.player",
+    )
+    field1 = FieldMappingNode(
+        id="f1",
+        kind="field",
+        label="Points",
+        field_name="points",
+        selector="td.points",
+        transforms=[{"kind": "trim"}, {"kind": "to_number"}],
+    )
+    field2 = FieldMappingNode(
+        id="f2",
+        kind="field",
+        label="Bonus",
+        field_name="bonus",
+        selector="td.bonus",
+        transforms=[{"kind": "trim"}, {"kind": "to_number"}],
+    )
+    model.add_node(selector)
+    model.add_node(field1)
+    model.add_node(field2)
+
+    promoted = model.promote_transform_chain_to_macro("CleanNumber", ["f1", "f2"])
+    assert promoted is True
+    assert "CleanNumber" in model.macros
+    assert model.macros["CleanNumber"] == [{"kind": "trim"}, {"kind": "to_number"}]
+    assert field1.transforms == [] and field2.transforms == []
+    assert field1.macros == ["CleanNumber"] and field2.macros == ["CleanNumber"]
+
+    usage = model.macro_usage_counts()
+    assert usage["CleanNumber"] == 2
+
+    compiled = model.to_rule_set_mapping()
+    assert "transform_macros" in compiled
+    assert compiled["transform_macros"]["CleanNumber"][0]["kind"] == "trim"
+    fields = compiled["resources"]["Roster"]["fields"]
+    assert fields["points"]["macros"] == ["CleanNumber"]
+    assert "transforms" not in fields["points"]
+    assert compiled["macro_usage"]["CleanNumber"] == 2
+
+
+def test_promote_macro_requires_matching_chain():
+    model = CanvasModel()
+    selector = SelectorNode(id="s", kind="selector", label="Roster", selector="table")
+    field1 = FieldMappingNode(
+        id="f1",
+        kind="field",
+        label="Points",
+        field_name="points",
+        selector="td.points",
+        transforms=[{"kind": "trim"}, {"kind": "to_number"}],
+    )
+    field2 = FieldMappingNode(
+        id="f2",
+        kind="field",
+        label="Name",
+        field_name="name",
+        selector="td.name",
+        transforms=[{"kind": "trim"}],
+    )
+    model.add_node(selector)
+    model.add_node(field1)
+    model.add_node(field2)
+    with pytest.raises(ValueError):
+        model.promote_transform_chain_to_macro("MacroX", ["f1", "f2"])

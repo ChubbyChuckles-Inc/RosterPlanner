@@ -56,3 +56,24 @@ def test_group_by_resource():
     assert set(grouped.keys()) == {"team_roster", "ranking_table"}
     assert len(grouped["team_roster"]) == 4
     assert len(grouped["ranking_table"]) == 2
+
+
+def test_mapping_entries_with_macros_expand_transforms():
+    rs = RuleSet.from_mapping(
+        {
+            "transform_macros": {"CleanNumber": ["trim", {"kind": "to_number"}]},
+            "resources": {
+                "team_roster": {
+                    "kind": "list",
+                    "selector": "div.roster",
+                    "item_selector": "div.player",
+                    "fields": {"points": {"selector": ".pts", "macros": ["CleanNumber"]}},
+                }
+            },
+        }
+    )
+    entries = build_mapping_entries(rs)
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.inferred_type == FieldType.NUMBER
+    assert entry.transforms == ["trim", "to_number"]

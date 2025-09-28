@@ -84,6 +84,68 @@ def test_field_mapping_with_transforms_round_trip():
     assert dspec["kind"] == "parse_date" and len(dspec["formats"]) == 2
 
 
+def test_transform_macro_resolution_and_serialization():
+    payload = {
+        "transform_macros": {
+            "CleanNumber": ["trim", {"kind": "to_number"}],
+            "NormalizeName": [{"kind": "collapse_ws"}],
+        },
+        "resources": {
+            "team_roster": {
+                "kind": "list",
+                "selector": "div.roster",
+                "item_selector": "div.player",
+                "fields": {
+                    "points": {"selector": ".pts", "macros": ["CleanNumber"]},
+                    "slug": {
+                        "selector": ".name",
+                        "macros": "NormalizeName",
+                        "transforms": ["trim"],
+                    },
+                },
+            }
+        },
+    }
+    rs = RuleSet.from_mapping(payload)
+    roster = rs.resources["team_roster"]
+    assert isinstance(roster, ListRule)
+    points = roster.fields["points"]
+    assert points.macro_refs == ["CleanNumber"]
+    assert [t.kind for t in points.transforms] == ["trim", "to_number"]
+    assert points.inline_transforms == []
+
+    slug = roster.fields["slug"]
+    assert slug.macro_refs == ["NormalizeName"]
+    assert [t.kind for t in slug.transforms] == ["collapse_ws", "trim"]
+    assert [t.kind for t in slug.inline_transforms] == ["trim"]
+
+    assert "CleanNumber" in rs.transform_macros
+    round_trip = rs.to_mapping()
+    assert round_trip["transform_macros"]["CleanNumber"] == ["trim", "to_number"]
+    points_payload = round_trip["resources"]["team_roster"]["fields"]["points"]
+    assert points_payload["macros"] == ["CleanNumber"]
+    assert "transforms" not in points_payload
+    slug_payload = round_trip["resources"]["team_roster"]["fields"]["slug"]
+    assert slug_payload["macros"] == ["NormalizeName"]
+    assert slug_payload["transforms"] == ["trim"]
+
+
+def test_transform_macro_unknown_reference():
+    payload = {
+        "transform_macros": {"Clean": ["trim"]},
+        "resources": {
+            "team_roster": {
+                "kind": "list",
+                "selector": "div.roster",
+                "item_selector": "div.player",
+                "fields": {"points": {"selector": ".pts", "macros": ["Missing"]}},
+            }
+        },
+    }
+    with pytest.raises(RuleError):
+        RuleSet.from_mapping(payload)
+
+
 def test_expression_transform_requires_flag():
     payload = {
         "resources": {

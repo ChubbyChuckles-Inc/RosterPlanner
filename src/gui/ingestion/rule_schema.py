@@ -41,7 +41,7 @@ Example (YAML):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Mapping, Any, Optional, Union, Set
+from typing import Dict, List, Mapping, Any, Optional, Union, Set, Iterable
 
 RULESET_VERSION = 1
 
@@ -131,21 +131,49 @@ class TransformSpec:
         raise RuleError(f"Unsupported transform spec value: {obj!r}")
 
 
+def _clone_transform_chain(chain: Iterable[TransformSpec]) -> List[TransformSpec]:
+    return [
+        TransformSpec(
+            kind=spec.kind, formats=list(spec.formats) if spec.formats else None, code=spec.code
+        )
+        for spec in chain
+    ]
+
+
 @dataclass
 class FieldMapping:
     """Mapping of extracted field name -> CSS selector + optional transforms."""
 
     selector: str
     transforms: List[TransformSpec] = field(default_factory=list)
+    macro_refs: List[str] = field(default_factory=list)
+    inline_transforms: List[TransformSpec] = field(default_factory=list, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if not self.inline_transforms and self.transforms:
+            self.inline_transforms = list(self.transforms)
 
     def to_mapping(self) -> Mapping[str, Any]:  # noqa: D401 - simple
         data: Dict[str, Any] = {"selector": self.selector}
-        if self.transforms:
-            data["transforms"] = [t.to_mapping() for t in self.transforms]
+        if self.macro_refs:
+            data["macros"] = list(self.macro_refs)
+        inline_chain = (
+            self.inline_transforms
+            if self.inline_transforms
+            else ([] if self.macro_refs else self.transforms)
+        )
+        if inline_chain:
+            data["transforms"] = [t.to_mapping() for t in inline_chain]
         return data
 
     @staticmethod
-    def from_value(value: Any, *, allow_expressions: bool) -> "FieldMapping":
+    def from_value(
+        value: Any,
+        *,
+        allow_expressions: bool,
+        macros: Optional[Mapping[str, List[TransformSpec]]] = None,
+    ) -> "FieldMapping":
+        macros = macros or {}
         if isinstance(value, str):
             if not value.strip():
                 raise RuleError("Field selector cannot be empty")
@@ -155,16 +183,40 @@ class FieldMapping:
             if not isinstance(sel, str) or not sel.strip():
                 raise RuleError("Field mapping requires non-empty 'selector'")
             raw_transforms = value.get("transforms", [])
-            transforms: List[TransformSpec] = []
+            inline_transforms: List[TransformSpec] = []
             if raw_transforms:
                 if not isinstance(raw_transforms, list):
                     raise RuleError("Field 'transforms' must be a list")
                 for idx, tval in enumerate(raw_transforms):
                     try:
-                        transforms.append(TransformSpec.parse(tval, allow_expr=allow_expressions))
+                        inline_transforms.append(
+                            TransformSpec.parse(tval, allow_expr=allow_expressions)
+                        )
                     except RuleError as e:  # augment path
                         raise RuleError(f"Invalid transform at index {idx}: {e}") from e
-            return FieldMapping(selector=sel.strip(), transforms=transforms)
+            macro_refs_raw = value.get("macros")
+            if macro_refs_raw is None and "macro" in value:
+                macro_refs_raw = value.get("macro")
+            macro_refs: List[str] = []
+            combined_chain: List[TransformSpec] = []
+            if macro_refs_raw:
+                if isinstance(macro_refs_raw, str):
+                    macro_refs_raw = [macro_refs_raw]
+                if not isinstance(macro_refs_raw, list):
+                    raise RuleError("Field 'macros' must be a list of names")
+                for macro_idx, macro_name in enumerate(macro_refs_raw):
+                    if not isinstance(macro_name, str) or not macro_name.strip():
+                        raise RuleError("Macro names must be non-empty strings")
+                    if macro_name not in macros:
+                        raise RuleError(f"Unknown transform macro reference: {macro_name}")
+                    macro_refs.append(macro_name)
+                    combined_chain.extend(_clone_transform_chain(macros[macro_name]))
+            combined_chain.extend(inline_transforms)
+            fm = FieldMapping(
+                selector=sel.strip(), transforms=combined_chain, macro_refs=macro_refs
+            )
+            fm.inline_transforms = inline_transforms
+            return fm
         raise RuleError(f"Unsupported field mapping value: {value!r}")
 
 
@@ -254,6 +306,7 @@ class RuleSet:
     resources: Dict[str, RuleResource] = field(default_factory=dict)
     version: int = RULESET_VERSION
     allow_expressions: bool = False  # security gate for expr transforms
+    transform_macros: Dict[str, List[TransformSpec]] = field(default_factory=dict)
 
     # ------------------------------------------------------------------
     # Construction / Serialization
@@ -270,6 +323,26 @@ class RuleSet:
         raw_resources = payload.get("resources", {})
         if not isinstance(raw_resources, Mapping):
             raise RuleError("RuleSet 'resources' must be a mapping")
+
+        raw_macros = payload.get("transform_macros", {})
+        transform_macros: Dict[str, List[TransformSpec]] = {}
+        if raw_macros:
+            if not isinstance(raw_macros, Mapping):
+                raise RuleError("RuleSet 'transform_macros' must be a mapping")
+            for macro_name, chain in raw_macros.items():
+                if not isinstance(macro_name, str) or not macro_name.strip():
+                    raise RuleError("Transform macro names must be non-empty strings")
+                if not isinstance(chain, list) or not chain:
+                    raise RuleError(f"Transform macro '{macro_name}' must be a non-empty list")
+                parsed_chain: List[TransformSpec] = []
+                for idx, item in enumerate(chain):
+                    try:
+                        parsed_chain.append(TransformSpec.parse(item, allow_expr=allow_expr))
+                    except RuleError as e:
+                        raise RuleError(
+                            f"Invalid transform in macro '{macro_name}' at index {idx}: {e}"
+                        ) from e
+                transform_macros[macro_name] = parsed_chain
 
         # Store raw specs for second-pass inheritance resolution
         raw_specs: Dict[str, Mapping[str, Any]] = {}
@@ -327,9 +400,13 @@ class RuleSet:
                         )
                     # copy parent fields
                     for fname, fval in parent.fields.items():
-                        merged_fields[fname] = FieldMapping(
-                            selector=fval.selector, transforms=list(fval.transforms)
+                        cloned = FieldMapping(
+                            selector=fval.selector,
+                            transforms=list(fval.transforms),
+                            macro_refs=list(fval.macro_refs),
                         )
+                        cloned.inline_transforms = list(fval.inline_transforms)
+                        merged_fields[fname] = cloned
                     if selector is None:
                         selector = parent.selector
                     if item_sel is None:
@@ -337,7 +414,7 @@ class RuleSet:
                 # Apply overrides / additions
                 for fname, fval in raw_fields.items():
                     merged_fields[fname] = FieldMapping.from_value(
-                        fval, allow_expressions=allow_expr
+                        fval, allow_expressions=allow_expr, macros=transform_macros
                     )
                 rule = ListRule(selector=selector, item_selector=item_sel, fields=merged_fields, extends=parent_name)  # type: ignore[arg-type]
             else:
@@ -349,13 +426,23 @@ class RuleSet:
         for rname in list(raw_specs.keys()):
             build_resource(rname)
 
-        return RuleSet(resources=built, version=version, allow_expressions=allow_expr)
+        return RuleSet(
+            resources=built,
+            version=version,
+            allow_expressions=allow_expr,
+            transform_macros=transform_macros,
+        )
 
     def to_mapping(self) -> Mapping[str, Any]:
         data = {
             "version": self.version,
             "resources": {k: v.to_mapping() for k, v in self.resources.items()},
         }
+        if self.transform_macros:
+            data["transform_macros"] = {
+                name: [spec.to_mapping() for spec in chain]
+                for name, chain in self.transform_macros.items()
+            }
         if self.allow_expressions:
             data["allow_expressions"] = True
         return data
