@@ -116,6 +116,44 @@ class ToolDialogsMixin:
         cursor.insertText(snippet)
         self._append_log("Expression Playground: inserted expr transform")
 
+    def _on_import_html_fixture_clicked(self) -> None:
+        try:
+            from gui.ingestion.fixture_importer import HtmlFixtureImportDialog, save_html_fixture
+        except Exception as exc:  # pragma: no cover
+            self._append_log(f"Fixture importer unavailable: {exc}")
+            return
+        initial_snippet = ""
+        try:
+            initial_snippet = self.sandbox_output.toPlainText().strip()
+        except Exception:
+            initial_snippet = ""
+        if not initial_snippet:
+            try:
+                initial_snippet = self.preview_area.toPlainText().strip()
+            except Exception:
+                initial_snippet = ""
+        dialog = None
+        if HtmlFixtureImportDialog is not None:
+            dialog = HtmlFixtureImportDialog(self._base_dir, initial_snippet, self)
+            if dialog.exec() == dialog.DialogCode.Accepted:  # type: ignore[attr-defined]
+                result = dialog.last_result()
+                if result is not None:
+                    rel_path = result.path.relative_to(self._base_dir)
+                    self._append_log(f"Fixture saved -> {rel_path}")
+                else:
+                    self._append_log("Fixture import: no result returned")
+            else:
+                self._append_log("Fixture import: cancelled")
+            return
+        # Headless fallback: save immediately using helper
+        try:
+            result = save_html_fixture(self._base_dir, initial_snippet or "<html></html>")
+        except Exception as exc:  # pragma: no cover
+            self._append_log(f"Fixture import failed: {exc}")
+            return
+        rel_path = result.path.relative_to(self._base_dir)
+        self._append_log(f"Fixture saved (headless) -> {rel_path}")
+
     def _on_inline_yaml_editor_clicked(self) -> None:
         rules_text = self.rule_editor.toPlainText()
         if not rules_text.strip():

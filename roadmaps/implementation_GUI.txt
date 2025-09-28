@@ -382,7 +382,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
  [x] 7.10.A16 Undo/Redo Granular Timeline (Authoring Scope): displays consecutive semantic edits (add field, change selector) with diff tooltip; navigable scrub.
  [x] 7.10.A17 Snapshot Compare Dropdown: quick switch between last 5 draft autosaves to diff rule evolution without leaving editor.
 [x] 7.10.A18 Safe Expression Playground: isolated evaluator with timeout & AST lint; promotes expression to rule only if passes safety + result type inference (dialog wiring + unit tests for lint/timeout/type inference).
- [ ] 7.10.A19 Import HTML Snippet As Fixture: capture a DOM fragment directly into a fixtures folder for deterministic selector regression tests.
+[x] 7.10.A19 Import HTML Snippet As Fixture: capture a DOM fragment directly into a fixtures folder for deterministic selector regression tests (dialog, storage helpers, unit tests).
  [ ] 7.10.A20 Guided Onboarding Walkthrough: progressive spotlight across navigator → selector explorer → transforms → diff preview (stores completion flag in config).
  [ ] 7.10.A21 Keyboard Macro Shortcuts: assign user-defined shortcuts to frequently used transform chain templates.
  [ ] 7.10.A22 Automatic Date/Number Format Inference: sample raw strings to propose parse_date / to_number format hints (locale aware) before user manual entry.

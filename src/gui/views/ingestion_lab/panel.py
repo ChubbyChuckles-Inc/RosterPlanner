@@ -229,6 +229,11 @@ class IngestionLabPanel(
         self.btn_expr_playground.setToolTip(
             "Open safe sandbox to lint + execute expression transforms before inserting into rules"
         )
+        self.btn_import_fixture = QPushButton("Import Fixture")
+        self.btn_import_fixture.setObjectName("ingLabBtnImportFixture")
+        self.btn_import_fixture.setToolTip(
+            "Capture the current preview snippet as a saved HTML fixture for regression tests"
+        )
         self.btn_inline_yaml = QPushButton("Edit YAML")
         self.btn_inline_yaml.setObjectName("ingLabBtnInlineYaml")
         self.btn_inline_yaml.setToolTip("Open inline YAML fragment editor with schema ghost text")
@@ -351,6 +356,7 @@ class IngestionLabPanel(
                 self.btn_selector_picker,
                 self.btn_regex_tester,
                 self.btn_expr_playground,
+                self.btn_import_fixture,
                 self.btn_inline_yaml,
                 self.btn_prompt_assist,
                 self.btn_visual_builder,
@@ -733,6 +739,7 @@ class IngestionLabPanel(
         self.btn_selector_picker.clicked.connect(self._on_selector_picker_clicked)  # type: ignore
         self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
         self.btn_expr_playground.clicked.connect(self._on_expression_playground_clicked)  # type: ignore
+        self.btn_import_fixture.clicked.connect(self._on_import_html_fixture_clicked)  # type: ignore
         self.btn_inline_yaml.clicked.connect(self._on_inline_yaml_editor_clicked)  # type: ignore
         self.btn_derived.clicked.connect(self._on_derived_fields_clicked)  # type: ignore
         self.btn_dep_graph.clicked.connect(self._on_dependency_graph_clicked)  # type: ignore
@@ -794,6 +801,8 @@ class IngestionLabPanel(
                 "btn_import": "import",
                 "btn_selector_picker": "cursor",
                 "btn_regex_tester": "regex",
+                "btn_expr_playground": "calculator",
+                "btn_import_fixture": "download",
                 "btn_derived": "function",
                 "btn_dep_graph": "graph",
                 "btn_benchmark": "speed",

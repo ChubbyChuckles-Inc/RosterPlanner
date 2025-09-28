@@ -1,4 +1,8 @@
 
+feat(ingestion-lab): add HTML fixture importer with dialog & tests (7.10.A19)
+Introduces gui.ingestion.fixture_importer with save helpers and a PyQt dialog, wires a new Import Fixture tool button,
+and adds unit coverage for filename sanitation and persistence alongside roadmap update for milestone 7.10.A19.
+
 feat(ingestion-lab): add Safe Expression Playground dialog (7.10.A18)
 Adds gui.ingestion.safe_expression_playground with lint+evaluate helpers, thread timeout, type inference,
 and a PyQt6 dialog that inserts vetted expression transforms with metadata comments. Integrates launcher button
