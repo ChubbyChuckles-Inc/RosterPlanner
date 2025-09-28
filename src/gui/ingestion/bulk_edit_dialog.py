@@ -22,8 +22,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Mapping, Tuple, Optional
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QTreeWidget,
@@ -33,6 +33,11 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QLabel,
 )
+
+try:  # pragma: no cover - import guard for tests
+    from gui.components.chrome_dialog import ChromeDialog
+except Exception:  # pragma: no cover
+    from PyQt6.QtWidgets import QDialog as ChromeDialog  # type: ignore
 
 SimpleRuleMapping = Dict[str, object]
 
@@ -65,7 +70,10 @@ def bulk_edit_rules(
     if not isinstance(res_map, dict):
         return rules_mapping
     # Work on a shallow copy to avoid mutating original reference unexpectedly
-    out = {**rules_mapping, "resources": {k: v.copy() if isinstance(v, dict) else v for k, v in res_map.items()}}
+    out = {
+        **rules_mapping,
+        "resources": {k: v.copy() if isinstance(v, dict) else v for k, v in res_map.items()},
+    }
     resources = out["resources"]  # type: ignore[index]
     for rname, fname in selections:
         spec = resources.get(rname)
@@ -104,12 +112,16 @@ def bulk_edit_rules(
     return out
 
 
-class BulkEditDialog(QDialog):  # pragma: no cover - GUI wiring; logic tested via helper
+class BulkEditDialog(ChromeDialog):  # pragma: no cover - GUI wiring; logic tested via helper
     """Dialog for selecting multiple list rule fields and applying batch edits."""
 
     def __init__(self, rules_mapping: Mapping[str, object], parent=None):  # noqa: ANN001
-        super().__init__(parent)
-        self.setWindowTitle("Bulk Edit Fields")
+        super().__init__(parent, title="Bulk Edit Fields")
+        self.setObjectName("BulkEditDialog")
+        try:
+            self.resize(720, 520)
+        except Exception:
+            pass
         self._original = rules_mapping
         self._modified: Optional[SimpleRuleMapping] = None
         self._build_ui()
@@ -117,7 +129,7 @@ class BulkEditDialog(QDialog):  # pragma: no cover - GUI wiring; logic tested vi
 
     # UI -----------------------------------------------------------------
     def _build_ui(self):  # noqa: D401
-        lay = QVBoxLayout(self)
+        lay = self.content_layout() if hasattr(self, "content_layout") else QVBoxLayout(self)
         self.tree = QTreeWidget()
         self.tree.setColumnCount(4)
         self.tree.setHeaderLabels(["Resource", "Field", "Selector", "Transforms"])
@@ -167,7 +179,7 @@ class BulkEditDialog(QDialog):  # pragma: no cover - GUI wiring; logic tested vi
                     if isinstance(tr, list):
                         transforms = ",".join(map(str, tr))
                 item = QTreeWidgetItem([rname, fname, selector, transforms])
-                item.setCheckState(0, 0)  # Unchecked
+                item.setCheckState(0, Qt.CheckState.Unchecked)
                 self.tree.addTopLevelItem(item)
 
     # Event Handlers -----------------------------------------------------
@@ -175,7 +187,7 @@ class BulkEditDialog(QDialog):  # pragma: no cover - GUI wiring; logic tested vi
         selections: List[Tuple[str, str]] = []
         for i in range(self.tree.topLevelItemCount()):
             it = self.tree.topLevelItem(i)
-            if it.checkState(0).value:  # checked
+            if it.checkState(0) == Qt.CheckState.Checked:
                 selections.append((it.text(0), it.text(1)))
         add_transform = self.transform_combo.currentData() or None
         if add_transform == "":
@@ -183,7 +195,11 @@ class BulkEditDialog(QDialog):  # pragma: no cover - GUI wiring; logic tested vi
         find = self.find_edit.text().strip() or None
         replace = self.replace_edit.text() if find else None
         self._modified = bulk_edit_rules(
-            dict(self._original), selections, add_transform=add_transform, find=find, replace=replace
+            dict(self._original),
+            selections,
+            add_transform=add_transform,
+            find=find,
+            replace=replace,
         )
         self.accept()
 
