@@ -35,7 +35,7 @@ def test_canvas_model_compile_basic():
 
 @pytest.mark.gui
 def test_visual_builder_toggle_in_panel(qtbot, tmp_path):  # type: ignore
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     panel = IngestionLabPanel(base_dir=str(tmp_path))
     qtbot.addWidget(panel)

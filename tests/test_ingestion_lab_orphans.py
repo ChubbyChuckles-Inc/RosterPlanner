@@ -14,7 +14,7 @@ def test_orphan_fields_button(tmp_path, qtbot):
         "<html><body><ul class='p'><li><span class='n'>A</span><span class='r'>1</span></li></ul></body></html>",
         encoding="utf-8",
     )
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     panel = IngestionLabPanel(base_dir=str(data_dir))
     qtbot.addWidget(panel)

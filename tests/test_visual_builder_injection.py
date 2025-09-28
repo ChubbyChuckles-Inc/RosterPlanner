@@ -10,7 +10,7 @@ def _count_blocks(text: str) -> int:
 
 
 def test_visual_builder_snippet_injection_no_duplicates(qtbot, tmp_path):  # type: ignore
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     panel = IngestionLabPanel(base_dir=str(tmp_path))
     qtbot.addWidget(panel)
@@ -29,7 +29,7 @@ def test_visual_builder_snippet_injection_no_duplicates(qtbot, tmp_path):  # typ
 
 
 def test_visual_builder_live_preview_updates_single_block(qtbot, tmp_path):  # type: ignore
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     panel = IngestionLabPanel(base_dir=str(tmp_path))
     qtbot.addWidget(panel)

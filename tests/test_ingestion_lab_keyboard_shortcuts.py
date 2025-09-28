@@ -30,7 +30,7 @@ def test_keyboard_shortcuts_registration_and_preview(tmp_path, qtbot):
     html_file = data_dir / "sample_asset.html"
     html_file.write_text("<html><body><div>Alpha</div></body></html>", encoding="utf-8")
 
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
     from gui.services.shortcut_registry import global_shortcut_registry
 
     panel = IngestionLabPanel(base_dir=str(data_dir))
@@ -89,7 +89,7 @@ def test_enter_key_triggers_preview(tmp_path, qtbot):
         "<html><body>RT</body></html>", encoding="utf-8"
     )
 
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
     from PyQt6.QtCore import Qt
     from PyQt6.QtGui import QKeyEvent
 

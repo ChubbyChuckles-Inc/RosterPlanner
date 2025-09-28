@@ -1530,7 +1530,7 @@ class MainWindow(QMainWindow):  # Dock-based
         execution, diffing) will be implemented in subsequent milestone tasks.
         """
         try:
-            from gui.views.ingestion_lab_panel import IngestionLabPanel
+            from gui.views.ingestion_lab.panel import IngestionLabPanel
         except Exception as e:
             # Fallback simple placeholder if import fails (keeps dock creation resilient)
             box = QWidget()

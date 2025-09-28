@@ -2,7 +2,7 @@ import json
 
 from PyQt6.QtWidgets import QApplication
 
-from gui.views.ingestion_lab_panel import IngestionLabPanel
+from gui.views.ingestion_lab.panel import IngestionLabPanel
 
 
 HTML_FULL = """

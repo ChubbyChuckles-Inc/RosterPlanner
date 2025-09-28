@@ -19,7 +19,7 @@ class _DummyMode:
 def test_high_contrast_and_reduced_color_properties(qtbot, monkeypatch, tmp_path):
     # Provide dummy services via locator override if available
     from gui.services.service_locator import services
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()

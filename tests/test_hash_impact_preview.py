@@ -18,7 +18,7 @@ def _write_file(path: str, content: str):
 
 
 def test_hash_impact_preview_new_updated_missing(tmp_path):
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
     from gui.services.service_locator import services
 
     data_dir = tmp_path / "data"
@@ -73,7 +73,7 @@ def test_hash_impact_preview_new_updated_missing(tmp_path):
 
 
 def test_hash_impact_button_logs(tmp_path, qtbot):
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()

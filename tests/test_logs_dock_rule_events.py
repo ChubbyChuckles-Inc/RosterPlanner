@@ -23,7 +23,7 @@ def test_rule_validation_failed_event_emitted(monkeypatch):
     bus.subscribe(GUIEvent.RULE_VALIDATION_FAILED, handler)
 
     # Build minimal ingestion lab substitute with only log_area and _append_log bound method.
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
     import types
 
     dummy = types.SimpleNamespace()

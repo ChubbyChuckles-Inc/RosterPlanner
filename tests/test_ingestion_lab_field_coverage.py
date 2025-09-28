@@ -59,7 +59,7 @@ def test_field_coverage_integration(tmp_path, qtbot):
         encoding="utf-8",
     )
 
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     panel = IngestionLabPanel(base_dir=str(data_dir))
     qtbot.addWidget(panel)

@@ -11,7 +11,7 @@ app = QApplication.instance() or QApplication([])
 
 
 def test_ingestion_lab_panel_basic():
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     panel = IngestionLabPanel(base_dir="data")
     # Should have at least file list and log area attributes
@@ -38,7 +38,7 @@ def test_ingestion_lab_panel_provenance_columns():
     mocking a minimal in-memory sqlite connection registered under service locator.
     Falls back to skip if no files present in data dir.
     """
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
     from gui.services.service_locator import services
     import sqlite3
     import glob
@@ -99,7 +99,8 @@ def test_main_window_has_ingestion_lab_dock():
 
 
 def test_ingestion_lab_panel_search_and_phase_filter(tmp_path, qtbot):
-    from gui.views.ingestion_lab_panel import IngestionLabPanel, PHASE_PATTERNS
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
+    from gui.views.ingestion_lab.constants import PHASE_PATTERNS
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -136,7 +137,7 @@ def test_ingestion_lab_panel_search_and_phase_filter(tmp_path, qtbot):
 
 def test_ingestion_lab_panel_theme_density_integration(qtbot):
     """Panel should apply a stylesheet and respond to simulated theme change."""
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
     from gui.services.service_locator import services
 
     panel = IngestionLabPanel(base_dir="data")

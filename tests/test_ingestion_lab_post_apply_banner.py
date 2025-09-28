@@ -3,7 +3,7 @@ import sqlite3
 from PyQt6.QtWidgets import QApplication
 import pytest
 
-from gui.views.ingestion_lab_panel import IngestionLabPanel
+from gui.views.ingestion_lab.panel import IngestionLabPanel
 from gui.ingestion.rule_schema import RuleSet
 
 # Minimal QApplication singleton for tests

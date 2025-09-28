@@ -22,7 +22,7 @@ from .event_bus import GUIEvent, EventBus
 from .ingestion_coordinator import IngestionCoordinator
 
 try:  # optional import; GUI may not always have lab components loaded
-    from gui.views.ingestion_lab_panel import IngestionLabPanel  # type: ignore
+    from gui.views.ingestion_lab.panel import IngestionLabPanel  # type: ignore
 except Exception:  # pragma: no cover
     IngestionLabPanel = None  # type: ignore
 

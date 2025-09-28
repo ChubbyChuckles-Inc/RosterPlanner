@@ -10,7 +10,7 @@ app = QApplication.instance() or QApplication([])
 
 
 def test_preview_perf_badge_triggers(tmp_path, qtbot):
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -47,7 +47,7 @@ def test_preview_perf_badge_triggers(tmp_path, qtbot):
 
 
 def test_batch_preview_skeleton_shows_and_hides(qtbot, tmp_path, monkeypatch):
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     # Create temporary HTML files
     data_dir = tmp_path / "data"
@@ -85,7 +85,7 @@ def test_batch_preview_skeleton_shows_and_hides(qtbot, tmp_path, monkeypatch):
 
 
 def test_single_preview_unchanged_path(qtbot, tmp_path):
-    from gui.views.ingestion_lab_panel import IngestionLabPanel
+    from gui.views.ingestion_lab.panel import IngestionLabPanel
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()

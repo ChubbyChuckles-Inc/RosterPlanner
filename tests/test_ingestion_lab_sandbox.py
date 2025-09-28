@@ -7,7 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("RP_TEST_MODE", "1")
 
 from PyQt6.QtWidgets import QApplication  # noqa: E402
-from gui.views.ingestion_lab_panel import IngestionLabPanel  # noqa: E402
+from gui.views.ingestion_lab.panel import IngestionLabPanel  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -31,6 +31,7 @@ def rules_builder():
         rules_builder(list_resource={...}) -> returns JSON string for editor
     Accepts keyword args mapping resource name -> spec mapping (without wrapping version/resources).
     """
+
     def _build(**resources):  # noqa: ANN001
         payload = {"version": 1, "resources": resources}
         return json.dumps(payload)

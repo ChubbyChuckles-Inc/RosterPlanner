@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from gui.services.accessibility_audit import audit_widget_tree
-from gui.views.ingestion_lab_panel import IngestionLabPanel
+from gui.views.ingestion_lab.panel import IngestionLabPanel
 from gui.ingestion.selector_picker import SelectorPickerDialog
 import os
 import pytest
