@@ -44,6 +44,7 @@ from gui.views.selector_watchlist_panel import SelectorWatchlistPanel
 from .analysis import AnalysisMixin
 from .constants import OTHER_PHASE_ID, PHASE_PATTERNS
 from .complexity import ComplexityMeterMixin
+from .timeline import AuthoringTimelineMixin
 from .drafts import DraftingMixin
 from .file_discovery import FileDiscoveryMixin
 from .filters import FilteringMixin
@@ -83,6 +84,7 @@ class IngestionLabPanel(
     SimulationMixin,
     ToolDialogsMixin,
     ComplexityMeterMixin,
+    AuthoringTimelineMixin,
     DraftingMixin,
     SandboxMixin,
     FilteringMixin,
@@ -106,7 +108,9 @@ class IngestionLabPanel(
         self._last_watchlist_results: Dict[str, SelectorWatchResult] = {}
         self._current_ruleset = None
         self._base_inglab_stylesheet = self.styleSheet()
+        self._init_authoring_timeline_features()
         self._build_ui()
+        self._timeline_refresh_ui()
         self._watchlist_panel.set_entries(self._watchlist_store.entries())
         self._last_provenance: Dict[str, tuple[str, str, int]] = {}
         self._last_hash_impact: HashImpactResult | None = None
@@ -630,6 +634,12 @@ class IngestionLabPanel(
         self._side_tabs.addTab(self._intent_sidebar, "Intent")
         self._side_tabs.addTab(self._watchlist_panel, "Watchlist")
         self._side_tabs.addTab(self._sandbox_tab, "Sandbox")
+        try:
+            timeline_tab = self._create_authoring_timeline_tab()
+        except Exception:
+            timeline_tab = None
+        if timeline_tab is not None:
+            self._side_tabs.addTab(timeline_tab, "Timeline")
         self._editor_split = QSplitter(Qt.Orientation.Horizontal, self)
         self._editor_split.addWidget(self._editor_stack_container)
         self._editor_split.addWidget(self._side_tabs)
@@ -868,6 +878,7 @@ class IngestionLabPanel(
         self._force_complexity_refresh()
         self._load_existing_draft()
         self._refresh_intent_resources()
+        self._finalize_authoring_timeline_bootstrap()
         self.batch_preview_skeleton_min_files = int(
             os.environ.get("RP_ING_BATCH_SKELETON_MIN_FILES", "5")
         )

@@ -154,3 +154,13 @@ feat(ingestion-lab): safe execution guard (simulate + apply audit) with tests (M
 feat(ingestion-lab): add parse benchmark dialog with A/B rule variant execution + optional parallel workers (Milestone 7.10.39)
 feat(ingestion-lab): add caching inspector (hash diff viewer) with dialog + backend diff_provenance (Milestone 7.10.40)
 
+feat(ingestion-lab): add inline YAML fragment editor dialog with ghost placeholders (7.10.A15)
+
+feat(ingestion-lab): add authoring timeline with diff scrubber (7.10.A16)
+Introduces AuthoringTimelineModel to compute semantic rule deltas (resource/field
+additions, selector changes, macro updates) and surface them as diff-backed
+entries with restore capability in the Ingestion Lab panel. Adds timeline tab
+with scrub slider, diff preview, and restore button; integrates change capture
+into rule editor updates with debounced snapshots. Updates roadmap milestone
+7.10.A16 to complete and adds targeted unit tests for the timeline model.
+
