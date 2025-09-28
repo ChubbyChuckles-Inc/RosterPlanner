@@ -32,6 +32,35 @@ Now, read "roadmaps/implementation_GUI.txt", identify the next unfinished task, 
 
 
 
+### Refactor File
+
+Task
+
+You are an expert Python developer tasked with refactoring a large, monolithic Python file named "src\gui\views\ingestion_lab_panel.py" to improve maintainability. The goal is to split the code into as many smaller, logical files as possible while preserving all functionality. Each new file should focus on a single responsibility (e.g., one for utilities, one for data models, one for main logic).
+
+Steps to Follow
+
+1. Analyze the Code: Review the entire contents of the file. 
+
+Identify distinct sections such as: Imports, Constants and global variables, Classes (group related classes together if they form a module)
+Functions (group by purpose, e.g., utility functions, data processing functions), main execution logic or entry points (e.g., if name == "main") ,any scripts, tests, or helpers
+
+2. Plan the Split:
+
+Propose a directory structure if needed (e.g., create a package folder like "example_package/" with init.py). Suggest meaningful file names for each split (e.g., utils.py, models.py, main.py). Aim for maximal splitting: Break into as many files as makes sense without over-fragmenting (e.g., one class per file if large, or group small related functions). Ensure no circular imports; resolve dependencies logically.
+
+3. Refactor the Code:
+
+Extract code sections into new files. Update imports in all files to reference the new modules (use relative imports if in a package). Move the main entry point to a dedicated file (e.g., main.py or run.py). Add docstrings, type hints, and comments where missing to improve readability. Handle any global state carefully (e.g., config files or shared variables).
+
+4. Verify Integrity:
+
+Ensure the refactored code runs identically to the original (no behavior changes). Suggest how to test: Run the original vs. new version with sample inputs. If errors arise (e.g., missing imports), fix them inline.
+
+5. Output Format:
+
+List all new files with their full code. For each file: Start with python filename.py followed by the code, ending with ```. If creating a package, include init.py and explain setup.
+
 
 
 
