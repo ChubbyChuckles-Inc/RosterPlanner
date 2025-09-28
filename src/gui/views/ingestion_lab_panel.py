@@ -60,6 +60,9 @@ from typing import Dict, Any
 import time
 from PyQt6.QtWidgets import QAbstractItemView
 
+from gui.ingestion.rule_intent_store import RuleIntentStore, RuleIntent
+from gui.views.rule_intent_sidebar import RuleIntentSidebar
+
 try:  # pragma: no cover - optional internal import
     from gui.ingestion.prompt_rule_assist import generate_rule_draft, ruleset_to_mapping  # type: ignore
 except Exception:  # pragma: no cover
@@ -142,6 +145,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         super().__init__(parent)
         self.setObjectName("ingestionLabPanel")
         self._base_dir = base_dir
+        self._intent_store_path = os.path.join(self._base_dir, ".ingestion_rule_intents.json")
+        self._intent_store = RuleIntentStore(self._intent_store_path)
+        self._intent_current_resource: Optional[str] = None
         self._build_ui()
         # Hash impact & provenance caches (populated on refresh)
         self._last_provenance: dict[str, tuple[str, str, int]] = {}
@@ -742,7 +748,14 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             short_tb = "".join(_tb.format_exception_only(type(e), e)).strip()
             self.visual_builder = QLabel(f"Visual builder import error: {err}\n{short_tb}")  # type: ignore[assignment]
         self._editor_stack.addWidget(self.visual_builder)  # index 1
-        mid_split.addWidget(self._editor_stack_container)
+        self._intent_sidebar = RuleIntentSidebar()
+        self._intent_sidebar.setMinimumWidth(260)
+        self._editor_split = QSplitter(Qt.Orientation.Horizontal, self)
+        self._editor_split.addWidget(self._editor_stack_container)
+        self._editor_split.addWidget(self._intent_sidebar)
+        self._editor_split.setStretchFactor(0, 4)
+        self._editor_split.setStretchFactor(1, 2)
+        mid_split.addWidget(self._editor_split)
 
         # Preview container (stack: main preview text + batch-loading skeleton) (7.10.46)
         self._preview_container = QWidget()
@@ -831,6 +844,8 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         # Sandbox connections (7.10.A7)
         self.btn_sandbox_parse.clicked.connect(self._on_sandbox_parse_clicked)  # type: ignore
         self.btn_sandbox_clear.clicked.connect(self._on_sandbox_clear_clicked)  # type: ignore
+        self._intent_sidebar.saveRequested.connect(self._on_intent_save)  # type: ignore
+        self._intent_sidebar.resourceChanged.connect(self._on_intent_resource_changed)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -942,6 +957,7 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._draft_timer = None  # type: ignore
         self.rule_editor.textChanged.connect(self._on_rule_text_changed)  # type: ignore
         self._load_existing_draft()
+        self._refresh_intent_resources()
         # Batch preview configuration (env overrides for tests) (7.10.46)
         self.batch_preview_skeleton_min_files = int(
             os.environ.get("RP_ING_BATCH_SKELETON_MIN_FILES", "5")
@@ -965,6 +981,16 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self.rule_editor.cursorPositionChanged.connect(self._on_editor_cursor_changed)  # type: ignore
         except Exception:  # pragma: no cover
             self._selector_timer = None
+
+        try:
+            from PyQt6.QtCore import QTimer as _QTimer
+
+            self._intent_refresh_timer = _QTimer(self)
+            self._intent_refresh_timer.setInterval(500)
+            self._intent_refresh_timer.setSingleShot(True)
+            self._intent_refresh_timer.timeout.connect(self._refresh_intent_resources)  # type: ignore
+        except Exception:  # pragma: no cover
+            self._intent_refresh_timer = None
 
         # Additional sticky toolbar styling (shadow / border) appended safely
         try:
@@ -1082,7 +1108,62 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 except Exception:
                     pretty = _json.dumps(modified)
                 self.rule_editor.setPlainText(pretty)
+                self._refresh_intent_resources()
                 self._append_log("Bulk edit applied to selected fields")
+
+    # ------------------------------------------------------------------
+    # Rule Intent Sidebar (7.10.A9)
+    def _refresh_intent_resources(self) -> None:
+        """Refresh sidebar resource list based on current editor content."""
+
+        resources: list[str] = []
+        try:
+            rule_set = self._parse_ruleset_from_editor()
+        except Exception:
+            rule_set = None
+        if rule_set is not None:
+            try:
+                resources = sorted(rule_set.resources.keys())
+            except Exception:
+                resources = []
+        self._intent_sidebar.set_resources(resources)
+        target = self._intent_current_resource
+        if target and target in resources:
+            self._intent_sidebar.select_resource(target)
+        elif resources:
+            self._intent_sidebar.select_resource(resources[0])
+        else:
+            self._intent_sidebar.clear_fields()
+
+    def _on_intent_save(self, resource: str, payload: dict) -> None:
+        if not resource:
+            self._append_log("Intent save skipped: no resource selected")
+            return
+        intent = RuleIntent(
+            purpose=str(payload.get("purpose", "") or ""),
+            assumptions=str(payload.get("assumptions", "") or ""),
+            todo=str(payload.get("todo", "") or ""),
+        )
+        trimmed = intent.trimmed()
+        self._intent_store.set(resource, intent)
+        try:
+            self._intent_store.save()
+        except Exception as exc:  # pragma: no cover - IO failure
+            self._append_log(f"Intent save failed for {resource}: {exc}")
+            return
+        if trimmed.is_empty():
+            self._append_log(f"Intent cleared for {resource}")
+            self._intent_sidebar.load_intent(RuleIntent())
+        else:
+            self._append_log(f"Intent saved for {resource}")
+            self._intent_sidebar.load_intent(self._intent_store.get(resource))
+
+    def _on_intent_resource_changed(self, resource: str) -> None:
+        self._intent_current_resource = resource or None
+        if not resource:
+            self._intent_sidebar.clear_fields()
+            return
+        self._intent_sidebar.load_intent(self._intent_store.get(resource))
 
     def _reflow_toolbar(self):  # heuristic reflow
         if not hasattr(self, "_toolbar_row2"):
@@ -2692,6 +2773,11 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
     def _on_rule_text_changed(self) -> None:  # pragma: no cover - GUI event
         # Mark draft dirty; actual write deferred to timer based autosave
         self._draft_dirty = True
+        if getattr(self, "_intent_refresh_timer", None):
+            try:
+                self._intent_refresh_timer.start()  # type: ignore[operator]
+            except Exception:
+                pass
 
     def _autosave_draft(self) -> None:
         """Persist current editor text to the draft file if dirty.
