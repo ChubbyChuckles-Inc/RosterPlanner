@@ -6,13 +6,32 @@ import hashlib
 import json
 import os
 import time
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 try:  # pragma: no cover
     from gui.services.service_locator import services as _services  # type: ignore
 except Exception:  # pragma: no cover
     _services = None  # type: ignore
 
-__all__ = ["DraftingMixin"]
+__all__ = ["DraftSnapshot", "DraftingMixin"]
+
+
+@dataclass(frozen=True)
+class DraftSnapshot:
+    """Immutable representation of a stored draft autosave snapshot."""
+
+    timestamp: int
+    content_hash: str
+    text: str
+
+    def label(self) -> str:
+        dt = datetime.fromtimestamp(self.timestamp)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    def short_hash(self) -> str:
+        return self.content_hash[:10]
 
 
 class DraftingMixin:
@@ -39,6 +58,7 @@ class DraftingMixin:
             os.replace(tmp_path, self._draft_path)
             self._draft_dirty = False
             self._append_log("Draft autosaved")
+            self._record_draft_snapshot(text)
         except Exception as e:  # pragma: no cover
             try:
                 self._append_log(f"Draft autosave WARN: {e}")
@@ -120,3 +140,78 @@ class DraftingMixin:
                     )
             except Exception:  # pragma: no cover
                 pass
+
+    # ------------------------------------------------------------------
+    # Draft history helpers
+
+    def _record_draft_snapshot(self, text: str) -> None:
+        path = getattr(self, "_draft_history_path", None)
+        if not path:
+            return
+        try:
+            content_hash = hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
+        except Exception:
+            content_hash = ""
+        entries = self._load_draft_history_entries()
+        timestamp = int(time.time())
+        if entries and entries[-1]["hash"] == content_hash:
+            entries[-1] = {"ts": timestamp, "hash": content_hash, "text": text}
+        else:
+            entries.append({"ts": timestamp, "hash": content_hash, "text": text})
+        max_entries = getattr(self, "_draft_history_max_entries", 5)
+        if max_entries > 0:
+            entries = entries[-max_entries:]
+        try:
+            tmp_path = path + ".tmp"
+            payload = {"entries": entries}
+            with open(tmp_path, "w", encoding="utf-8", errors="ignore") as fh:
+                json.dump(payload, fh, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, path)
+        except Exception:  # pragma: no cover
+            return
+        if hasattr(self, "_timeline_refresh_snapshots"):
+            try:
+                self._timeline_refresh_snapshots()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+    def _load_draft_history_entries(self) -> List[Dict[str, Any]]:
+        path = getattr(self, "_draft_history_path", None)
+        if not path or not os.path.exists(path):
+            return []
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                payload = json.load(fh)
+        except Exception:
+            return []
+        raw_entries: List[Dict[str, Any]] = []
+        items = payload.get("entries") if isinstance(payload, dict) else payload
+        if not isinstance(items, list):
+            return []
+        for entry in items:
+            if not isinstance(entry, dict):
+                continue
+            text = entry.get("text")
+            ts = entry.get("ts")
+            if not isinstance(text, str) or not isinstance(ts, int):
+                continue
+            hash_value = entry.get("hash")
+            if not isinstance(hash_value, str) or not hash_value:
+                try:
+                    hash_value = hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
+                except Exception:
+                    hash_value = ""
+            raw_entries.append({"ts": ts, "hash": hash_value, "text": text})
+        raw_entries.sort(key=lambda item: item["ts"])
+        return raw_entries
+
+    def _get_recent_draft_snapshots(self, limit: Optional[int] = None) -> List[DraftSnapshot]:
+        entries = self._load_draft_history_entries()
+        snapshots = [
+            DraftSnapshot(timestamp=entry["ts"], content_hash=entry["hash"], text=entry["text"])
+            for entry in entries
+        ]
+        snapshots.sort(key=lambda snap: snap.timestamp, reverse=True)
+        if limit is not None and limit >= 0:
+            snapshots = snapshots[:limit]
+        return snapshots

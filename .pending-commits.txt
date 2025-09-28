@@ -164,3 +164,9 @@ with scrub slider, diff preview, and restore button; integrates change capture
 into rule editor updates with debounced snapshots. Updates roadmap milestone
 7.10.A16 to complete and adds targeted unit tests for the timeline model.
 
+feat(ingestion-lab): add autosave snapshot compare dropdown (7.10.A17)
+Adds draft snapshot history tracking capped at five entries with deduplicated
+hashes, surfaces a timeline tab dropdown to diff autosaves against the current
+editor, and enables one-click loading of a chosen autosave. Includes unit tests
+for draft history retention and roadmap update for milestone 7.10.A17.
+

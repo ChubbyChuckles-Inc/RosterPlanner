@@ -380,7 +380,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
 [x] 7.10.A14 Rule Complexity Meter: heuristic scoring (selector specificity depth + transform chain length + inheritance depth) with guidance thresholds & color-coded badge.
  [x] 7.10.A15 Inline YAML Fragment Editor with Schema Ghost Text: grayed placeholder keys appear for missing recommended attributes (context-aware autocompletion).
  [x] 7.10.A16 Undo/Redo Granular Timeline (Authoring Scope): displays consecutive semantic edits (add field, change selector) with diff tooltip; navigable scrub.
- [ ] 7.10.A17 Snapshot Compare Dropdown: quick switch between last 5 draft autosaves to diff rule evolution without leaving editor.
+ [x] 7.10.A17 Snapshot Compare Dropdown: quick switch between last 5 draft autosaves to diff rule evolution without leaving editor.
  [ ] 7.10.A18 Safe Expression Playground: isolated evaluator with timeout & AST lint; promotes expression to rule only if passes safety + result type inference.
  [ ] 7.10.A19 Import HTML Snippet As Fixture: capture a DOM fragment directly into a fixtures folder for deterministic selector regression tests.
  [ ] 7.10.A20 Guided Onboarding Walkthrough: progressive spotlight across navigator → selector explorer → transforms → diff preview (stores completion flag in config).

@@ -14,11 +14,12 @@ import json
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -29,6 +30,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from .drafts import DraftSnapshot
 
 __all__ = [
     "ChangeEvent",
@@ -431,6 +434,10 @@ class AuthoringTimelineMixin:
     _timeline_pending_text: str
     _timeline_bootstrap: bool
     _timeline_selected_index: Optional[int]
+    _timeline_snapshot_combo: QComboBox
+    _timeline_snapshot_load_btn: QPushButton
+    _timeline_snapshot_active: bool
+    _timeline_snapshot_selection: Optional[DraftSnapshot]
 
     def _create_authoring_timeline_tab(self) -> QWidget:
         container = QWidget()
@@ -450,6 +457,22 @@ class AuthoringTimelineMixin:
         summary.setObjectName("ingLabTimelineSummary")
         summary.setWordWrap(True)
         layout.addWidget(summary)
+
+        snapshot_row = QHBoxLayout()
+        snapshot_row.setSpacing(6)
+        snapshot_label = QLabel("Compare autosaves:")
+        snapshot_label.setObjectName("ingLabTimelineSnapshotLabel")
+        snapshot_combo = QComboBox()
+        snapshot_combo.setObjectName("ingLabTimelineSnapshotCombo")
+        snapshot_combo.setEnabled(False)
+        snapshot_combo.addItem("Current draft (no compare)", None)
+        snapshot_load_btn = QPushButton("Load Autosave")
+        snapshot_load_btn.setObjectName("ingLabTimelineSnapshotLoad")
+        snapshot_load_btn.setEnabled(False)
+        snapshot_row.addWidget(snapshot_label)
+        snapshot_row.addWidget(snapshot_combo, 1)
+        snapshot_row.addWidget(snapshot_load_btn)
+        layout.addLayout(snapshot_row)
 
         slider = QSlider(Qt.Orientation.Horizontal)
         slider.setEnabled(False)
@@ -478,6 +501,8 @@ class AuthoringTimelineMixin:
         buttons.addWidget(restore_btn)
         layout.addLayout(buttons)
 
+        snapshot_combo.currentIndexChanged.connect(self._timeline_on_snapshot_changed)  # type: ignore[attr-defined]
+        snapshot_load_btn.clicked.connect(self._timeline_load_snapshot)  # type: ignore[attr-defined]
         slider.valueChanged.connect(lambda val: self._select_timeline_entry(int(val), reason="slider"))  # type: ignore[attr-defined]
         list_widget.itemSelectionChanged.connect(self._timeline_on_list_selection)  # type: ignore[attr-defined]
         restore_btn.clicked.connect(self._timeline_restore_selected)  # type: ignore[attr-defined]
@@ -487,6 +512,12 @@ class AuthoringTimelineMixin:
         self._timeline_list = list_widget
         self._timeline_diff_view = diff_view
         self._timeline_restore_btn = restore_btn
+        self._timeline_snapshot_combo = snapshot_combo
+        self._timeline_snapshot_load_btn = snapshot_load_btn
+        self._timeline_snapshot_active = False
+        self._timeline_snapshot_selection = None
+
+        self._timeline_refresh_snapshots()
 
         return container
 
@@ -501,6 +532,8 @@ class AuthoringTimelineMixin:
         self._timeline_pending_text = ""
         self._timeline_bootstrap = True
         self._timeline_selected_index = None
+        self._timeline_snapshot_active = False
+        self._timeline_snapshot_selection = None
         self._timeline_refresh_ui()
 
     def _finalize_authoring_timeline_bootstrap(self) -> None:
@@ -545,9 +578,143 @@ class AuthoringTimelineMixin:
 
     # ------------------------------------------------------------------
     # UI helpers
+    def _timeline_refresh_snapshots(self) -> None:
+        combo = getattr(self, "_timeline_snapshot_combo", None)
+        load_btn = getattr(self, "_timeline_snapshot_load_btn", None)
+        if combo is None:
+            return
+        getter = getattr(self, "_get_recent_draft_snapshots", None)
+        snapshots: List[DraftSnapshot] = []
+        if callable(getter):
+            try:
+                snapshots = list(getter(limit=5))  # type: ignore[misc]
+            except Exception:
+                snapshots = []
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem("Current draft (no compare)", None)
+        for snap in snapshots:
+            label = f"{datetime.fromtimestamp(snap.timestamp).strftime('%H:%M:%S')} ({snap.short_hash()})"
+            combo.addItem(label, snap)
+        combo.blockSignals(False)
+        combo.setEnabled(bool(snapshots))
+        self._timeline_snapshot_active = False
+        self._timeline_snapshot_selection = None
+        if load_btn is not None:
+            load_btn.setEnabled(False)
+        if combo.currentIndex() != 0:
+            combo.blockSignals(True)
+            combo.setCurrentIndex(0)
+            combo.blockSignals(False)
+
+    def _timeline_reset_snapshot_state(self, *, reset_combo: bool = True) -> None:
+        self._timeline_snapshot_active = False
+        self._timeline_snapshot_selection = None
+        load_btn = getattr(self, "_timeline_snapshot_load_btn", None)
+        if load_btn is not None:
+            load_btn.setEnabled(False)
+        if reset_combo:
+            combo = getattr(self, "_timeline_snapshot_combo", None)
+            if combo is not None:
+                combo.blockSignals(True)
+                combo.setCurrentIndex(0)
+                combo.blockSignals(False)
+
+    def _timeline_on_snapshot_changed(self, index: int) -> None:
+        combo = getattr(self, "_timeline_snapshot_combo", None)
+        if combo is None:
+            return
+        if index < 0:
+            index = combo.currentIndex()
+        if index <= 0:
+            self._timeline_reset_snapshot_state(reset_combo=False)
+            entries = self._timeline_model.entries()
+            if entries:
+                target = (
+                    self._timeline_selected_index
+                    if self._timeline_selected_index is not None
+                    else len(entries) - 1
+                )
+                self._select_timeline_entry(int(target), reason="snapshot-reset")
+            else:
+                self._timeline_summary_label.setText("No history captured yet.")
+                self._timeline_diff_view.setPlainText("")
+                self._timeline_restore_btn.setEnabled(False)
+            return
+        snapshot = combo.itemData(index)
+        if not isinstance(snapshot, DraftSnapshot):
+            self._timeline_reset_snapshot_state(reset_combo=True)
+            return
+        self._timeline_snapshot_selection = snapshot
+        self._timeline_snapshot_active = True
+        load_btn = getattr(self, "_timeline_snapshot_load_btn", None)
+        if load_btn is not None:
+            load_btn.setEnabled(True)
+        self._timeline_show_snapshot_diff(snapshot)
+
+    def _timeline_show_snapshot_diff(self, snapshot: DraftSnapshot) -> None:
+        try:
+            current_text = self.rule_editor.toPlainText()  # type: ignore[attr-defined]
+        except Exception:
+            current_text = ""
+        snap_render, snap_err = self._timeline_render_text(snapshot.text)
+        current_render, current_err = self._timeline_render_text(current_text)
+        diff_text = self._timeline_model._build_diff(snap_render, current_render)
+        if len(diff_text) > 20000:
+            diff_text = diff_text[:20000] + "\n…"
+        lines = [
+            (
+                "Autosave captured "
+                f"{datetime.fromtimestamp(snapshot.timestamp).strftime('%Y-%m-%d %H:%M:%S')}"
+                f" (hash {snapshot.short_hash()})"
+            ),
+            "Comparing against current editor content.",
+        ]
+        if snap_err:
+            lines.append(f"Snapshot parse error: {snap_err}")
+        if current_err:
+            lines.append(f"Current parse error: {current_err}")
+        self._timeline_summary_label.setText("\n".join(lines))
+        self._timeline_diff_view.setPlainText(diff_text or "(No diff available)")
+        self._timeline_restore_btn.setEnabled(False)
+
+    def _timeline_render_text(self, text: str) -> Tuple[str, Optional[str]]:
+        sanitized, mapping, rendered, error = self._timeline_model._normalize(text)
+        if rendered is not None:
+            return rendered, error
+        if sanitized:
+            return sanitized, error
+        return text, error
+
+    def _timeline_load_snapshot(self) -> None:
+        snapshot = getattr(self, "_timeline_snapshot_selection", None)
+        if snapshot is None:
+            return
+        try:
+            self.rule_editor.setPlainText(snapshot.text)  # type: ignore[attr-defined]
+            try:
+                self._append_log(  # type: ignore[attr-defined]
+                    "Loaded autosave from "
+                    f"{datetime.fromtimestamp(snapshot.timestamp).strftime('%Y-%m-%d %H:%M:%S')}"
+                    f" (hash {snapshot.short_hash()})"
+                )
+            except Exception:
+                pass
+        except Exception as exc:
+            try:
+                self._append_log(f"Autosave load failed: {exc}")  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            return
+        finally:
+            self._timeline_reset_snapshot_state(reset_combo=True)
+        self._timeline_refresh_ui(select_latest=False)
+
     def _timeline_refresh_ui(self, *, select_latest: bool = False) -> None:
         if not hasattr(self, "_timeline_list"):
             return
+        if getattr(self, "_timeline_snapshot_active", False):
+            self._timeline_reset_snapshot_state(reset_combo=False)
         entries = self._timeline_model.entries()
         count = len(entries)
 
@@ -581,6 +748,7 @@ class AuthoringTimelineMixin:
             self._timeline_summary_label.setText("No history captured yet.")
             self._timeline_diff_view.setPlainText("")
             self._timeline_restore_btn.setEnabled(False)
+            self._timeline_reset_snapshot_state(reset_combo=False)
             return
 
         target_index = (
@@ -598,6 +766,8 @@ class AuthoringTimelineMixin:
         entries = self._timeline_model.entries()
         if not entries:
             return
+        if reason not in {"snapshot-reset"} and getattr(self, "_timeline_snapshot_active", False):
+            self._timeline_reset_snapshot_state(reset_combo=False)
         index = max(0, min(index, len(entries) - 1))
         self._timeline_selected_index = index
         entry = entries[index]

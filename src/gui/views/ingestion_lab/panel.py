@@ -108,6 +108,11 @@ class IngestionLabPanel(
         self._last_watchlist_results: Dict[str, SelectorWatchResult] = {}
         self._current_ruleset = None
         self._base_inglab_stylesheet = self.styleSheet()
+        self._draft_path = os.path.join(self._base_dir, ".ingestion_rules_draft.json")
+        self._draft_history_path = os.path.join(
+            self._base_dir, ".ingestion_rules_draft_history.json"
+        )
+        self._draft_history_max_entries = int(os.environ.get("RP_ING_DRAFT_HISTORY_MAX", "5"))
         self._init_authoring_timeline_features()
         self._build_ui()
         self._timeline_refresh_ui()
@@ -861,7 +866,6 @@ class IngestionLabPanel(
         self._register_shortcuts()
         self._configure_keyboard_focus()
 
-        self._draft_path = os.path.join(self._base_dir, ".ingestion_rules_draft.json")
         self._last_published_hash = None
         self._draft_autosave_interval_ms = int(os.environ.get("RP_ING_DRAFT_AUTOSAVE_MS", "5000"))
         self._draft_dirty = False
@@ -877,6 +881,7 @@ class IngestionLabPanel(
         self.rule_editor.textChanged.connect(self._on_rule_text_changed)  # type: ignore
         self._force_complexity_refresh()
         self._load_existing_draft()
+        self._timeline_refresh_snapshots()
         self._refresh_intent_resources()
         self._finalize_authoring_timeline_bootstrap()
         self.batch_preview_skeleton_min_files = int(
