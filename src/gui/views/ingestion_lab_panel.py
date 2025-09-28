@@ -385,6 +385,76 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
                 self.btn_overlap,
             ],
         )
+        # Live Parsing Sandbox (7.10.A7) ---------------------------------------------------------
+        # A lightweight inline cell for experimenting with a small HTML fragment against the
+        # current in‑editor rule set without changing any file selection state.
+        # Design: collapsible panel placed in the Authoring group for rapid iteration.
+        from PyQt6.QtWidgets import QGroupBox as _QGroupBox, QGridLayout as _QGridLayout
+
+        self.sandbox_group = _QGroupBox("Sandbox")
+        self.sandbox_group.setCheckable(True)
+        self.sandbox_group.setChecked(False)
+        self.sandbox_group.setObjectName("ingLabSandboxGroup")
+        _sgl = _QGridLayout(self.sandbox_group)
+        _sgl.setContentsMargins(6, 4, 6, 6)
+        _sgl.setHorizontalSpacing(4)
+        _sgl.setVerticalSpacing(4)
+
+        self.sandbox_input = QPlainTextEdit()
+        self.sandbox_input.setObjectName("ingestionLabSandboxFragment")
+        self.sandbox_input.setPlaceholderText(
+            "Paste or type a small HTML fragment here (e.g. a snippet containing a table or list)."
+        )
+        try:  # light fallback styling mirroring editor dark theme
+            from gui.services.service_locator import services as _svc
+
+            if not _svc.try_get("theme_service"):
+                self.sandbox_input.setStyleSheet(
+                    "QPlainTextEdit#ingestionLabSandboxFragment { background:#101010; color:#e8e8e8; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+                )
+        except Exception:  # pragma: no cover
+            self.sandbox_input.setStyleSheet(
+                "QPlainTextEdit#ingestionLabSandboxFragment { background:#101010; color:#e8e8e8; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+            )
+
+        self.sandbox_output = QPlainTextEdit()
+        self.sandbox_output.setObjectName("ingestionLabSandboxOutput")
+        self.sandbox_output.setReadOnly(True)
+        self.sandbox_output.setPlaceholderText("Sandbox parse results will appear here.")
+        try:
+            if not _svc.try_get("theme_service"):  # type: ignore[name-defined]
+                self.sandbox_output.setStyleSheet(
+                    "QPlainTextEdit#ingestionLabSandboxOutput { background:#080808; color:#dcdcdc; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+                )
+        except Exception:  # pragma: no cover
+            self.sandbox_output.setStyleSheet(
+                "QPlainTextEdit#ingestionLabSandboxOutput { background:#080808; color:#dcdcdc; font-family:Consolas,'Courier New',monospace; font-size:12px; }"
+            )
+
+        self.btn_sandbox_parse = QPushButton("Parse")
+        self.btn_sandbox_parse.setObjectName("ingLabBtnSandboxParse")
+        self.btn_sandbox_parse.setToolTip("Parse fragment with current rules (no transforms unless enabled)")
+        self.btn_sandbox_clear = QPushButton("Clear")
+        self.btn_sandbox_clear.setObjectName("ingLabBtnSandboxClear")
+        self.btn_sandbox_clear.setToolTip("Clear fragment and output")
+        self.chk_sandbox_transforms = QCheckBox("Apply transforms")
+        self.chk_sandbox_transforms.setObjectName("ingLabChkSandboxTransforms")
+        self.chk_sandbox_transforms.setToolTip("If checked, run transform chains for list field values")
+
+        # Layout grid: controls row then two editors stacked vertically
+        _sgl.addWidget(self.btn_sandbox_parse, 0, 0, 1, 1)
+        _sgl.addWidget(self.btn_sandbox_clear, 0, 1, 1, 1)
+        _sgl.addWidget(self.chk_sandbox_transforms, 0, 2, 1, 1)
+        _sgl.addWidget(self.sandbox_input, 1, 0, 1, 3)
+        _sgl.addWidget(self.sandbox_output, 2, 0, 1, 3)
+        _sgl.setColumnStretch(0, 0)
+        _sgl.setColumnStretch(1, 0)
+        _sgl.setColumnStretch(2, 1)
+
+        # Insert sandbox group into authoring panel (beneath existing buttons)
+        # We simply append after authoring_panel in the primary actions layout.
+        actions.addWidget(self.sandbox_group)
+
         # Advanced buttons (may be hidden into overflow outside test mode)
         self._advanced_buttons = [
             self.btn_hash_impact,
@@ -746,6 +816,9 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
         self.btn_visual_builder.clicked.connect(self._on_visual_builder_clicked)  # type: ignore
         self.btn_publish.clicked.connect(self._on_publish_clicked)  # type: ignore
         self.btn_toggle_density.clicked.connect(lambda _v: None)  # placeholder for test hook
+        # Sandbox connections (7.10.A7)
+        self.btn_sandbox_parse.clicked.connect(self._on_sandbox_parse_clicked)  # type: ignore
+        self.btn_sandbox_clear.clicked.connect(self._on_sandbox_clear_clicked)  # type: ignore
         self.search_box.textChanged.connect(lambda _t: self._apply_filters())  # type: ignore
         self.min_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
         self.max_size.valueChanged.connect(lambda _v: self._apply_filters())  # type: ignore
@@ -898,6 +971,75 @@ class IngestionLabPanel(QWidget, ThemeAwareMixin):
             self._reflow_toolbar()
         except Exception:
             pass
+
+    # ------------------------------------------------------------------
+    # Sandbox (7.10.A7) Handlers
+    def _on_sandbox_clear_clicked(self) -> None:
+        try:
+            self.sandbox_input.clear()
+            self.sandbox_output.clear()
+        except Exception as e:  # pragma: no cover - defensive
+            self._append_log(f"Sandbox clear failed: {e}")
+
+    def _on_sandbox_parse_clicked(self) -> None:
+        """Parse the sandbox HTML fragment using the current in-editor rule set.
+
+        Behavior:
+          * Parses rules from the active editor mode (text or visual builder synthesized JSON).
+          * Applies generate_parse_preview over the provided fragment.
+          * Renders resource summaries + first few extracted records per resource.
+          * Shows warnings / errors inline and logs a concise summary.
+        """
+        frag = self.sandbox_input.toPlainText().strip()
+        if not frag:
+            self.sandbox_output.setPlainText("(No fragment provided)")
+            return
+        try:
+            rule_set = self._parse_ruleset_from_editor()
+        except Exception as e:
+            self.sandbox_output.setPlainText(f"Rule parse error: {e}")
+            self._append_log(f"Sandbox rule parse error: {e}")
+            return
+        try:
+            from gui.ingestion.rule_parse_preview import generate_parse_preview  # type: ignore
+
+            preview = generate_parse_preview(
+                rule_set,
+                frag,
+                apply_transforms=self.chk_sandbox_transforms.isChecked(),
+                capture_performance=False,
+            )
+        except Exception as e:  # pragma: no cover - unexpected failure path
+            self.sandbox_output.setPlainText(f"Sandbox parse failed: {e}")
+            self._append_log(f"Sandbox parse failed: {e}")
+            return
+
+        lines: list[str] = []
+        lines.append(
+            f"Resources: {len(preview.summaries)} | Nodes: {preview.node_count} | Time: {preview.parse_time_ms:.1f} ms"
+        )
+        for summ in preview.summaries:
+            warn_count = len(summ.warnings)
+            lines.append(
+                f"- {summ.resource} ({summ.kind}) records={summ.record_count} warnings={warn_count}"
+            )
+            # Show up to first 2 records for quick inspection
+            recs = preview.extracted_records.get(summ.resource, [])
+            for ridx, rec in enumerate(recs[:2]):
+                lines.append(f"  rec[{ridx}]: {rec}")
+            if warn_count:
+                for w in summ.warnings[:3]:
+                    lines.append(f"  warn: {w}")
+        if preview.errors:
+            lines.append("Errors/Warns:")
+            for err in preview.errors[:5]:
+                lines.append(
+                    f"  {err.get('severity','info')}: {err.get('resource')} -> {err.get('message')}"
+                )
+        self.sandbox_output.setPlainText("\n".join(lines))
+        self._append_log(
+            f"Sandbox parsed fragment (resources={len(preview.summaries)} total_records={sum(s.record_count for s in preview.summaries)})"
+        )
 
     def _reflow_toolbar(self):  # heuristic reflow
         if not hasattr(self, "_toolbar_row2"):
