@@ -156,6 +156,12 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.detail_label.setText(f"{name}\n(No column info)")
             self.graph_widget.clear()
             return
+        stats_map = {}
+        if hasattr(svc, "get_column_stats"):
+            try:
+                stats_map = svc.get_column_stats(name)
+            except Exception:
+                stats_map = {}
         lines = [f"Table: {ti.name}"]
         lines.append("Table Profile:")
         lines.append(f" • Rows: {self._format_row_count(ti.row_count)}")
@@ -173,6 +179,10 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             marker_text = f" [{', '.join(markers)}]" if markers else ""
             type_text = col.type or "TEXT"
             lines.append(f" • {col.name}: {type_text}{marker_text}{default}")
+            stats = stats_map.get(col.name)
+            stats_line = self._format_column_stats(stats)
+            if stats_line:
+                lines.append(f"    ↳ Stats: {stats_line}")
 
         if ti.foreign_keys:
             lines.append("")
@@ -270,6 +280,25 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         age = max(0, int((datetime.utcnow() - parsed).total_seconds()))
         friendly_age = humanize_age(age)
         return f"{parsed.strftime('%Y-%m-%d %H:%M:%S')} ({friendly_age})"
+
+    @staticmethod
+    def _format_column_stats(stats) -> Optional[str]:
+        if not stats:
+            return None
+        parts: list[str] = []
+        if stats.distinct_count is not None:
+            parts.append(f"distinct≈{stats.distinct_count}")
+        if stats.null_fraction is not None:
+            parts.append(f"null≈{stats.null_fraction:.1f}%")
+        if stats.min_value is not None or stats.max_value is not None:
+            range_part = " ↔ ".join(
+                [value for value in (stats.min_value, stats.max_value) if value is not None]
+            )
+            if range_part:
+                parts.append(f"range: {range_part}")
+        if stats.sample_rows:
+            parts.append(f"n={stats.sample_rows}")
+        return ", ".join(parts) if parts else None
 
     @staticmethod
     def _parse_timestamp(raw: str) -> Optional[datetime]:

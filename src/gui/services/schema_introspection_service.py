@@ -18,6 +18,7 @@ the schema or table contents to keep the cache current.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import monotonic
 from threading import RLock
 from typing import Dict, List, Optional, Tuple
 import sqlite3
@@ -27,6 +28,7 @@ __all__ = [
     "ForeignKeyInfo",
     "IndexInfo",
     "TableInfo",
+    "ColumnStats",
     "SchemaIntrospectionService",
 ]
 
@@ -84,6 +86,17 @@ class TableInfo:
     last_ingested_at: Optional[str] = None
 
 
+@dataclass(frozen=True)
+class ColumnStats:
+    """Statistical sample for a column."""
+
+    sample_rows: Optional[int]
+    distinct_count: Optional[int]
+    null_fraction: Optional[float]
+    min_value: Optional[str]
+    max_value: Optional[str]
+
+
 class SchemaIntrospectionService:
     """Read-only helper around SQLite PRAGMA statements.
 
@@ -93,7 +106,13 @@ class SchemaIntrospectionService:
     responsive.
     """
 
-    def __init__(self, conn: sqlite3.Connection | None, *, include_internal: bool = False) -> None:
+    def __init__(
+        self,
+        conn: sqlite3.Connection | None,
+        *,
+        include_internal: bool = False,
+        sample_limit: int = 500,
+    ) -> None:
         self._conn = conn
         self._include_internal = include_internal
         self._lock = RLock()
@@ -101,6 +120,8 @@ class SchemaIntrospectionService:
         self._table_order: List[str] = []
         self._page_size: Optional[int] = None
         self._last_ingest: Optional[str] = None
+        self._column_stats_cache: Dict[str, Tuple[float, Dict[str, ColumnStats]]] = {}
+        self._sample_limit = max(1, sample_limit)
 
     # ------------------------------------------------------------------
     # Public API
@@ -144,6 +165,30 @@ class SchemaIntrospectionService:
             self._table_order.clear()
             self._page_size = None
             self._last_ingest = None
+            self._column_stats_cache.clear()
+
+    def get_column_stats(self, table: str, *, max_age_s: float = 30.0) -> Dict[str, ColumnStats]:
+        """Return sampled statistics for each column in *table*.
+
+        Results are cached for ``max_age_s`` seconds to avoid repeated scans.
+        """
+
+        if not table:
+            return {}
+        now = monotonic()
+        with self._lock:
+            cached = self._column_stats_cache.get(table)
+            if cached and (now - cached[0] <= max_age_s):
+                return dict(cached[1])
+        info = self.get_table_info(table)
+        if info is None or self._conn is None:
+            return {}
+        stats: Dict[str, ColumnStats] = {}
+        for column in info.columns:
+            stats[column.name] = self._sample_column_stats(self._conn, table, column)
+        with self._lock:
+            self._column_stats_cache[table] = (monotonic(), stats)
+        return dict(stats)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -281,6 +326,40 @@ class SchemaIntrospectionService:
             pages = None
         return pages, total_bytes
 
+    def _sample_column_stats(
+        self, conn: sqlite3.Connection, table: str, column: ColumnInfo
+    ) -> ColumnStats:
+        ident_table = table.replace('"', '""')
+        column_ident = column.name.replace('"', '""')
+        column_ref = f'"{column_ident}"'
+        sql = (
+            f"SELECT COUNT(*) AS sample_rows, "
+            f"SUM(CASE WHEN {column_ref} IS NULL THEN 1 ELSE 0 END) AS null_count, "
+            f"COUNT(DISTINCT {column_ref}) AS distinct_count, "
+            f"MIN({column_ref}) AS min_value, "
+            f"MAX({column_ref}) AS max_value "
+            f'FROM (SELECT {column_ref} FROM "{ident_table}" LIMIT ?)'
+        )
+        try:
+            cur = conn.execute(sql, (self._sample_limit,))
+            row = cur.fetchone()
+        except Exception:
+            return ColumnStats(None, None, None, None, None)
+        if not row or row[0] is None:
+            return ColumnStats(None, None, None, None, None)
+        sample_rows = int(row[0]) if row[0] is not None else None
+        if sample_rows == 0:
+            return ColumnStats(0, 0, None, None, None)
+        null_count = int(row[1]) if row[1] is not None else 0
+        distinct_count = int(row[2]) if row[2] is not None else None
+        null_fraction = (null_count / sample_rows) * 100 if sample_rows else None
+        min_value = str(row[3]) if row[3] is not None else None
+        max_value = str(row[4]) if row[4] is not None else None
+        if not self._supports_min_max(column.type):
+            min_value = None
+            max_value = None
+        return ColumnStats(sample_rows, distinct_count, null_fraction, min_value, max_value)
+
     def _load_page_size(self, conn: sqlite3.Connection) -> Optional[int]:
         try:
             row = conn.execute("PRAGMA page_size").fetchone()
@@ -306,6 +385,22 @@ class SchemaIntrospectionService:
             except Exception:
                 continue
         return None
+
+    @staticmethod
+    def _supports_min_max(column_type: str | None) -> bool:
+        if not column_type:
+            return False
+        normalized = column_type.strip().upper()
+        numeric_tokens = (
+            "INT",
+            "REAL",
+            "NUMERIC",
+            "DEC",
+            "DOUBLE",
+            "FLOAT",
+        )
+        datetime_tokens = ("DATE", "TIME")
+        return any(token in normalized for token in numeric_tokens + datetime_tokens)
 
     @staticmethod
     def _quote_ident(value: str) -> str:

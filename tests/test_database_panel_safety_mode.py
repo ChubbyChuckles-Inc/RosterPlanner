@@ -1,7 +1,7 @@
 import os
 import sys
 
-from typing import Generator, List, Optional
+from typing import Dict, Generator, List, Optional
 
 import pytest
 from PyQt6.QtCore import Qt
@@ -14,6 +14,7 @@ from gui.services.schema_introspection_service import (
     ColumnInfo,
     ForeignKeyInfo,
     IndexInfo,
+    ColumnStats,
 )
 
 
@@ -38,8 +39,11 @@ class _FakeSafetyService:
 
 
 class _FakeIntrospectionService:
-    def __init__(self, table_info: TableInfo):
+    def __init__(
+        self, table_info: TableInfo, stats: Optional[Dict[str, ColumnStats]] = None
+    ) -> None:
         self._info = table_info
+        self._stats = stats or {}
 
     def list_tables(self) -> List[str]:
         return [self._info.name]
@@ -48,6 +52,11 @@ class _FakeIntrospectionService:
         if table == self._info.name:
             return self._info
         return None
+
+    def get_column_stats(self, table: str) -> Dict[str, ColumnStats]:
+        if table == self._info.name:
+            return dict(self._stats)
+        return {}
 
 
 @pytest.fixture
