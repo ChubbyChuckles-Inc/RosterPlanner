@@ -8,6 +8,7 @@ Initial dockable widget giving a read-only overview:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 from PyQt6.QtWidgets import (
     QWidget,
@@ -31,6 +32,7 @@ except Exception:  # pragma: no cover
 
 
 from gui.components.schema_graph_widget import SchemaGraphWidget
+from gui.services.data_freshness_service import humanize_age
 from gui.services.service_locator import services as _services  # type: ignore
 
 
@@ -155,9 +157,11 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.graph_widget.clear()
             return
         lines = [f"Table: {ti.name}"]
-        if ti.row_count is not None:
-            lines.append(f"Rows (cached): {ti.row_count}")
-
+        lines.append("Table Profile:")
+        lines.append(f" • Rows: {self._format_row_count(ti.row_count)}")
+        lines.append(f" • Size: {self._format_size(ti.approx_page_count, ti.approx_size_bytes)}")
+        lines.append(f" • Last ingest: {self._format_last_ingest(ti.last_ingested_at)}")
+        lines.append("")
         lines.append("Columns:")
         for col in ti.columns:
             markers = []
@@ -239,3 +243,61 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.style().polish(self)
         except Exception:  # pragma: no cover
             pass
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _format_row_count(value: Optional[int]) -> str:
+        if value is None:
+            return "n/a"
+        return f"{value:,}"
+
+    def _format_size(self, pages: Optional[int], byte_count: Optional[int]) -> str:
+        segments: list[str] = []
+        if pages is not None:
+            segments.append(f"{pages:,} pages")
+        if byte_count is not None:
+            segments.append(f"~{self._human_readable_bytes(byte_count)}")
+        if not segments:
+            return "n/a"
+        return ", ".join(segments)
+
+    def _format_last_ingest(self, raw: Optional[str]) -> str:
+        if not raw:
+            return "n/a"
+        parsed = self._parse_timestamp(raw)
+        if not parsed:
+            return raw
+        age = max(0, int((datetime.utcnow() - parsed).total_seconds()))
+        friendly_age = humanize_age(age)
+        return f"{parsed.strftime('%Y-%m-%d %H:%M:%S')} ({friendly_age})"
+
+    @staticmethod
+    def _parse_timestamp(raw: str) -> Optional[datetime]:
+        text = raw.strip()
+        if not text:
+            return None
+        if text.endswith("Z"):
+            text = text[:-1]
+        for parser in (datetime.fromisoformat,):
+            try:
+                return parser(text)
+            except Exception:
+                continue
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+            try:
+                return datetime.strptime(text, fmt)
+            except Exception:
+                continue
+        return None
+
+    @staticmethod
+    def _human_readable_bytes(byte_count: int) -> str:
+        thresholds = ["bytes", "KB", "MB", "GB", "TB"]
+        size = float(byte_count)
+        for unit in thresholds:
+            if size < 1024 or unit == thresholds[-1]:
+                if unit == "bytes":
+                    return f"{int(size)} bytes"
+                return f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{byte_count} bytes"

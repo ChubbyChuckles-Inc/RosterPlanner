@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from threading import RLock
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, List, Optional, Tuple
 import sqlite3
 
 __all__ = [
@@ -79,6 +79,9 @@ class TableInfo:
     foreign_keys: List[ForeignKeyInfo]
     indexes: List[IndexInfo]
     row_count: Optional[int]
+    approx_page_count: Optional[int] = None
+    approx_size_bytes: Optional[int] = None
+    last_ingested_at: Optional[str] = None
 
 
 class SchemaIntrospectionService:
@@ -96,6 +99,8 @@ class SchemaIntrospectionService:
         self._lock = RLock()
         self._tables: Dict[str, TableInfo] = {}
         self._table_order: List[str] = []
+        self._page_size: Optional[int] = None
+        self._last_ingest: Optional[str] = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -137,6 +142,8 @@ class SchemaIntrospectionService:
         with self._lock:
             self._tables.clear()
             self._table_order.clear()
+            self._page_size = None
+            self._last_ingest = None
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -151,6 +158,8 @@ class SchemaIntrospectionService:
             self._tables = {}
             self._table_order = []
             return
+        self._page_size = self._load_page_size(self._conn)
+        self._last_ingest = self._load_last_ingest(self._conn)
         tables: Dict[str, TableInfo] = {}
         for name in names:
             info = self._build_table_info(self._conn, name)
@@ -178,6 +187,7 @@ class SchemaIntrospectionService:
             col.name for col in sorted(columns, key=lambda c: c.pk_position) if col.pk_position
         ]
         row_count = self._load_row_count(conn, table)
+        page_count, approx_bytes = self._load_table_storage_metrics(conn, table)
         return TableInfo(
             name=table,
             columns=columns,
@@ -185,6 +195,9 @@ class SchemaIntrospectionService:
             foreign_keys=fks,
             indexes=indexes,
             row_count=row_count,
+            approx_page_count=page_count,
+            approx_size_bytes=approx_bytes,
+            last_ingested_at=self._last_ingest,
         )
 
     # Individual loaders ------------------------------------------------
@@ -241,6 +254,58 @@ class SchemaIntrospectionService:
             return int(row[0]) if row else 0
         except Exception:
             return None
+
+    def _load_table_storage_metrics(
+        self, conn: sqlite3.Connection, table: str
+    ) -> Tuple[Optional[int], Optional[int]]:
+        total_bytes: Optional[int] = None
+        queries = [
+            "SELECT sum(pgsize) FROM dbstat WHERE name=?",
+            "SELECT sum(pgsize) FROM dbstat('main') WHERE name=?",
+        ]
+        for sql in queries:
+            try:
+                cur = conn.execute(sql, (table,))
+                row = cur.fetchone()
+                if row and row[0] is not None:
+                    total_bytes = int(row[0])
+                    break
+            except Exception:
+                continue
+        if total_bytes is None or total_bytes <= 0:
+            return None, None
+        page_size = self._page_size or self._load_page_size(conn)
+        if page_size:
+            pages = max(1, (total_bytes + page_size - 1) // page_size)
+        else:
+            pages = None
+        return pages, total_bytes
+
+    def _load_page_size(self, conn: sqlite3.Connection) -> Optional[int]:
+        try:
+            row = conn.execute("PRAGMA page_size").fetchone()
+            if row and row[0]:
+                return int(row[0])
+        except Exception:
+            return None
+        return None
+
+    def _load_last_ingest(self, conn: sqlite3.Connection) -> Optional[str]:
+        queries = (
+            "SELECT ingested_at FROM provenance_summary ORDER BY ingested_at DESC LIMIT 1",
+            "SELECT last_ingested_at FROM provenance ORDER BY last_ingested_at DESC LIMIT 1",
+        )
+        for sql in queries:
+            try:
+                cur = conn.execute(sql)
+                row = cur.fetchone()
+                if row and row[0]:
+                    value = str(row[0]).strip()
+                    if value:
+                        return value
+            except Exception:
+                continue
+        return None
 
     @staticmethod
     def _quote_ident(value: str) -> str:
