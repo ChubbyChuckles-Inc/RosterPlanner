@@ -72,6 +72,7 @@ from gui.ingestion.onboarding_coach import (
 )
 
 from .analysis import AnalysisMixin
+from .migration import MigrationAssistantMixin
 from .constants import OTHER_PHASE_ID, PHASE_PATTERNS
 from .complexity import ComplexityMeterMixin
 from .timeline import AuthoringTimelineMixin
@@ -111,6 +112,7 @@ class IngestionLabPanel(
     WatchlistMixin,
     IntentSidebarMixin,
     AnalysisMixin,
+    MigrationAssistantMixin,
     SimulationMixin,
     ToolDialogsMixin,
     ComplexityMeterMixin,
@@ -150,6 +152,8 @@ class IngestionLabPanel(
         self._last_provenance: Dict[str, tuple[str, str, int]] = {}
         self._last_hash_impact: HashImpactResult | None = None
         self._last_preview_html: str = ""
+        self._last_migration_preview = None
+        self._last_migration_suggestions: dict[str, dict[str, str]] = {}
         try:
             window = int(os.environ.get("RP_ING_DEAD_FIELD_WINDOW", "5"))
         except Exception:
@@ -239,6 +243,11 @@ class IngestionLabPanel(
         self.btn_quality_gates.setObjectName("ingLabBtnQualityGates")
         self.btn_quality_gates.setToolTip(
             "Evaluate minimum non-null ratios (quality gate config under 'quality_gates' in rules JSON)"
+        )
+        self.btn_migration_assist = QPushButton("Migration Assist")
+        self.btn_migration_assist.setObjectName("ingLabBtnMigrationAssist")
+        self.btn_migration_assist.setToolTip(
+            "Diff inferred schema vs live DB and suggest mapping entries for newly added columns"
         )
         self.btn_overlap = QPushButton("Conflicts")
         self.btn_overlap.setObjectName("ingLabBtnOverlap")
@@ -429,6 +438,7 @@ class IngestionLabPanel(
                 self.btn_example_rows,
                 self.btn_watchlist,
                 self.btn_quality_gates,
+                self.btn_migration_assist,
                 self.btn_orphan_fields,
                 self.btn_overlap,
             ],
@@ -788,6 +798,7 @@ class IngestionLabPanel(
             self.btn_dead_fields.clicked.connect(self._on_dead_fields_clicked)  # type: ignore
         self.btn_orphan_fields.clicked.connect(self._on_orphan_fields_clicked)  # type: ignore
         self.btn_quality_gates.clicked.connect(self._on_quality_gates_clicked)  # type: ignore
+        self.btn_migration_assist.clicked.connect(self._on_migration_assistant_clicked)  # type: ignore
         self.btn_simulate.clicked.connect(self._on_simulate_clicked)  # type: ignore
         self.btn_apply.clicked.connect(self._on_apply_clicked)  # type: ignore
         self.btn_versions.clicked.connect(self._on_versions_clicked)  # type: ignore
@@ -852,6 +863,7 @@ class IngestionLabPanel(
                 "btn_field_coverage_radar": "radar",
                 "btn_orphan_fields": "warning",
                 "btn_quality_gates": "shield",
+                "btn_migration_assist": "schema",
                 "btn_simulate": "play",
                 "btn_apply": "check",
                 "btn_versions": "history",
