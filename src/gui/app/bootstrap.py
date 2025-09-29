@@ -187,6 +187,17 @@ def create_app(
                 services.register("density_service", DensityService.create_default())
         except Exception:  # pragma: no cover
             pass
+        # Database safety mode service (Milestone 7.11.5)
+        try:
+            from gui.services.database_safety_service import DatabaseSafetyService  # local import
+
+            if not services.try_get("database_safety_service"):
+                services.register(
+                    "database_safety_service",
+                    DatabaseSafetyService(app_config=app_config),
+                )
+        except Exception:  # pragma: no cover
+            pass
         # Always override previous startup timing (each bootstrap has its own session metrics)
         services.register("startup_timing", timing, allow_override=True)
         # Register EventBus if not already present

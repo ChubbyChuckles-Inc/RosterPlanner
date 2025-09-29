@@ -1,4 +1,8 @@
 
+feat(database): add safety mode toggle and admin console gating to Database Panel (7.11.5)
+Introduces persisted admin toggle wired to DatabaseSafetyService, updates DatabasePanel UI with banner, admin notice,
+and hidden action console in read-only mode, plus unit tests covering default state, toggle behavior, and persistence.
+
 feat(ingestion-lab): add HTML fixture importer with dialog & tests (7.10.A19)
 Introduces gui.ingestion.fixture_importer with save helpers and a PyQt dialog, wires a new Import Fixture tool button,
 and adds unit coverage for filename sanitation and persistence alongside roadmap update for milestone 7.10.A19.

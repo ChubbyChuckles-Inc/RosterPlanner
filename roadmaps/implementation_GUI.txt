@@ -424,7 +424,7 @@ Goal: Insert a power-user dock ("Database") that offers a read-only by default, 
  [x] 7.11.2 Schema introspection service (tables, columns, PK/FK, indexes, row counts cached)
  [x] 7.11.3 Lazy data preview model (paginated SELECT w/ LIMIT/OFFSET + cancellation)
  [x] 7.11.4 Relational graph mini-view (graphviz / ascii fallback) of FK edges (interactive highlight)
- [ ] 7.11.5 Safety mode toggle (Read‑Only vs Admin) persisted; mutating actions hidden unless Admin enabled
+ [x] 7.11.5 Safety mode toggle (Read‑Only vs Admin) persisted; mutating actions hidden unless Admin enabled — toggle stored via DatabaseSafetyService, admin console visibility tests (`tests/test_database_panel_safety_mode.py`)
 
  Data Exploration Features
  [ ] 7.11.6 Table profile summary: row count, approx size (page count), last ingest touch (from provenance)

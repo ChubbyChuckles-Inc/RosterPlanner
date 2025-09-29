@@ -66,6 +66,9 @@ class AppConfig:
     density_mode: str = "comfortable"
     # Active theme variant (default | brand-neutral | high-contrast)
     theme_variant: str = "default"
+    # Database panel safety mode persistence (Milestone 7.11.5). When False the
+    # Database Panel operates in read-only mode and hides mutating actions.
+    database_admin_mode: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -87,6 +90,7 @@ class AppConfig:
             window_state_version=int(data.get("window_state_version", WINDOW_STATE_VERSION)),
             density_mode=str(data.get("density_mode", "comfortable")),
             theme_variant=str(data.get("theme_variant", "default")),
+            database_admin_mode=bool(data.get("database_admin_mode", False)),
         )
         return inst
 
