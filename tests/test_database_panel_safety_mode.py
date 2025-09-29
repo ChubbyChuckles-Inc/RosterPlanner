@@ -130,7 +130,30 @@ def test_database_panel_shows_table_profile_summary(qt_app: QApplication):
         approx_size_bytes=49152,
         last_ingested_at="2025-09-29T12:34:56",
     )
-    fake_introspection = _FakeIntrospectionService(table_info)
+    stats_map = {
+        "team_id": ColumnStats(
+            sample_rows=10,
+            distinct_count=10,
+            null_fraction=0.0,
+            min_value="1",
+            max_value="10",
+        ),
+        "division_id": ColumnStats(
+            sample_rows=10,
+            distinct_count=3,
+            null_fraction=20.0,
+            min_value="100",
+            max_value="300",
+        ),
+        "name": ColumnStats(
+            sample_rows=10,
+            distinct_count=9,
+            null_fraction=10.0,
+            min_value=None,
+            max_value=None,
+        ),
+    }
+    fake_introspection = _FakeIntrospectionService(table_info, stats_map)
     with services.override_context(
         database_safety_service=fake_service,
         schema_introspection_service=fake_introspection,
@@ -144,3 +167,6 @@ def test_database_panel_shows_table_profile_summary(qt_app: QApplication):
         assert "Size: 12 pages" in text
         assert "~48.0 KB" in text
         assert "Last ingest:" in text
+    assert "Stats: distinct≈10, null≈0.0%, range: 1 ↔ 10, n=10" in text
+    assert "Stats: distinct≈3, null≈20.0%, range: 100 ↔ 300, n=10" in text
+    assert "Stats: distinct≈9, null≈10.0%, n=10" in text
