@@ -18,6 +18,7 @@ from .gallery import (
     build_gallery_window,
 )
 from .progress_indicator import DeterminateProgress, IndeterminateProgress
+from .schema_graph_widget import SchemaGraphWidget
 
 __all__ = [
     "register_demo",
@@ -27,4 +28,5 @@ __all__ = [
     "build_gallery_window",
     "DeterminateProgress",
     "IndeterminateProgress",
+    "SchemaGraphWidget",
 ]

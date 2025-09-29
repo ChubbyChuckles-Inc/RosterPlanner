@@ -188,3 +188,5 @@ feat(database): implement schema introspection service with caching (7.11.2)
 
 feat(database): add lazy data preview model with cancellable paging (7.11.3)
 
+feat(database): add FK relationship graph mini-view with ascii fallback (7.11.4)
+

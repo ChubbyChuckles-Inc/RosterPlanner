@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import sqlite3
 import pytest
+from PyQt6.QtWidgets import QApplication
 
 
 @pytest.mark.parametrize("with_tables", [False, True])
 def test_database_panel_creation(qtbot, with_tables):
+    _ensure_app()
     try:
         from gui.views.database_panel import DatabasePanel
         from gui.services.service_locator import services as _services
@@ -34,6 +36,7 @@ def test_database_panel_creation(qtbot, with_tables):
 
 
 def test_database_panel_table_selection(qtbot):
+    _ensure_app()
     try:
         from gui.views.database_panel import DatabasePanel
         from gui.services.service_locator import services as _services
@@ -53,7 +56,22 @@ def test_database_panel_table_selection(qtbot):
     qtbot.addWidget(panel)
     if panel.table_list.count():
         panel.table_list.setCurrentRow(0)
-        txt = panel.detail_placeholder.text()
-        assert "test_table" in txt
-        assert "id (" in txt
-        assert "value (" in txt
+        txt = panel.detail_label.text()
+        assert "Table: test_table" in txt
+        assert "Rows (cached):" in txt
+        assert "• id: INTEGER" in txt
+        assert "PK" in txt
+        assert "• value: TEXT" in txt
+        assert panel.graph_widget is not None
+
+
+_app_instance = None
+
+
+def _ensure_app():
+    global _app_instance
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    _app_instance = app
+    return app

@@ -28,6 +28,7 @@ except Exception:  # pragma: no cover
             pass
 
 
+from gui.components.schema_graph_widget import SchemaGraphWidget
 from gui.services.service_locator import services as _services  # type: ignore
 
 
@@ -55,12 +56,22 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.table_list.setSortingEnabled(True)
         split.addWidget(self.table_list)
 
-        self.detail_placeholder = QLabel(
+        detail_container = QWidget()
+        detail_layout = QVBoxLayout(detail_container)
+        detail_layout.setContentsMargins(6, 0, 0, 0)
+        detail_layout.setSpacing(6)
+
+        self.detail_label = QLabel(
             "Select a table to inspect. Future tasks will add sample rows, indexes, graph views."
         )
-        self.detail_placeholder.setWordWrap(True)
-        self.detail_placeholder.setObjectName("dbDetailPlaceholder")
-        split.addWidget(self.detail_placeholder)
+        self.detail_label.setWordWrap(True)
+        self.detail_label.setObjectName("dbDetailPlaceholder")
+        detail_layout.addWidget(self.detail_label)
+
+        self.graph_widget = SchemaGraphWidget(detail_container)
+        detail_layout.addWidget(self.graph_widget, 1)
+
+        split.addWidget(detail_container)
         split.setStretchFactor(1, 1)
 
         banner = QLabel("Safety Mode: READ-ONLY")
@@ -83,26 +94,57 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
 
     def _on_table_selected(self, current, _previous):  # pragma: no cover - UI reaction
         if not current:
-            self.detail_placeholder.setText(
+            self.detail_label.setText(
                 "Select a table to inspect. Future tasks will add sample rows, indexes, graph views."
             )
+            self.graph_widget.clear()
             return
         name = current.text()
         svc = _services.try_get("schema_introspection_service")
         if not svc:
-            self.detail_placeholder.setText(f"{name}\n(No introspection service)")
+            self.detail_label.setText(f"{name}\n(No introspection service)")
+            self.graph_widget.clear()
             return
         ti = svc.get_table_info(name)
         if not ti:
-            self.detail_placeholder.setText(f"{name}\n(No column info)")
+            self.detail_label.setText(f"{name}\n(No column info)")
+            self.graph_widget.clear()
             return
         lines = [f"Table: {ti.name}"]
-        for c in ti.columns:
-            nn = " NOT NULL" if c.not_null else ""
-            pk = " PK" if c.pk else ""
-            default = f" DEFAULT={c.default}" if c.default is not None else ""
-            lines.append(f" - {c.name} ({c.type}){nn}{pk}{default}")
-        self.detail_placeholder.setText("\n".join(lines))
+        if ti.row_count is not None:
+            lines.append(f"Rows (cached): {ti.row_count}")
+
+        lines.append("Columns:")
+        for col in ti.columns:
+            markers = []
+            if col.is_primary_key:
+                markers.append("PK")
+            if col.not_null:
+                markers.append("NOT NULL")
+            default = f" DEFAULT={col.default}" if col.default is not None else ""
+            marker_text = f" [{', '.join(markers)}]" if markers else ""
+            type_text = col.type or "TEXT"
+            lines.append(f" • {col.name}: {type_text}{marker_text}{default}")
+
+        if ti.foreign_keys:
+            lines.append("")
+            lines.append("Foreign Keys:")
+            for fk in ti.foreign_keys:
+                lines.append(
+                    f" • {fk.column} → {fk.ref_table}.{fk.ref_column} "
+                    f"(ON UPDATE {fk.on_update}, ON DELETE {fk.on_delete})"
+                )
+
+        if ti.indexes:
+            lines.append("")
+            lines.append("Indexes:")
+            for idx in ti.indexes:
+                cols = ", ".join(idx.columns)
+                unique = " UNIQUE" if idx.unique else ""
+                lines.append(f" • {idx.name}:{unique} ({cols})")
+
+        self.detail_label.setText("\n".join(lines))
+        self.graph_widget.set_focus_table(name)
 
     def apply_theme(self):  # pragma: no cover - styling hook placeholder
         pass
