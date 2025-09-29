@@ -20,3 +20,17 @@ def test_conflict_detection():
     reg.register("a.three", "Ctrl+Y", "Three")
     conflicts = reg.find_conflicts()
     assert "CTRL+X" in conflicts and len(conflicts["CTRL+X"]) == 2
+
+
+def test_register_or_replace_and_unregister():
+    reg = ShortcutRegistry()
+    reg.register("macro.clean", "Ctrl+1", "Initial")
+    reg.register_or_replace("macro.clean", "Ctrl+2", "Updated", category="Custom")
+    entry = reg.get("macro.clean")
+    assert entry is not None
+    assert entry.sequence == "Ctrl+2"
+    assert entry.description == "Updated"
+    assert entry.category == "Custom"
+    removed = reg.unregister("macro.clean")
+    assert removed is True
+    assert reg.get("macro.clean") is None

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QDialog
 
 try:  # pragma: no cover
     from gui.services.service_locator import services as _services  # type: ignore
@@ -46,7 +47,7 @@ class ToolDialogsMixin:
             self._append_log(f"Selector Picker import failed: {e}")
             return
         dlg = SelectorPickerDialog(html, self)
-        if dlg.exec() == dlg.DialogCode.Accepted:  # type: ignore
+        if dlg.exec() == int(QDialog.DialogCode.Accepted):
             sel = dlg.selected_selector()
             if not sel:
                 self._append_log("Selector Picker: no selection made")
@@ -106,7 +107,7 @@ class ToolDialogsMixin:
         except RuntimeError as exc:
             self._append_log(f"Expression Playground unavailable: {exc}")
             return
-        if dlg.exec() != dlg.DialogCode.Accepted:  # type: ignore[attr-defined]
+        if dlg.exec() != int(QDialog.DialogCode.Accepted):
             self._append_log("Expression Playground: cancelled")
             return
         snippet = dlg.selected_snippet()
@@ -135,7 +136,7 @@ class ToolDialogsMixin:
         dialog = None
         if HtmlFixtureImportDialog is not None:
             dialog = HtmlFixtureImportDialog(self._base_dir, initial_snippet, self)
-            if dialog.exec() == dialog.DialogCode.Accepted:  # type: ignore[attr-defined]
+            if dialog.exec() == int(QDialog.DialogCode.Accepted):
                 result = dialog.last_result()
                 if result is not None:
                     rel_path = result.path.relative_to(self._base_dir)
@@ -170,7 +171,7 @@ class ToolDialogsMixin:
         except FragmentError as exc:
             self._append_log(f"Inline YAML: {exc}")
             return
-        if dlg.exec() != dlg.DialogCode.Accepted:  # type: ignore[attr-defined]
+        if dlg.exec() != int(QDialog.DialogCode.Accepted):
             self._append_log("Inline YAML: cancelled")
             return
         new_text = dlg.updated_rules_text()
@@ -194,7 +195,7 @@ class ToolDialogsMixin:
             return
         rules_txt = self.rule_editor.toPlainText()
         dlg = DerivedFieldComposerDialog(rules_txt, self)
-        if dlg.exec() != dlg.DialogCode.Accepted:  # type: ignore[attr-defined]
+        if dlg.exec() != int(QDialog.DialogCode.Accepted):
             self._append_log("Derived Fields: cancelled")
             return
         derived_map = dlg.derived_fields()
@@ -372,3 +373,54 @@ class ToolDialogsMixin:
             self._append_log("Rollback loaded previous version into editor (not applied)")
         except Exception as e:  # pragma: no cover
             self._append_log(f"Rollback ERROR: {e}")
+
+    def _on_macro_shortcuts_clicked(self) -> None:
+        try:
+            from gui.ingestion import macro_shortcuts as _macro
+        except Exception as exc:
+            self._append_log(f"Macro shortcuts unavailable: {exc}")
+            return
+
+        if getattr(_macro, "MacroShortcutDialog", None) is None:
+            self._append_log("Macro shortcuts dialog cannot be loaded in this environment")
+            return
+
+        stored_templates = _macro.load_templates()
+        rule_templates: list[_macro.MacroShortcutTemplate] = []
+        parse_warning = ""
+        try:
+            ruleset = self._parse_ruleset_from_editor()
+        except Exception as exc:
+            parse_warning = f"Rule set parse failed; showing saved templates only ({exc})"
+            ruleset = None
+        if ruleset is not None:
+            try:
+                rule_templates = _macro.extract_templates_from_ruleset(ruleset)
+            except Exception as exc:  # pragma: no cover - defensive
+                parse_warning = f"Could not extract macros from ruleset: {exc}"
+                rule_templates = []
+
+        dialog = _macro.MacroShortcutDialog(stored_templates, rule_templates, parent=self)
+        if parse_warning:
+            dialog.set_warning(parse_warning)
+        if dialog.exec() != int(QDialog.DialogCode.Accepted):
+            self._append_log("Macro shortcuts: cancelled")
+            return
+
+        updated = dialog.persisted_templates()
+        try:
+            _macro.save_templates(updated)
+        except Exception as exc:
+            self._append_log(f"Macro shortcuts save failed: {exc}")
+            return
+
+        summary = ", ".join(f"{tpl.name} -> {tpl.sequence}" for tpl in updated if tpl.sequence)
+        if summary:
+            self._append_log(f"Macro shortcuts updated: {summary}")
+        else:
+            self._append_log("Macro shortcuts cleared")
+        if hasattr(self, "_refresh_macro_shortcuts"):
+            try:
+                self._refresh_macro_shortcuts(updated)  # type: ignore[attr-defined]
+            except Exception as exc:  # pragma: no cover - defensive
+                self._append_log(f"Macro shortcuts refresh failed: {exc}")

@@ -16,7 +16,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-__all__ = ["ShortcutEntry", "ShortcutRegistry", "global_shortcut_registry"]
+__all__ = [
+    "ShortcutEntry",
+    "ShortcutRegistry",
+    "global_shortcut_registry",
+]
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,20 @@ class ShortcutRegistry:
             return False
         self._entries[shortcut_id] = ShortcutEntry(shortcut_id, sequence, description, category)
         return True
+
+    def register_or_replace(
+        self, shortcut_id: str, sequence: str, description: str, category: str = "General"
+    ) -> ShortcutEntry:
+        """Insert or update a shortcut entry regardless of prior registration."""
+
+        entry = ShortcutEntry(shortcut_id, sequence, description, category)
+        self._entries[shortcut_id] = entry
+        return entry
+
+    def unregister(self, shortcut_id: str) -> bool:
+        """Remove a shortcut entry. Returns True when an entry was removed."""
+
+        return self._entries.pop(shortcut_id, None) is not None
 
     def get(self, shortcut_id: str) -> Optional[ShortcutEntry]:
         return self._entries.get(shortcut_id)

@@ -33,7 +33,7 @@ Design Principles:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Mapping, TYPE_CHECKING
+from typing import List, Dict, Any, Optional, Mapping, Sequence, TYPE_CHECKING
 import copy
 from collections import deque
 import json
@@ -947,6 +947,40 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.refresh()
         else:
             self.status_label.setText("Transform not applied (not a field node?)")
+
+    def apply_template_to_selected_field(self, chain: Sequence[Mapping[str, Any]]) -> bool:
+        if not getattr(self, "_selected_node_id", None):
+            self.status_label.setText("Select a Field node first")
+            return False
+        specs: List[Dict[str, Any]] = []
+        for raw in chain:
+            if not isinstance(raw, Mapping):
+                continue
+            kind = raw.get("kind")
+            if not isinstance(kind, str) or not kind:
+                continue
+            payload: Dict[str, Any] = {"kind": kind}
+            if raw.get("formats"):
+                payload["formats"] = list(raw.get("formats", []))
+            if raw.get("code") is not None:
+                payload["code"] = raw.get("code")
+            specs.append(payload)
+        if not specs:
+            self.status_label.setText("Template missing transform specs")
+            return False
+        applied_any = False
+        for payload in specs:
+            result = self.model.add_transform_to_field(self._selected_node_id, dict(payload))
+            applied_any = applied_any or result
+        if applied_any:
+            self.status_label.setText(
+                f"Applied template ({len(specs)} step(s)) to {self._selected_node_id}"
+            )
+            self._maybe_emit_live()
+            self.refresh()
+        else:
+            self.status_label.setText("Template did not apply (possibly duplicates)")
+        return applied_any
 
     def _on_palette_toggled(self, checked: bool) -> None:  # pragma: no cover - trivial
         if checked:

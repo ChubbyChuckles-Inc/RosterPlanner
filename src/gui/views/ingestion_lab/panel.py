@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+from functools import partial
 from typing import Any, Dict, Optional
 
 from PyQt6.QtCore import Qt, QSettings, QTimer
@@ -153,6 +154,8 @@ class IngestionLabPanel(
         self._button_text_cache: dict[QAbstractButton, str] = {}
         self._icon_buttons: list[QAbstractButton] = []
         self._toolbutton_style_cache: dict[QToolButton, Qt.ToolButtonStyle] = {}
+        self._macro_shortcut_widgets: list[QShortcut] = []
+        self._macro_shortcut_registry_ids: list[str] = []
 
         self._toolbar_row2 = QHBoxLayout()
         self._toolbar_row2.setContentsMargins(4, 0, 4, 4)
@@ -243,6 +246,11 @@ class IngestionLabPanel(
         self.btn_import_fixture.setObjectName("ingLabBtnImportFixture")
         self.btn_import_fixture.setToolTip(
             "Capture the current preview snippet as a saved HTML fixture for regression tests"
+        )
+        self.btn_macro_shortcuts = QPushButton("Macro Shortcuts")
+        self.btn_macro_shortcuts.setObjectName("ingLabBtnMacroShortcuts")
+        self.btn_macro_shortcuts.setToolTip(
+            "Assign keyboard shortcuts that insert stored transform templates"
         )
         self.btn_inline_yaml = QPushButton("Edit YAML")
         self.btn_inline_yaml.setObjectName("ingLabBtnInlineYaml")
@@ -367,6 +375,7 @@ class IngestionLabPanel(
                 self.btn_regex_tester,
                 self.btn_expr_playground,
                 self.btn_import_fixture,
+                self.btn_macro_shortcuts,
                 self.btn_inline_yaml,
                 self.btn_prompt_assist,
                 self.btn_visual_builder,
@@ -750,6 +759,7 @@ class IngestionLabPanel(
         self.btn_regex_tester.clicked.connect(self._on_regex_tester_clicked)  # type: ignore
         self.btn_expr_playground.clicked.connect(self._on_expression_playground_clicked)  # type: ignore
         self.btn_import_fixture.clicked.connect(self._on_import_html_fixture_clicked)  # type: ignore
+        self.btn_macro_shortcuts.clicked.connect(self._on_macro_shortcuts_clicked)  # type: ignore
         self.btn_inline_yaml.clicked.connect(self._on_inline_yaml_editor_clicked)  # type: ignore
         self.btn_derived.clicked.connect(self._on_derived_fields_clicked)  # type: ignore
         self.btn_dep_graph.clicked.connect(self._on_dependency_graph_clicked)  # type: ignore
@@ -813,6 +823,8 @@ class IngestionLabPanel(
                 "btn_regex_tester": "regex",
                 "btn_expr_playground": "calculator",
                 "btn_import_fixture": "download",
+                "btn_macro_shortcuts": "keyboard",
+                "btn_inline_yaml": "file",
                 "btn_derived": "function",
                 "btn_dep_graph": "graph",
                 "btn_benchmark": "speed",
@@ -890,6 +902,7 @@ class IngestionLabPanel(
         actions.addWidget(self._banner)
 
         self._register_shortcuts()
+        self._refresh_macro_shortcuts()
         self._configure_keyboard_focus()
 
         self._last_published_hash = None
@@ -1173,6 +1186,119 @@ class IngestionLabPanel(
                 fn()
             except Exception as exc:
                 self._append_log(f"Shortcut '{sid}' failed: {exc}")
+
+    def _refresh_macro_shortcuts(self, templates=None) -> None:
+        try:
+            from gui.ingestion.macro_shortcuts import (
+                load_templates as _load_templates,
+                MacroShortcutTemplate,
+            )
+        except Exception:
+            return
+        try:
+            from gui.services.shortcut_registry import global_shortcut_registry as _reg
+        except Exception:
+            _reg = None
+
+        for shortcut in self._macro_shortcut_widgets:
+            try:
+                shortcut.activated.disconnect()
+            except Exception:
+                pass
+            shortcut.setParent(None)
+        self._macro_shortcut_widgets = []
+
+        if _reg and self._macro_shortcut_registry_ids:
+            for sid in self._macro_shortcut_registry_ids:
+                try:
+                    _reg.unregister(sid)
+                except Exception:
+                    pass
+        self._macro_shortcut_registry_ids = []
+
+        if templates is None:
+            try:
+                templates = _load_templates()
+            except Exception:
+                templates = []
+        if not templates:
+            return
+
+        for tpl in templates:
+            sequence = getattr(tpl, "sequence", "")
+            chain = getattr(tpl, "chain", None)
+            if not sequence or not chain:
+                continue
+            try:
+                shortcut = QShortcut(QKeySequence(sequence), self)
+            except Exception:
+                self._append_log(f"Macro shortcut ignored (invalid sequence '{sequence}')")
+                continue
+            shortcut.activated.connect(partial(self._apply_macro_template, tpl))  # type: ignore[arg-type]
+            self._macro_shortcut_widgets.append(shortcut)
+            if _reg:
+                sid = f"ing.macro.{tpl.name}"
+                desc = f"Apply transform template '{tpl.name}'"
+                try:
+                    _reg.register_or_replace(sid, sequence, desc, category="Ingestion Lab")
+                    self._macro_shortcut_registry_ids.append(sid)
+                except Exception:
+                    pass
+
+    def _apply_macro_template(self, template) -> None:
+        chain = getattr(template, "chain", None)
+        if not chain:
+            self._append_log("Macro template missing transform chain")
+            return
+        if getattr(self, "_editor_mode", 0) == 1 and hasattr(self, "visual_builder"):
+            builder = getattr(self, "visual_builder", None)
+            if builder is not None and hasattr(builder, "apply_template_to_selected_field"):
+                try:
+                    applied = builder.apply_template_to_selected_field(chain)  # type: ignore[attr-defined]
+                except Exception as exc:  # pragma: no cover - defensive
+                    self._append_log(f"Macro template failed in visual builder: {exc}")
+                else:
+                    if applied:
+                        self._append_log(
+                            f"Transform template '{getattr(template, 'name', '?')}' applied to selected field"
+                        )
+                    else:
+                        self._append_log(
+                            "Select a Field node in the visual builder before using this template"
+                        )
+                return
+
+        cursor = self.rule_editor.textCursor()
+        if not cursor:
+            self._append_log("Macro template: rule editor unavailable")
+            return
+        try:
+            block_text = cursor.block().text()
+            indent = ""
+            for ch in block_text:
+                if ch in (" ", "\t"):
+                    indent += ch
+                else:
+                    break
+        except Exception:
+            indent = ""
+        try:
+            snippet = template.render_snippet(indent)
+        except Exception as exc:
+            self._append_log(f"Macro template snippet failed: {exc}")
+            return
+        if not snippet:
+            self._append_log("Macro template produced empty snippet")
+            return
+        try:
+            cursor.insertBlock()
+            cursor.insertText(snippet)
+            cursor.insertBlock()
+            self.rule_editor.setTextCursor(cursor)
+            self.rule_editor.setFocus()
+            self._append_log(f"Transform template '{getattr(template, 'name', '?')}' inserted")
+        except Exception as exc:
+            self._append_log(f"Macro template insertion failed: {exc}")
 
     def _configure_keyboard_focus(self) -> None:
         self.file_tree.keyPressEvent = self._wrap_tree_keypress(self.file_tree.keyPressEvent)
