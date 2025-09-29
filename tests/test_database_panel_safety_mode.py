@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import sys
 
 from typing import Dict, Generator, List, Optional
@@ -15,7 +16,9 @@ from gui.services.schema_introspection_service import (
     ForeignKeyInfo,
     IndexInfo,
     ColumnStats,
+    SchemaIntrospectionService,
 )
+from gui.viewmodels.data_preview_model import LazyDataPreviewModel
 
 
 def _app() -> QApplication:
@@ -170,3 +173,52 @@ def test_database_panel_shows_table_profile_summary(qt_app: QApplication):
     assert "Stats: distinct≈10, null≈0.0%, range: 1 ↔ 10, n=10" in text
     assert "Stats: distinct≈3, null≈20.0%, range: 100 ↔ 300, n=10" in text
     assert "Stats: distinct≈9, null≈10.0%, n=10" in text
+
+
+def test_database_panel_quick_filter_updates_preview(qt_app: QApplication):
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    preview_model: Optional[LazyDataPreviewModel] = None
+    try:
+        conn.execute(
+            "CREATE TABLE players (player_id INTEGER PRIMARY KEY, name TEXT, notes TEXT)"
+        )
+        conn.executemany(
+            "INSERT INTO players VALUES (?, ?, ?)",
+            [
+                (1, "Alpha", "Captain"),
+                (2, "Beta", "Bench"),
+                (3, "Gamma", "Reserve"),
+            ],
+        )
+        conn.commit()
+        introspection = SchemaIntrospectionService(conn)
+        introspection.refresh()
+        preview_model = LazyDataPreviewModel(conn, introspection=introspection)
+        fake_service = _FakeSafetyService(False)
+        with services.override_context(
+            database_safety_service=fake_service,
+            schema_introspection_service=introspection,
+            data_preview_model=preview_model,
+        ):
+            panel = DatabasePanel()
+            try:
+                panel.table_list.setCurrentRow(0)
+                qt_app.processEvents()
+                initial_text = panel.detail_label.text()
+                assert "Preview rows:" in initial_text
+                assert "Alpha" in initial_text
+
+                panel.quick_filter_input.setText("Beta")
+                qt_app.processEvents()
+                panel._filter_timer.stop()
+                panel._refresh_details_for_current_table()
+                filtered_text = panel.detail_label.text()
+                assert "filter: Beta" in filtered_text
+                assert "Beta" in filtered_text
+                assert "Alpha" not in filtered_text
+            finally:
+                panel.deleteLater()
+    finally:
+        if preview_model is not None:
+            preview_model.shutdown()
+        conn.close()

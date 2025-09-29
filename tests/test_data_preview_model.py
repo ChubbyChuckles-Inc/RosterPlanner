@@ -23,6 +23,19 @@ def _create_connection() -> sqlite3.Connection:
     return conn
 
 
+def _populate_player_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "CREATE TABLE players (player_id INTEGER PRIMARY KEY, name TEXT, notes TEXT)"
+    )
+    rows = [
+        (1, "Alice", "Captain"),
+        (2, "Bob", "Bench"),
+        (3, "Alicia", "Starter"),
+    ]
+    conn.executemany("INSERT INTO players VALUES (?, ?, ?)", rows)
+    conn.commit()
+
+
 def test_fetch_page_returns_expected_rows() -> None:
     conn = _create_connection()
     try:
@@ -112,5 +125,67 @@ def test_invalid_ordering_column_raises() -> None:
                 )
         finally:
             model.shutdown()
+    finally:
+        conn.close()
+
+
+def test_build_quick_filter_clause_escapes_characters() -> None:
+    conn = _create_connection()
+    try:
+        _populate_player_table(conn)
+        introspection = SchemaIntrospectionService(conn)
+        introspection.refresh()
+        model = LazyDataPreviewModel(conn, introspection=introspection)
+        try:
+            clause, params = model.build_quick_filter_clause("players", "A%l_ice")
+        finally:
+            model.shutdown()
+
+        assert clause.startswith("(") and clause.endswith(")")
+        assert clause.count("LIKE ?") == len(introspection.get_table_info("players").columns)
+        assert params[0] == "%A\\%l\\_ice%"
+    finally:
+        conn.close()
+
+
+def test_quick_filter_limits_rows_to_matches() -> None:
+    conn = _create_connection()
+    try:
+        _populate_player_table(conn)
+        introspection = SchemaIntrospectionService(conn)
+        introspection.refresh()
+        model = LazyDataPreviewModel(conn, introspection=introspection)
+        try:
+            request = DataPreviewRequest(table="players", quick_filter="ali")
+            page = model.fetch_page(request)
+        finally:
+            model.shutdown()
+
+        names = [row[1] for row in page.rows]
+        assert names == ["Alice", "Alicia"]
+    finally:
+        conn.close()
+
+
+def test_apply_quick_filter_combines_with_existing_where_clause() -> None:
+    conn = _create_connection()
+    try:
+        _populate_player_table(conn)
+        introspection = SchemaIntrospectionService(conn)
+        introspection.refresh()
+        model = LazyDataPreviewModel(conn, introspection=introspection)
+        try:
+            base_request = DataPreviewRequest(
+                table="players",
+                where="player_id > ?",
+                parameters=(1,),
+            )
+            filtered_request = model.apply_quick_filter(base_request, "bob")
+            page = model.fetch_page(filtered_request)
+        finally:
+            model.shutdown()
+
+        assert len(page.rows) == 1
+        assert page.rows[0][1] == "Bob"
     finally:
         conn.close()

@@ -224,6 +224,20 @@ def create_app(
         except Exception:  # pragma: no cover
             pass
 
+        try:
+            from gui.viewmodels.data_preview_model import LazyDataPreviewModel
+
+            if not services.try_get("data_preview_model"):
+                conn = services.try_get("sqlite_conn")
+                introspection = services.try_get("schema_introspection_service")
+                services.register(
+                    "data_preview_model",
+                    LazyDataPreviewModel(conn, introspection=introspection),
+                    allow_override=True,
+                )
+        except Exception:  # pragma: no cover
+            pass
+
         # -- Milestone 5.9.5 integration: ensure sqlite connection service exists for ingestion
         if ensure_sqlite and data_dir:
             try:

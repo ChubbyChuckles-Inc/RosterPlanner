@@ -58,7 +58,11 @@ class OrderClause:
 
 @dataclass(frozen=True)
 class DataPreviewRequest:
-    """Parameters describing a single page fetch."""
+    """Parameters describing a single page fetch.
+
+    The optional ``quick_filter`` applies a substring ``LIKE`` search across
+    all columns using parametrized statements.
+    """
 
     table: str
     offset: int = 0
@@ -66,6 +70,7 @@ class DataPreviewRequest:
     ordering: Tuple[OrderClause, ...] = field(default_factory=tuple)
     where: str | None = None
     parameters: Sequence[object] = field(default_factory=tuple)
+    quick_filter: str | None = None
 
 
 @dataclass(frozen=True)
@@ -179,6 +184,7 @@ class LazyDataPreviewModel:
         limit = request.limit if request.limit > 0 else self._default_limit
         offset = max(0, request.offset)
         ordering = request.ordering
+        quick_filter = request.quick_filter.strip() if request.quick_filter else None
         return DataPreviewRequest(
             table=request.table.strip(),
             offset=offset,
@@ -186,6 +192,7 @@ class LazyDataPreviewModel:
             ordering=ordering,
             where=request.where,
             parameters=tuple(request.parameters),
+            quick_filter=quick_filter,
         )
 
     def _validate_request(self, request: DataPreviewRequest) -> None:
@@ -255,9 +262,11 @@ class LazyDataPreviewModel:
     def _build_query(self, request: DataPreviewRequest) -> Tuple[str, Tuple[object, ...]]:
         table_sql = self._quote_ident(request.table)
         sql_parts = [f"SELECT * FROM {table_sql}"]
-        params: List[object] = list(request.parameters)
-        if request.where:
-            sql_parts.append(f"WHERE {request.where}")
+        params: List[object] = []
+        where_clause, where_params = self._merge_where(request)
+        if where_clause:
+            sql_parts.append(f"WHERE {where_clause}")
+            params.extend(where_params)
         if request.ordering:
             order_sql = ", ".join(
                 f"{self._quote_ident(order.column)} {'DESC' if order.descending else 'ASC'}"
@@ -267,6 +276,22 @@ class LazyDataPreviewModel:
         sql_parts.append("LIMIT ? OFFSET ?")
         params.extend([request.limit, request.offset])
         return " ".join(sql_parts), tuple(params)
+
+    def _merge_where(self, request: DataPreviewRequest) -> Tuple[str | None, Tuple[object, ...]]:
+        clauses: List[str] = []
+        params: List[object] = []
+        if request.where:
+            clauses.append(f"({request.where})")
+            params.extend(request.parameters)
+        quick_filter = request.quick_filter
+        if quick_filter:
+            clause, qparams = self.build_quick_filter_clause(request.table, quick_filter)
+            if clause:
+                clauses.append(clause)
+                params.extend(qparams)
+        if not clauses:
+            return None, ()
+        return " AND ".join(clauses), tuple(params)
 
     @staticmethod
     def _quote_ident(value: str) -> str:
@@ -290,3 +315,59 @@ class LazyDataPreviewModel:
         with self._lock:
             if self._active is job:
                 self._active = None
+
+    # ------------------------------------------------------------------
+    # Quick filter helpers
+    def build_quick_filter_clause(
+        self, table: str, search_text: str
+    ) -> Tuple[str, Tuple[str, ...]]:
+        """Construct a safe LIKE clause spanning textual columns.
+
+        Returns a ``(clause, params)`` tuple compatible with parametrized
+        queries. ``clause`` includes the necessary ``ESCAPE`` modifier so
+        that ``%`` and ``_`` in the user input are treated literally.
+        """
+
+        if not search_text:
+            return "", ()
+        if self._introspection is None:
+            raise ValueError("Quick filter requires schema introspection service")
+        info = self._introspection.get_table_info(table)
+        if info is None:
+            raise ValueError(f"Unknown table '{table}' for quick filter")
+        columns = [col.name for col in info.columns]
+        if not columns:
+            return "", ()
+        pattern = self._escape_like(search_text)
+        exprs = []
+        params: List[str] = []
+        for column in columns:
+            quoted = self._quote_ident(column)
+            exprs.append(f"CAST({quoted} AS TEXT) LIKE ? ESCAPE '\\'")
+            params.append(pattern)
+        clause = f"({' OR '.join(exprs)})"
+        return clause, tuple(params)
+
+    def apply_quick_filter(self, request: DataPreviewRequest, search_text: str) -> DataPreviewRequest:
+        """Return a new request with the quick filter applied."""
+
+        clause, params = self.build_quick_filter_clause(request.table, search_text)
+        if not clause:
+            return request
+        combined_where = f"({request.where}) AND {clause}" if request.where else clause
+        combined_params = tuple(request.parameters) + params
+        return DataPreviewRequest(
+            table=request.table,
+            offset=request.offset,
+            limit=request.limit,
+            ordering=request.ordering,
+            where=combined_where,
+            parameters=combined_params,
+            quick_filter=None,
+        )
+
+    @staticmethod
+    def _escape_like(search_text: str) -> str:
+        trimmed = search_text.strip()
+        escaped = trimmed.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        return f"%{escaped}%"

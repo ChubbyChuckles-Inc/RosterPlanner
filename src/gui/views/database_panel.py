@@ -9,7 +9,7 @@ Initial dockable widget giving a read-only overview:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -19,8 +19,9 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
     QHBoxLayout,
     QCheckBox,
+    QLineEdit,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 try:  # pragma: no cover
     from gui.components.theme_aware import ThemeAwareMixin  # type: ignore
@@ -34,6 +35,7 @@ except Exception:  # pragma: no cover
 from gui.components.schema_graph_widget import SchemaGraphWidget
 from gui.services.data_freshness_service import humanize_age
 from gui.services.service_locator import services as _services  # type: ignore
+from gui.viewmodels.data_preview_model import DataPreviewRequest, LazyDataPreviewModel, PreviewCancelledError
 
 
 class DatabasePanel(QWidget, ThemeAwareMixin):
@@ -41,6 +43,11 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         super().__init__(parent)
         self.setObjectName("databasePanel")
         self._safety_service = _services.try_get("database_safety_service")
+        self._data_preview_model: Optional[LazyDataPreviewModel] = _services.try_get(
+            "data_preview_model"
+        )
+        self._preview_limit = 5
+        self._active_table: Optional[str] = None
         initial_admin = False
         if self._safety_service is not None:
             try:
@@ -49,6 +56,15 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
                 initial_admin = False
         self._admin_enabled = initial_admin
         self._build_ui()
+        self._filter_timer = QTimer(self)
+        self._filter_timer.setSingleShot(True)
+        self._filter_timer.setInterval(250)
+        self._filter_timer.timeout.connect(self._refresh_details_for_current_table)
+        if self._data_preview_model is None:
+            self.quick_filter_input.setEnabled(False)
+            self.quick_filter_input.setPlaceholderText(
+                "Quick filter unavailable (preview service missing)"
+            )
         self._populate_tables()
         self._apply_admin_state()
 
@@ -93,6 +109,11 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.detail_label.setObjectName("dbDetailPlaceholder")
         detail_layout.addWidget(self.detail_label)
 
+        self.quick_filter_input = QLineEdit()
+        self.quick_filter_input.setObjectName("dbQuickFilterInput")
+        self.quick_filter_input.setPlaceholderText("Quick filter (substring match across columns)")
+        detail_layout.addWidget(self.quick_filter_input)
+
         self.graph_widget = SchemaGraphWidget(detail_container)
         detail_layout.addWidget(self.graph_widget, 1)
 
@@ -125,6 +146,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
 
         self.table_list.currentItemChanged.connect(self._on_table_selected)  # type: ignore
         self.admin_toggle.stateChanged.connect(self._on_admin_toggled)  # type: ignore
+        self.quick_filter_input.textChanged.connect(self._on_quick_filter_changed)  # type: ignore
 
     def _populate_tables(self) -> None:
         svc = _services.try_get("schema_introspection_service")  # type: ignore
@@ -140,12 +162,27 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
 
     def _on_table_selected(self, current, _previous):  # pragma: no cover - UI reaction
         if not current:
+            self._active_table = None
             self.detail_label.setText(
                 "Select a table to inspect. Future tasks will add sample rows, indexes, graph views."
             )
             self.graph_widget.clear()
             return
-        name = current.text()
+        self._active_table = current.text()
+        self._filter_timer.stop()
+        self._refresh_details_for_current_table()
+
+    def apply_theme(self):  # pragma: no cover - styling hook placeholder
+        pass
+
+    # ------------------------------------------------------------------
+    def is_admin_mode(self) -> bool:
+        return self._admin_enabled
+
+    def _refresh_details_for_current_table(self) -> None:
+        name = self._active_table
+        if not name:
+            return
         svc = _services.try_get("schema_introspection_service")
         if not svc:
             self.detail_label.setText(f"{name}\n(No introspection service)")
@@ -156,13 +193,19 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.detail_label.setText(f"{name}\n(No column info)")
             self.graph_widget.clear()
             return
-        stats_map = {}
+        stats_map: Dict[str, object] = {}
         if hasattr(svc, "get_column_stats"):
             try:
                 stats_map = svc.get_column_stats(name)
             except Exception:
                 stats_map = {}
-        lines = [f"Table: {ti.name}"]
+        lines = self._build_table_summary_lines(ti, stats_map)
+        lines.extend(self._build_preview_lines(name))
+        self.detail_label.setText("\n".join(lines))
+        self.graph_widget.set_focus_table(name)
+
+    def _build_table_summary_lines(self, ti, stats_map: Dict[str, object]) -> list[str]:
+        lines: list[str] = [f"Table: {ti.name}"]
         lines.append("Table Profile:")
         lines.append(f" • Rows: {self._format_row_count(ti.row_count)}")
         lines.append(f" • Size: {self._format_size(ti.approx_page_count, ti.approx_size_bytes)}")
@@ -200,16 +243,51 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
                 cols = ", ".join(idx.columns)
                 unique = " UNIQUE" if idx.unique else ""
                 lines.append(f" • {idx.name}:{unique} ({cols})")
+        return lines
 
-        self.detail_label.setText("\n".join(lines))
-        self.graph_widget.set_focus_table(name)
+    def _build_preview_lines(self, table: str) -> list[str]:
+        model = self._data_preview_model
+        if model is None:
+            return []
+        quick_text = self.quick_filter_input.text().strip()
+        request = DataPreviewRequest(table=table, limit=self._preview_limit, quick_filter=quick_text)
+        try:
+            page = model.fetch_page(request, timeout=2.0)
+        except PreviewCancelledError:
+            return ["", "Preview rows: cancelled"]
+        except Exception:
+            return ["", "Preview rows unavailable (query failed)"]
+        heading = "Preview rows"
+        if quick_text:
+            heading += f" (filter: {quick_text})"
+        lines = ["", f"{heading}:"]
+        if not page.rows:
+            lines.append(" • No rows match current filter")
+            return lines
+        columns = " | ".join(page.columns) if page.columns else "(no columns)"
+        lines.append(f" • {columns}")
+        for row in page.rows:
+            formatted = " | ".join(self._format_preview_value(value) for value in row)
+            lines.append(f"   {formatted}")
+        if page.truncated:
+            lines.append("   …")
+        return lines
 
-    def apply_theme(self):  # pragma: no cover - styling hook placeholder
-        pass
+    def _on_quick_filter_changed(self, _text: str) -> None:
+        if self._data_preview_model is None:
+            return
+        self._filter_timer.stop()
+        self._filter_timer.start()
 
-    # ------------------------------------------------------------------
-    def is_admin_mode(self) -> bool:
-        return self._admin_enabled
+    @staticmethod
+    def _format_preview_value(value: object) -> str:
+        if value is None:
+            return "NULL"
+        text = str(value)
+        text = text.replace("\n", " ").replace("\r", " ")
+        if len(text) > 40:
+            return f"{text[:37]}…"
+        return text
 
     def _on_admin_toggled(self, state: int) -> None:
         enabled = state == Qt.CheckState.Checked.value

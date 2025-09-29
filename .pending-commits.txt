@@ -3,6 +3,9 @@ feat(database): add column stats sampler caching and panel display (7.11.7)
 Extends SchemaIntrospectionService with sampled column metrics caching and exposes the values in DatabasePanel,
 adding unit tests for the sampler, caching behavior, and GUI rendering.
 
+feat(database): add quick filter preview support with safe LIKE binding (7.11.8)
+Adds LazyDataPreviewModel helpers for building ESCAPE-aware quick filter clauses, wires a debounced quick filter input and preview rows into DatabasePanel, registers the preview model in bootstrap, and extends tests for both services and GUI filtering behavior.
+
 feat(database): add safety mode toggle and admin console gating to Database Panel (7.11.5)
 Introduces persisted admin toggle wired to DatabaseSafetyService, updates DatabasePanel UI with banner, admin notice,
 and hidden action console in read-only mode, plus unit tests covering default state, toggle behavior, and persistence.
