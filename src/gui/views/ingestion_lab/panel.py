@@ -47,6 +47,7 @@ from gui.ingestion.onboarding_coach import (
     OnboardingStep,
     mark_onboarding_complete,
     mark_onboarding_skipped,
+    mark_onboarding_state,
     should_run_onboarding,
 )
 
@@ -1338,19 +1339,64 @@ class IngestionLabPanel(
         if not self.isVisible():
             QTimer.singleShot(700, self._maybe_launch_onboarding)
             return
-        if not should_run_onboarding():
-            return
+        self._launch_onboarding(force=False, source="auto")
+
+    def _launch_onboarding(self, *, force: bool, source: str) -> bool:
+        if self._onboarding_coach is not None:
+            if source == "manual":
+                self._append_log("Onboarding: walkthrough already active")
+            try:
+                self._onboarding_coach.raise_()
+                self._onboarding_coach.setFocus()
+            except Exception:
+                pass
+            return True
+        if not force and not should_run_onboarding():
+            return False
+        if not self.isVisible():
+            return False
         steps = self._build_onboarding_steps()
         if not steps:
-            return
+            return False
         try:
             coach = OnboardingCoach(self, steps, on_finish=self._on_onboarding_finished)
         except Exception as exc:
             self._append_log(f"Onboarding unavailable: {exc}")
-            return
+            return False
+        if force:
+            try:
+                mark_onboarding_state("pending")
+            except Exception:
+                pass
         self._onboarding_coach = coach
         self._onboarding_coach.start()
-        self._append_log("Onboarding: started guided walkthrough")
+        try:
+            self.raise_()
+            self.setFocus()
+        except Exception:
+            pass
+        if source == "manual":
+            self._append_log("Onboarding: started guided walkthrough (manual)")
+        else:
+            self._append_log("Onboarding: started guided walkthrough")
+        return True
+
+    def start_onboarding_walkthrough(self, *, force_restart: bool = True) -> bool:
+        """Launch the onboarding walkthrough on demand.
+
+        Parameters
+        ----------
+        force_restart : bool
+            When True (default), reset the walkthrough state so the guide always
+            launches even if previously completed.
+
+        Returns
+        -------
+        bool
+            True if the walkthrough is running or already active; False otherwise.
+        """
+
+        return self._launch_onboarding(force=force_restart, source="manual")
 
     def _build_onboarding_steps(self) -> list[OnboardingStep]:
         steps: list[OnboardingStep] = []
