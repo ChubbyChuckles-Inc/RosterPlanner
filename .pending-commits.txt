@@ -186,3 +186,5 @@ for draft history retention and roadmap update for milestone 7.10.A17.
 
 feat(database): implement schema introspection service with caching (7.11.2)
 
+feat(database): add lazy data preview model with cancellable paging (7.11.3)
+
