@@ -184,3 +184,5 @@ hashes, surfaces a timeline tab dropdown to diff autosaves against the current
 editor, and enables one-click loading of a chosen autosave. Includes unit tests
 for draft history retention and roadmap update for milestone 7.10.A17.
 
+feat(database): implement schema introspection service with caching (7.11.2)
+

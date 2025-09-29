@@ -386,25 +386,6 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
 [x] 7.10.A20 Guided Onboarding Walkthrough: progressive spotlight across navigator → selector explorer → transforms → diff preview (stores completion flag in config, overlay + settings flag).
 [x] 7.10.A21 Keyboard Macro Shortcuts: assign user-defined shortcuts to frequently used transform chain templates.
  [x] 7.10.A22 Automatic Date/Number Format Inference: sample raw strings to propose parse_date / to_number format hints (locale aware) before user manual entry.
- [ ] 7.10.A23 Batch Selector Optimization Pass: proposes simplified selectors (removes redundant ancestry) with acceptance diff preview.
- [ ] 7.10.A24 Dead Field Pruner: suggests removal of fields never populated across last N previews (one-click comment-out vs delete).
- [ ] 7.10.A25 Migration Assistant: when schema target changes, generates mapping suggestions & highlights unmapped new columns.
- [ ] 7.10.A26 Accessibility Annotation Helper: allow adding alt/aria-like semantics for derived metadata (future-proofing, annotation export).
- [ ] 7.10.A27 Multi-Rule Search & Replace with Awareness: refactors selector fragments or transform tokens across resources with dry-run preview.
- [ ] 7.10.A28 Performance Hotspot Profiler: highlights slowest resources (time & node visit counts) inline in rule list with flame-bar visualization.
- [ ] 7.10.A29 Partial Preview Cache Layer: reuses unchanged resource extract results when only unrelated sections edited (diff-aware invalidation).
- [ ] 7.10.A30 YAML Minification & Formatting Optimizer: normalizes ordering (resources alphabetical, fields grouped) + ensures deterministic output for VCS diffs.
- [ ] 7.10.A31 Collaboration Prep Hooks [R]: abstract rule storage provider interface (future remote sync) while still using local JSON/YAML.
- [ ] 7.10.A32 Inline Test Assertion Wizard: GUI guided creation of assertion blocks (suggest canonical value samples) appended to rule assertions section.
- [ ] 7.10.A33 Rule Export Quality Report: summarizes coverage %, complexity, drift risks, hotspots prior to sharing.
- [ ] 7.10.A34 Smart Paste Normalizer: when user pastes multiple lines of CSS selectors, auto-splits into tentative field entries for quick confirmation.
- [ ] 7.10.A35 Structural Pattern Library: catalog of reusable selector patterns (tables with header row, key-value lists) insertable as templates.
- [ ] 7.10.A36 Inline Diff Inline Highlight (Char-Level): fine-grained field value diff highlights inside cells (balanced algorithm) with accessibility fallback.
- [ ] 7.10.A37 Rule Lint Quick Fixes: lightbulb actions offering fix-ups (add missing transform, convert absolute selector to relative, fill recommended attr).
- [ ] 7.10.A38 DOM Snapshot Versioning: store slim structural hashes allowing replay of earlier DOM shape for selector robustness testing.
- [ ] 7.10.A39 Localized Selector Heuristics [R]: experiment with language-aware node text matching for internationalized pages.
- [ ] 7.10.A40 JSON ↔ YAML Round-Trip Fidelity Tests [T]: ensure visual builder never introduces semantic drift when switching formats.
-
 
  Persistence & Configuration
  [x] 7.10.49 Rule set autosave draft state with explicit publish action
@@ -440,7 +421,7 @@ Goal: Insert a power-user dock ("Database") that offers a read-only by default, 
 
  Architecture & Panel Shell
  [x] 7.11.1 Database Panel dock scaffold (split: Schema Tree | Detail Tabs | Action Console)
- [ ] 7.11.2 Schema introspection service (tables, columns, PK/FK, indexes, row counts cached)
+ [x] 7.11.2 Schema introspection service (tables, columns, PK/FK, indexes, row counts cached)
  [ ] 7.11.3 Lazy data preview model (paginated SELECT w/ LIMIT/OFFSET + cancellation)
  [ ] 7.11.4 Relational graph mini-view (graphviz / ascii fallback) of FK edges (interactive highlight)
  [ ] 7.11.5 Safety mode toggle (Read‑Only vs Admin) persisted; mutating actions hidden unless Admin enabled

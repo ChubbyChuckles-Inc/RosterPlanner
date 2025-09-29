@@ -187,15 +187,40 @@ class PreviewMixin:
         except Exception:
             pass
 
-    def _gather_visible_file_html(self) -> Dict[str, str]:
+    def _gather_visible_file_html(self, *, selected_only: bool = False) -> Dict[str, str]:
         files: Dict[str, str] = {}
-        for item in self._all_file_items:
-            if item.isHidden():
-                continue
+
+        def _iter_items():
+            selected = []
+            if selected_only:
+                try:
+                    selected = [
+                        it
+                        for it in self.file_tree.selectedItems()
+                        if isinstance(it.data(0, Qt.ItemDataRole.UserRole), dict)
+                        and "file" in it.data(0, Qt.ItemDataRole.UserRole)
+                    ]
+                except Exception:
+                    selected = []
+            if selected:
+                return selected
+            return [
+                it
+                for it in self._all_file_items
+                if not it.isHidden()
+                and isinstance(it.data(0, Qt.ItemDataRole.UserRole), dict)
+                and "file" in it.data(0, Qt.ItemDataRole.UserRole)
+            ]
+
+        for item in _iter_items():
             data = item.data(0, Qt.ItemDataRole.UserRole)
             if not (isinstance(data, dict) and "file" in data):
                 continue
             path = data.get("file")  # type: ignore[index]
+            if not path:
+                continue
+            if path in files:
+                continue
             try:
                 with open(path, "r", encoding="utf-8", errors="replace") as fh:
                     files[path] = fh.read()

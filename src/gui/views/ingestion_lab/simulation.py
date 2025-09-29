@@ -109,7 +109,7 @@ class SimulationMixin:
                 raw_payload = {}
         except Exception:
             raw_payload = {}
-        html_map = self._gather_visible_file_html()
+        html_map = self._gather_visible_file_html(selected_only=True)
         if not html_map:
             self._append_log("Simulate: no visible files")
             return
@@ -165,7 +165,7 @@ class SimulationMixin:
         except Exception as e:
             self._append_log(f"Apply ERROR (rules): {e}")
             return
-        html_map = self._gather_visible_file_html()
+        html_map = self._gather_visible_file_html(selected_only=True)
         if not html_map:
             self._append_log("Apply: no visible files")
             return
