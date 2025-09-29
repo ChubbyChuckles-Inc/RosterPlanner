@@ -385,7 +385,7 @@ Goal: Provide a power-user, fully transparent GUI panel to introspect every HTML
 [x] 7.10.A19 Import HTML Snippet As Fixture: capture a DOM fragment directly into a fixtures folder for deterministic selector regression tests (dialog, storage helpers, unit tests).
 [x] 7.10.A20 Guided Onboarding Walkthrough: progressive spotlight across navigator → selector explorer → transforms → diff preview (stores completion flag in config, overlay + settings flag).
 [x] 7.10.A21 Keyboard Macro Shortcuts: assign user-defined shortcuts to frequently used transform chain templates.
- [ ] 7.10.A22 Automatic Date/Number Format Inference: sample raw strings to propose parse_date / to_number format hints (locale aware) before user manual entry.
+ [x] 7.10.A22 Automatic Date/Number Format Inference: sample raw strings to propose parse_date / to_number format hints (locale aware) before user manual entry.
  [ ] 7.10.A23 Batch Selector Optimization Pass: proposes simplified selectors (removes redundant ancestry) with acceptance diff preview.
  [ ] 7.10.A24 Dead Field Pruner: suggests removal of fields never populated across last N previews (one-click comment-out vs delete).
  [ ] 7.10.A25 Migration Assistant: when schema target changes, generates mapping suggestions & highlights unmapped new columns.

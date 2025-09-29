@@ -44,6 +44,10 @@ from gui.ingestion.rule_complexity_meter import (
     RuleComplexityError,
     compute_rule_complexity,
 )
+from gui.ingestion.format_inference import infer_formats
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from gui.ingestion.format_inference import DateFormatSuggestion, NumberFormatSuggestion
 
 _COMPLEXITY_BADGE_BASE = "padding:3px 10px; border-radius:10px; font-weight:600;"
 _COMPLEXITY_BADGE_STYLES = {
@@ -559,6 +563,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self._last_error: Optional[str] = None
         self._last_complexity_report = None
         self._last_compiled: Optional[Dict[str, Any]] = None
+        self._active_preview_html: str = ""
         # Guard: if no QApplication instance, skip heavy UI (headless import in tests)
         try:
             from PyQt6.QtWidgets import QApplication  # type: ignore
@@ -751,6 +756,18 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.selector_feedback.setObjectName("visualRuleBuilderSelectorFeedback")
         form.addRow("Matches", self.selector_feedback)
         fe_layout.addLayout(form)
+        actions_layout = QVBoxLayout()
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(4)
+        self.btn_infer_formats = QPushButton("Infer formats")
+        self.btn_infer_formats.setObjectName("visualRuleBuilderInferButton")
+        self.btn_infer_formats.setToolTip(
+            "Analyse preview samples to suggest date or number transforms"
+        )
+        self.btn_infer_formats.setEnabled(False)
+        actions_layout.addWidget(self.btn_infer_formats)
+        actions_layout.addStretch(1)
+        fe_layout.addLayout(actions_layout)
         layout.addWidget(self._field_editor)
         self._field_editor.hide()
         try:  # connect change handlers & debounce wiring
@@ -772,6 +789,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_redo.clicked.connect(self._on_redo)  # type: ignore
         self.btn_compile.clicked.connect(self._on_compile_clicked)  # type: ignore
         self.chk_live.stateChanged.connect(self._on_live_preview_toggled)  # type: ignore
+        self.btn_infer_formats.clicked.connect(self._on_infer_formats)  # type: ignore
         # Selection change hookup (inside build_ui to avoid NameError at class creation)
         try:  # pragma: no cover - safety
             self.list_widget.currentRowChanged.connect(self._on_selection_changed)  # type: ignore
@@ -917,6 +935,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self._selected_node_id = None
         if row < 0 or row >= len(self.model.nodes):
             self._field_editor.hide()
+            self._update_inference_button_state()
             return
         node = self.model.nodes[row]
         self._selected_node_id = node.id
@@ -932,6 +951,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         else:
             self._field_editor.hide()
         self._persist_ui_state()
+        self._update_inference_button_state()
 
     # Transform chip application -----------------------------------------
     def _apply_transform_chip(self, spec: Dict[str, Any]) -> None:  # pragma: no cover - thin UI
@@ -947,6 +967,123 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.refresh()
         else:
             self.status_label.setText("Transform not applied (not a field node?)")
+
+    def _update_inference_button_state(self) -> None:
+        if not hasattr(self, "btn_infer_formats"):
+            return
+        node = None
+        if getattr(self, "_selected_node_id", None):
+            node = next((n for n in self.model.nodes if n.id == self._selected_node_id), None)
+        is_field = isinstance(node, FieldMappingNode)
+        selector = (getattr(node, "selector", "") or "").strip() if is_field else ""
+        has_preview = bool(getattr(self, "_active_preview_html", ""))
+        self.btn_infer_formats.setEnabled(bool(is_field and selector and has_preview))
+
+    def _collect_field_samples(self, node: FieldMappingNode, limit: int = 60) -> List[str]:
+        html = getattr(self, "_active_preview_html", "")
+        if not html:
+            return []
+        try:
+            from bs4 import BeautifulSoup  # type: ignore
+        except Exception:
+            return []
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+        except Exception:
+            return []
+        selector = (node.selector or "").strip()
+        if not selector:
+            return []
+        samples: List[str] = []
+        try:
+            elements = soup.select(selector)
+        except Exception:
+            return []
+        for element in elements:
+            value = element.get_text(separator=" ", strip=True)
+            if value:
+                samples.append(value)
+                if len(samples) >= limit:
+                    break
+        return samples
+
+    def _on_infer_formats(self) -> None:  # pragma: no cover - UI callback
+        if not getattr(self, "_selected_node_id", None):
+            self.status_label.setText("Select a Field node first")
+            return
+        node = next((n for n in self.model.nodes if n.id == self._selected_node_id), None)
+        if not isinstance(node, FieldMappingNode):
+            self.status_label.setText("Format inference only applies to field nodes")
+            return
+        samples = self._collect_field_samples(node)
+        if not samples:
+            self.status_label.setText(
+                "Preview a file and ensure the field selector matches values before inferring"
+            )
+            return
+        inference = infer_formats(samples)
+        if not inference.has_suggestions:
+            self.status_label.setText("Couldn't infer date or number formats from samples")
+            return
+        try:
+            from gui.ingestion.format_inference_dialog import FormatInferenceDialog
+        except Exception as exc:  # pragma: no cover - Qt not available
+            self.status_label.setText(f"Inference dialog unavailable: {exc}")
+            return
+        dialog = FormatInferenceDialog(samples, inference, parent=self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        payload = getattr(dialog, "selected_suggestion", None)
+        if not payload:
+            return
+        kind, suggestion = payload
+        if kind == "number":
+            self._apply_number_suggestion(node, suggestion)
+        elif kind == "date":
+            self._apply_date_suggestion(node, suggestion)
+        else:
+            self.status_label.setText("Unsupported suggestion type")
+
+    def _apply_number_suggestion(
+        self,
+        node: FieldMappingNode,
+        suggestion: "NumberFormatSuggestion",
+    ) -> None:
+        node.transforms = [t for t in node.transforms if t.get("kind") != "parse_date"]
+        applied = False
+        for transform in suggestion.build_transforms():
+            applied = self.model.add_transform_to_field(node.id, dict(transform)) or applied
+        if applied:
+            descriptor = node.field_name or node.label or node.id
+            summary = suggestion.summary() if hasattr(suggestion, "summary") else "number"
+            self.status_label.setText(f"Applied number inference to {descriptor} ({summary})")
+            self._maybe_emit_live()
+            self.refresh()
+        else:
+            self.status_label.setText("Number transform already present")
+        self._update_inference_button_state()
+
+    def _apply_date_suggestion(
+        self,
+        node: FieldMappingNode,
+        suggestion: "DateFormatSuggestion",
+    ) -> None:
+        node.transforms = [
+            t for t in node.transforms if t.get("kind") not in {"parse_date", "to_number"}
+        ]
+        applied = False
+        for transform in suggestion.build_transforms():
+            applied = self.model.add_transform_to_field(node.id, dict(transform)) or applied
+        if applied:
+            descriptor = node.field_name or node.label or node.id
+            formats = getattr(suggestion, "formats", [])
+            fmt_preview = ", ".join(formats) if formats else "parse_date"
+            self.status_label.setText(f"Applied date inference to {descriptor} ({fmt_preview})")
+            self._maybe_emit_live()
+            self.refresh()
+        else:
+            self.status_label.setText("Date transform already present")
+        self._update_inference_button_state()
 
     def apply_template_to_selected_field(self, chain: Sequence[Mapping[str, Any]]) -> bool:
         if not getattr(self, "_selected_node_id", None):
@@ -1082,6 +1219,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             if sel:
                 node.selector = sel
                 self._update_selector_feedback(sel)
+            self._update_inference_button_state()
             self._maybe_emit_live()
             self._persist_session_state()
             self._persist_ui_state()
@@ -1099,6 +1237,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             text = self.field_selector_edit.text().strip()
             if text:
                 self._update_selector_feedback(text)
+            self._update_inference_button_state()
 
     # Undo/Redo handlers -------------------------------------------------
     def _on_undo(self):  # pragma: no cover - UI
@@ -1132,11 +1271,12 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.selector_feedback.setText("-")
 
     def set_preview_html(self, html: str) -> None:  # pragma: no cover - external API
-        self._active_preview_html = html
+        self._active_preview_html = html or ""
         if getattr(self, "_selected_node_id", None):
             node = next((n for n in self.model.nodes if n.id == self._selected_node_id), None)
             if isinstance(node, FieldMappingNode):
                 self._update_selector_feedback(node.selector)
+        self._update_inference_button_state()
 
     # Cheat sheet --------------------------------------------------------
     def _show_cheat_sheet(self):  # pragma: no cover - UI dialog

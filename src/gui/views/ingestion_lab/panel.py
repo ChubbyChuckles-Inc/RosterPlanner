@@ -129,6 +129,7 @@ class IngestionLabPanel(
         self._watchlist_panel.set_entries(self._watchlist_store.entries())
         self._last_provenance: Dict[str, tuple[str, str, int]] = {}
         self._last_hash_impact: HashImpactResult | None = None
+        self._last_preview_html: str = ""
         self._onboarding_coach: OnboardingCoach | None = None
         self.refresh_file_list()
         try:

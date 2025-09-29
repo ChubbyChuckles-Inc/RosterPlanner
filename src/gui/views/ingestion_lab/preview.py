@@ -42,10 +42,12 @@ class PreviewMixin:
         start = self._now()
         payload = target.data(0, Qt.ItemDataRole.UserRole)
         fpath = payload.get("file")
+        self._last_preview_html = ""
         try:
             stat = os.stat(fpath)
             with open(fpath, "r", encoding="utf-8", errors="replace") as fh:
-                snippet = fh.read(800)
+                html_full = fh.read()
+            snippet = html_full[:800]
             prov_payload = target.data(2, Qt.ItemDataRole.UserRole) or {}
             if isinstance(prov_payload, dict):
                 hash_full = prov_payload.get("hash")
@@ -67,7 +69,15 @@ class PreviewMixin:
             meta.extend(["--- Snippet ---", snippet])
             plain = "\n".join(meta)
             self._last_preview_plain = plain
+            self._last_preview_html = html_full
             self.preview_area.setPlainText(plain)
+            try:
+                if hasattr(self, "visual_builder") and hasattr(
+                    self.visual_builder, "set_preview_html"
+                ):
+                    self.visual_builder.set_preview_html(html_full)  # type: ignore[attr-defined]
+            except Exception:
+                pass
             try:
                 rel_name = target.text(1) or target.text(0)
             except Exception:
@@ -76,7 +86,15 @@ class PreviewMixin:
         except Exception as e:  # pragma: no cover
             err = f"Error reading file: {e}"
             self._last_preview_plain = err
+            self._last_preview_html = ""
             self.preview_area.setPlainText(err)
+            try:
+                if hasattr(self, "visual_builder") and hasattr(
+                    self.visual_builder, "set_preview_html"
+                ):
+                    self.visual_builder.set_preview_html("")  # type: ignore[attr-defined]
+            except Exception:
+                pass
             try:
                 rel_name = target.text(1) or target.text(0)
             except Exception:
@@ -94,6 +112,7 @@ class PreviewMixin:
     def _batch_preview(self, targets: list) -> None:
         start = self._now()
         count = len(targets)
+        self._last_preview_html = ""
         use_skeleton = count >= self.batch_preview_skeleton_min_files
         if use_skeleton:
             try:
@@ -141,6 +160,11 @@ class PreviewMixin:
                 except Exception:
                     break
         self.preview_area.setPlainText("\n".join(out_lines))
+        try:
+            if hasattr(self, "visual_builder") and hasattr(self.visual_builder, "set_preview_html"):
+                self.visual_builder.set_preview_html("")  # type: ignore[attr-defined]
+        except Exception:
+            pass
         if use_skeleton:
             try:
                 if hasattr(self._batch_skeleton, "stop"):
