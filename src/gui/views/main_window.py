@@ -293,6 +293,7 @@ class MainWindow(QMainWindow):  # Dock-based
             "detail": self._build_detail_dock,
             "stats": self._build_stats_dock,
             "personalization": self._build_personalization_dock,
+            "database": self._build_database_dock,
             "planner": self._build_planner_dock,
             "logs": self._build_logs_dock,
             "recent": self._build_recent_dock,
@@ -321,6 +322,7 @@ class MainWindow(QMainWindow):  # Dock-based
         secondary_ids = [
             "detail",
             "stats",
+            "database",
             "planner",
             "logs",
             "recent",
