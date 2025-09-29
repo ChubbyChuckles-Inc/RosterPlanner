@@ -39,6 +39,26 @@ from gui.ingestion.selector_watchlist_store import (
     SelectorWatchResult,
     SelectorWatchlistStore,
 )
+
+try:  # pragma: no cover - optional import guards
+    from gui.ingestion.dead_field_pruner import (
+        DeadFieldHistory,
+        DeadFieldAction,
+        apply_dead_field_actions,
+        build_dead_field_observation,
+        compute_dead_field_suggestions,
+    )
+except Exception:  # pragma: no cover
+    DeadFieldHistory = None  # type: ignore
+    DeadFieldAction = None  # type: ignore
+    apply_dead_field_actions = None  # type: ignore
+    build_dead_field_observation = None  # type: ignore
+    compute_dead_field_suggestions = lambda *args, **kwargs: []  # type: ignore
+
+try:  # pragma: no cover
+    from gui.ingestion.rule_parse_preview import generate_parse_preview
+except Exception:  # pragma: no cover
+    generate_parse_preview = None  # type: ignore
 from gui.views.rule_intent_sidebar import RuleIntentSidebar
 from gui.views.selector_watchlist_panel import SelectorWatchlistPanel
 
@@ -130,6 +150,15 @@ class IngestionLabPanel(
         self._last_provenance: Dict[str, tuple[str, str, int]] = {}
         self._last_hash_impact: HashImpactResult | None = None
         self._last_preview_html: str = ""
+        try:
+            window = int(os.environ.get("RP_ING_DEAD_FIELD_WINDOW", "5"))
+        except Exception:
+            window = 5
+        self._dead_field_window = max(1, window)
+        if DeadFieldHistory is not None:
+            self._dead_field_history = DeadFieldHistory(capacity=self._dead_field_window)
+        else:  # pragma: no cover - optional feature unavailable
+            self._dead_field_history = None
         self._onboarding_coach: OnboardingCoach | None = None
         self.refresh_file_list()
         try:
@@ -197,6 +226,11 @@ class IngestionLabPanel(
         self.btn_field_coverage_radar.setObjectName("ingLabBtnFieldCoverageRadar")
         self.btn_field_coverage_radar.setToolTip(
             "Show radar chart of semantic field category coverage (identity/performance/schedule/meta)"
+        )
+        self.btn_dead_fields = QPushButton("Dead Fields")
+        self.btn_dead_fields.setObjectName("ingLabBtnDeadFields")
+        self.btn_dead_fields.setToolTip(
+            "Suggest comment-out or deletion for fields with zero data across recent previews"
         )
         self.btn_orphan_fields = QPushButton("Orphan Fields")
         self.btn_orphan_fields.setObjectName("ingLabBtnOrphanFields")
@@ -391,6 +425,7 @@ class IngestionLabPanel(
             [
                 self.btn_field_coverage,
                 self.btn_field_coverage_radar,
+                self.btn_dead_fields,
                 self.btn_example_rows,
                 self.btn_watchlist,
                 self.btn_quality_gates,
@@ -749,6 +784,8 @@ class IngestionLabPanel(
             )  # type: ignore
         except Exception:
             pass
+        if hasattr(self, "btn_dead_fields"):
+            self.btn_dead_fields.clicked.connect(self._on_dead_fields_clicked)  # type: ignore
         self.btn_orphan_fields.clicked.connect(self._on_orphan_fields_clicked)  # type: ignore
         self.btn_quality_gates.clicked.connect(self._on_quality_gates_clicked)  # type: ignore
         self.btn_simulate.clicked.connect(self._on_simulate_clicked)  # type: ignore
@@ -991,6 +1028,39 @@ class IngestionLabPanel(
                 self._actions_layout.insertWidget(insert_idx, self._analysis_panel)
             self._toolbar_row2_widget.setVisible(False)
 
+    def _record_dead_field_snapshot(self, file_path: str, html_text: str) -> None:
+        history = getattr(self, "_dead_field_history", None)
+        if history is None or not html_text:
+            return
+        if generate_parse_preview is None or build_dead_field_observation is None:
+            return
+        try:
+            rules = self._parse_ruleset_from_editor()
+        except Exception:
+            return
+        try:
+            preview = generate_parse_preview(
+                rules,
+                html_text,
+                apply_transforms=False,
+                capture_performance=False,
+            )
+        except Exception:
+            return
+        try:
+            label = os.path.basename(file_path) if file_path else "<preview>"
+            observation = build_dead_field_observation(
+                rules,
+                preview,
+                file_label=label,
+            )
+        except Exception:
+            return
+        try:
+            history.record(observation)
+        except Exception:
+            pass
+
     def _on_visual_builder_clicked(self) -> None:  # pragma: no cover - UI interaction
         if self._editor_mode == 0:
             self._editor_stack.setCurrentIndex(1)
@@ -1006,6 +1076,64 @@ class IngestionLabPanel(
             self._editor_stack.setCurrentIndex(0)
             self._editor_mode = 0
             self.btn_visual_builder.setText("Visual Builder")
+
+    def _on_dead_fields_clicked(self) -> None:  # pragma: no cover - UI interaction
+        history = getattr(self, "_dead_field_history", None)
+        if history is None or apply_dead_field_actions is None or DeadFieldAction is None:
+            self._append_log("Dead Field Pruner unavailable: history not initialised")
+            return
+        try:
+            window = int(getattr(self, "_dead_field_window", history.capacity))
+        except Exception:
+            window = history.capacity
+        suggestions = compute_dead_field_suggestions(
+            history,
+            window=window,
+            include_tables=False,
+        )
+        if not suggestions:
+            self._append_log(f"Dead Field Pruner: no empty fields across last {window} preview(s)")
+            return
+        try:
+            from gui.ingestion.dead_field_pruner_dialog import DeadFieldPrunerDialog  # type: ignore
+        except Exception as exc:
+            self._append_log(f"Dead Field Pruner dialog unavailable: {exc}")
+            return
+        dialog = DeadFieldPrunerDialog(suggestions, parent=self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        actions = dialog.selected_actions()
+        if not actions:
+            self._append_log("Dead Field Pruner: no actions chosen")
+            return
+        import json as _json
+
+        text = self.rule_editor.toPlainText() or "{}"
+        try:
+            payload = _json.loads(text)
+        except Exception as exc:
+            self._append_log(f"Dead Field Pruner aborted: rule parse error: {exc}")
+            return
+        try:
+            commented, deleted = apply_dead_field_actions(payload, actions)
+        except Exception as exc:
+            self._append_log(f"Dead Field Pruner failed: {exc}")
+            return
+        if not commented and not deleted:
+            self._append_log("Dead Field Pruner: nothing to apply (fields missing or unsupported)")
+            return
+        try:
+            pretty = _json.dumps(payload, indent=2, sort_keys=True)
+        except Exception:
+            pretty = _json.dumps(payload)
+        self.rule_editor.setPlainText(pretty)
+        try:
+            self._refresh_intent_resources()
+        except Exception:
+            pass
+        self._append_log(
+            f"Dead Field Pruner applied: {commented} commented, {deleted} deleted (window={window})"
+        )
 
     def _on_bulk_edit_clicked(self) -> None:  # pragma: no cover - UI invocation path
         try:

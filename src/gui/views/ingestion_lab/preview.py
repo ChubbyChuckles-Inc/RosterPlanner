@@ -82,6 +82,11 @@ class PreviewMixin:
                 rel_name = target.text(1) or target.text(0)
             except Exception:
                 rel_name = fpath
+            try:
+                if hasattr(self, "_record_dead_field_snapshot"):
+                    self._record_dead_field_snapshot(fpath, html_full)  # type: ignore[attr-defined]
+            except Exception:
+                pass
             self._append_log(f"Previewed: {rel_name}")
         except Exception as e:  # pragma: no cover
             err = f"Error reading file: {e}"
