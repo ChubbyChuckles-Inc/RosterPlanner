@@ -980,6 +980,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.status_label.setText("Transform not applied (not a field node?)")
 
     def _update_inference_button_state(self) -> None:
+        """Enable or disable format inference and optimization actions."""
         if not hasattr(self, "btn_infer_formats"):
             return
         node = None
@@ -998,6 +999,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.btn_optimize_selectors.setEnabled(bool(has_preview and has_field_selectors))
 
     def _collect_field_samples(self, node: FieldMappingNode, limit: int = 60) -> List[str]:
+        """Collect sample text values for the provided field selector from preview HTML."""
         html = getattr(self, "_active_preview_html", "")
         if not html:
             return []
@@ -1026,6 +1028,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         return samples
 
     def _collect_selector_contexts(self) -> List[FieldSelectorContext]:
+        """Build selector contexts grouped by the most recent selector node."""
         contexts: List[FieldSelectorContext] = []
         current_resource = ""
         for node in self.model.nodes:
@@ -1086,6 +1089,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self.status_label.setText("Unsupported suggestion type")
 
     def _on_optimize_selectors(self) -> None:  # pragma: no cover - UI callback
+        """Launch the optimization dialog and apply accepted selector updates."""
         html = getattr(self, "_active_preview_html", "")
         if not html:
             html = getattr(self.parent(), "_last_preview_html", "") if self.parent() else ""

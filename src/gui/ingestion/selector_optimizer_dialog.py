@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 from typing import List, Optional
 
 from PyQt6 import QtCore, QtWidgets
@@ -32,6 +33,7 @@ class SelectorOptimizationDialog(QtWidgets.QDialog):
         self._populate_table()
 
     def _build_ui(self) -> None:
+        """Construct the dialog layout and static widgets."""
         layout = QtWidgets.QVBoxLayout(self)
         intro = QtWidgets.QLabel(
             "Review proposed selector simplifications. Deselect any you prefer to keep unchanged."
@@ -76,6 +78,7 @@ class SelectorOptimizationDialog(QtWidgets.QDialog):
         layout.addWidget(self.button_box)
 
     def _populate_table(self) -> None:
+        """Populate the table widget with optimization suggestions."""
         for row, suggestion in enumerate(self._suggestions):
             checkbox_item = QtWidgets.QTableWidgetItem()
             checkbox_item.setFlags(
@@ -120,24 +123,30 @@ class SelectorOptimizationDialog(QtWidgets.QDialog):
             self.table.selectRow(0)
 
     def _select_all(self) -> None:
+        """Mark all suggestions for application."""
         for row in range(self.table.rowCount()):
             item = self.table.item(row, 0)
             if item is not None:
                 item.setCheckState(QtCore.Qt.CheckState.Checked)
 
     def _select_none(self) -> None:
+        """Deselect every optimization suggestion."""
         for row in range(self.table.rowCount()):
             item = self.table.item(row, 0)
             if item is not None:
                 item.setCheckState(QtCore.Qt.CheckState.Unchecked)
 
     def _on_selection_changed(self) -> None:
+        """Update the details pane when the highlighted suggestion changes."""
         rows = self.table.selectionModel().selectedRows()
         if not rows:
             self.details.clear()
             return
         row = rows[0].row()
         suggestion = self._suggestions[row]
+        diff_lines = list(
+            difflib.ndiff([suggestion.original_selector], [suggestion.optimized_selector])
+        )
         summary = [
             f"Field: {suggestion.field_label}",
             f"Resource: {suggestion.resource_label}",
@@ -147,9 +156,12 @@ class SelectorOptimizationDialog(QtWidgets.QDialog):
             f"Original: {suggestion.original_selector}",
             f"Proposed: {suggestion.optimized_selector}",
         ]
+        if diff_lines:
+            summary.extend(["", "Diff:"] + diff_lines)
         self.details.setPlainText("\n".join(summary))
 
     def selected_suggestions(self) -> List[SelectorOptimizationSuggestion]:
+        """Return the subset of suggestions currently checked by the user."""
         chosen: List[SelectorOptimizationSuggestion] = []
         for row, suggestion in enumerate(self._suggestions):
             item = self.table.item(row, 0)
@@ -160,6 +172,7 @@ class SelectorOptimizationDialog(QtWidgets.QDialog):
         return chosen
 
     def accept(self) -> None:  # pragma: no cover - Qt runtime path
+        """Accept the dialog only if at least one suggestion is selected."""
         if not self.selected_suggestions():
             QtWidgets.QMessageBox.warning(
                 self,
