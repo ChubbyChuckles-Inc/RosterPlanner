@@ -33,7 +33,7 @@ Design Principles:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Mapping, Sequence, TYPE_CHECKING
+from typing import List, Dict, Any, Optional, Mapping, Sequence, TYPE_CHECKING, Tuple
 import copy
 from collections import deque
 import json
@@ -45,6 +45,10 @@ from gui.ingestion.rule_complexity_meter import (
     compute_rule_complexity,
 )
 from gui.ingestion.format_inference import infer_formats
+from gui.ingestion.selector_optimizer import (
+    FieldSelectorContext,
+    compute_selector_optimizations,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from gui.ingestion.format_inference import DateFormatSuggestion, NumberFormatSuggestion
@@ -618,6 +622,11 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_redo.setToolTip("Redo")
         self.btn_compile = QPushButton("Compile")
         self.btn_compile.setToolTip("Compile current canvas to mapping and emit preview")
+        self.btn_optimize_selectors = QPushButton("Optimize selectors…")
+        self.btn_optimize_selectors.setToolTip(
+            "Run batch selector optimization against the current preview HTML"
+        )
+        self.btn_optimize_selectors.setEnabled(False)
         self.chk_live = QCheckBox("Live")
         self.chk_live.setToolTip("Automatically compile after changes")
         self.chk_live.setObjectName("visualRuleBuilderLivePreview")
@@ -630,6 +639,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         toolbar.addSpacing(8)
         toolbar.addWidget(self.chk_live)
         toolbar.addWidget(self.btn_compile)
+        toolbar.addWidget(self.btn_optimize_selectors)
         toolbar.addStretch(1)
         self._complexity_badge = QLabel("Complexity: —")
         self._complexity_badge.setObjectName("visualRuleBuilderComplexityBadge")
@@ -788,6 +798,7 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         self.btn_undo.clicked.connect(self._on_undo)  # type: ignore
         self.btn_redo.clicked.connect(self._on_redo)  # type: ignore
         self.btn_compile.clicked.connect(self._on_compile_clicked)  # type: ignore
+        self.btn_optimize_selectors.clicked.connect(self._on_optimize_selectors)  # type: ignore
         self.chk_live.stateChanged.connect(self._on_live_preview_toggled)  # type: ignore
         self.btn_infer_formats.clicked.connect(self._on_infer_formats)  # type: ignore
         # Selection change hookup (inside build_ui to avoid NameError at class creation)
@@ -978,6 +989,13 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
         selector = (getattr(node, "selector", "") or "").strip() if is_field else ""
         has_preview = bool(getattr(self, "_active_preview_html", ""))
         self.btn_infer_formats.setEnabled(bool(is_field and selector and has_preview))
+        if hasattr(self, "btn_optimize_selectors"):
+            nodes = getattr(getattr(self, "model", None), "nodes", [])
+            has_field_selectors = any(
+                isinstance(n, FieldMappingNode) and (getattr(n, "selector", "") or "").strip()
+                for n in nodes
+            )
+            self.btn_optimize_selectors.setEnabled(bool(has_preview and has_field_selectors))
 
     def _collect_field_samples(self, node: FieldMappingNode, limit: int = 60) -> List[str]:
         html = getattr(self, "_active_preview_html", "")
@@ -1006,6 +1024,29 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
                 if len(samples) >= limit:
                     break
         return samples
+
+    def _collect_selector_contexts(self) -> List[FieldSelectorContext]:
+        contexts: List[FieldSelectorContext] = []
+        current_resource = ""
+        for node in self.model.nodes:
+            if isinstance(node, SelectorNode):
+                current_resource = node.label or node.id or "Resource"
+                continue
+            if isinstance(node, FieldMappingNode):
+                selector = (node.selector or "").strip()
+                if not selector:
+                    continue
+                field_label = node.field_name or node.label or node.id
+                resource_label = current_resource or "Unscoped"
+                contexts.append(
+                    FieldSelectorContext(
+                        field_id=node.id,
+                        field_label=field_label,
+                        resource_label=resource_label,
+                        selector=selector,
+                    )
+                )
+        return contexts
 
     def _on_infer_formats(self) -> None:  # pragma: no cover - UI callback
         if not getattr(self, "_selected_node_id", None):
@@ -1043,6 +1084,87 @@ class VisualRuleBuilder(QWidget):  # pragma: no cover - GUI smoke tested elsewhe
             self._apply_date_suggestion(node, suggestion)
         else:
             self.status_label.setText("Unsupported suggestion type")
+
+    def _on_optimize_selectors(self) -> None:  # pragma: no cover - UI callback
+        html = getattr(self, "_active_preview_html", "")
+        if not html:
+            html = getattr(self.parent(), "_last_preview_html", "") if self.parent() else ""
+        if not html:
+            self.status_label.setText("Load preview HTML before optimizing selectors")
+            try:
+                from PyQt6.QtWidgets import QMessageBox
+
+                QMessageBox.information(
+                    self,
+                    "Selector optimization",
+                    "Load a preview document so optimizer can validate selector matches.",
+                )
+            except Exception:
+                pass
+            return
+        contexts = self._collect_selector_contexts()
+        if not contexts:
+            self.status_label.setText("No field selectors available to optimize")
+            return
+        suggestions = compute_selector_optimizations(html, contexts)
+        if not suggestions:
+            self.status_label.setText("No selector optimizations suggested")
+            return
+        try:
+            from gui.ingestion.selector_optimizer_dialog import SelectorOptimizationDialog
+        except Exception as exc:  # pragma: no cover - headless safety
+            self.status_label.setText(f"Optimization dialog unavailable: {exc}")
+            return
+        dialog = SelectorOptimizationDialog(suggestions, parent=self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        selected = dialog.selected_suggestions()
+        if not selected:
+            self.status_label.setText("No selector optimizations applied")
+            return
+        changes: List[Tuple[FieldMappingNode, str]] = []
+        for suggestion in selected:
+            node = next(
+                (
+                    n
+                    for n in self.model.nodes
+                    if isinstance(n, FieldMappingNode) and n.id == suggestion.field_id
+                ),
+                None,
+            )
+            if node is None:
+                continue
+            optimized = suggestion.optimized_selector.strip()
+            if not optimized:
+                continue
+            if (node.selector or "").strip() == optimized:
+                continue
+            changes.append((node, optimized))
+        if not changes:
+            self.status_label.setText("Selectors already aligned with suggestions")
+            return
+        try:
+            self.model._push_undo()
+        except Exception:
+            pass
+        total_reduction = 0
+        for node, optimized in changes:
+            original = node.selector or ""
+            node.selector = optimized
+            total_reduction += max(0, len(original) - len(optimized))
+            if (
+                hasattr(self, "field_selector_edit")
+                and getattr(self, "_selected_node_id", None) == node.id
+            ):
+                self.field_selector_edit.blockSignals(True)
+                self.field_selector_edit.setText(optimized)
+                self.field_selector_edit.blockSignals(False)
+                self._update_selector_feedback(optimized)
+        self.refresh()
+        self._maybe_emit_live()
+        self._persist_session_state()
+        reduction_msg = f" (−{total_reduction} chars)" if total_reduction else ""
+        self.status_label.setText(f"Applied {len(changes)} selector optimization(s){reduction_msg}")
 
     def _apply_number_suggestion(
         self,
@@ -1308,6 +1430,7 @@ Ctrl+/ — Show this cheat sheet<br>
         if self.list_widget.currentRow() < 0:
             self._restore_last_selected_node()
         self._update_complexity_badge()
+        self._update_inference_button_state()
 
     # Session persistence (model + history) -----------------------------
     def _persist_session_state(self) -> None:  # pragma: no cover - simple
