@@ -49,6 +49,7 @@ from gui.viewmodels.data_preview_model import (
     PreviewCancelledError,
 )
 from gui.services.schema_introspection_service import TableInfo
+from gui.components.foreign_key_orphan_widget import ForeignKeyOrphanWidget
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from db.query_perf import QueryPerformanceLogger
@@ -171,6 +172,13 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.query_plan_analyzer.set_connection(self._sqlite_conn)
         detail_layout.addWidget(self.query_plan_analyzer)
 
+        self.fk_orphan_widget = ForeignKeyOrphanWidget(
+            detail_container,
+            schema_service=self._schema_service,
+            connection=self._sqlite_conn,
+        )
+        detail_layout.addWidget(self.fk_orphan_widget)
+
         self.graph_widget = SchemaGraphWidget(detail_container)
         detail_layout.addWidget(self.graph_widget, 1)
 
@@ -209,6 +217,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self._configure_slow_query_viewer()
         self._configure_index_advisor()
         self._configure_maintenance_actions()
+        self._configure_fk_orphan_widget()
 
     def _populate_tables(self) -> None:
         svc = _services.try_get("schema_introspection_service")  # type: ignore
@@ -384,6 +393,15 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.maintenance_actions.set_connection(self._sqlite_conn)
             self.maintenance_actions.set_admin_enabled(self._admin_enabled)
 
+    def _configure_fk_orphan_widget(self) -> None:
+        widget = getattr(self, "fk_orphan_widget", None)
+        if widget is None:
+            return
+        widget.set_connection(self._sqlite_conn)
+        schema_service = self._get_schema_service()
+        if schema_service is not None:
+            widget.set_schema_service(schema_service)
+
     def _resolve_query_performance_logger(
         self,
     ) -> tuple[Optional[QueryPerformanceLogger], Optional[float]]:
@@ -419,6 +437,9 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
     def _get_schema_service(self):
         svc = _services.try_get("schema_introspection_service")
         self._schema_service = svc
+        widget = getattr(self, "fk_orphan_widget", None)
+        if widget is not None and svc is not None:
+            widget.set_schema_service(svc)
         return svc
 
     @staticmethod
@@ -533,6 +554,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             getattr(self, "query_plan_analyzer", None),
             getattr(self, "graph_widget", None),
             getattr(self, "maintenance_actions", None),
+            getattr(self, "fk_orphan_widget", None),
         ]
         for child in children:
             if child is None:

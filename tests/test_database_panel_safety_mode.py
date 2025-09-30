@@ -119,6 +119,8 @@ def test_database_panel_shows_table_profile_summary(qt_app: QApplication):
         primary_key=["team_id"],
         foreign_keys=[
             ForeignKeyInfo(
+                constraint_id=1,
+                sequence=0,
                 column="division_id",
                 ref_table="division",
                 ref_column="division_id",

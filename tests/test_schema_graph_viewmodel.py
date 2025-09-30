@@ -43,8 +43,17 @@ def _col(name: str, *, pk: int = 0) -> ColumnInfo:
     return ColumnInfo(name=name, type="INTEGER", not_null=pk > 0, default=None, pk_position=pk)
 
 
-def _fk(column: str, ref_table: str, ref_column: str) -> ForeignKeyInfo:
+def _fk(
+    column: str,
+    ref_table: str,
+    ref_column: str,
+    *,
+    constraint_id: int = 1,
+    sequence: int = 0,
+) -> ForeignKeyInfo:
     return ForeignKeyInfo(
+        constraint_id=constraint_id,
+        sequence=sequence,
         column=column,
         ref_table=ref_table,
         ref_column=ref_column,

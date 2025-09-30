@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
 import sqlite3
-from typing import Generator, Optional
+from typing import Generator
 
 import pytest
 from PyQt6.QtWidgets import QApplication
 
 from gui.services.service_locator import services
+from gui.services.schema_introspection_service import SchemaIntrospectionService
+from gui.services.foreign_key_orphan_detector import (
+    ForeignKeyOrphanFinding,
+    ForeignKeyOrphanReport,
+)
 from gui.views.database_panel import DatabasePanel
 from gui.components.maintenance_actions import MaintenanceActionsWidget
 from gui.components.chrome_dialog import ChromeDialog
@@ -183,3 +190,71 @@ def test_confirm_dialog_handles_deleted_qt_object(
         assert widget._confirm_maintenance()
     finally:
         widget.deleteLater()
+
+
+def test_database_panel_fk_orphan_widget_integration(
+    qt_app: QApplication,
+    safety_service: DummySafetyService,
+    recording_connection: RecordingConnection,
+    tmp_path: Path,
+) -> None:
+    # Prepare schema with a simple foreign key relationship.
+    recording_connection.execute("PRAGMA foreign_keys=ON")
+    recording_connection.execute("CREATE TABLE parent(id INTEGER PRIMARY KEY)")
+    recording_connection.execute(
+        "CREATE TABLE child(id INTEGER PRIMARY KEY, parent_id INTEGER, "
+        "FOREIGN KEY(parent_id) REFERENCES parent(id))"
+    )
+    recording_connection.execute("PRAGMA foreign_keys=OFF")
+    recording_connection.execute("INSERT INTO child(id, parent_id) VALUES (1, 99)")
+    recording_connection.execute("PRAGMA foreign_keys=ON")
+    recording_connection.commit()
+
+    schema = SchemaIntrospectionService(recording_connection)
+
+    finding = ForeignKeyOrphanFinding(
+        table="child",
+        columns=("parent_id",),
+        ref_table="parent",
+        ref_columns=("id",),
+        orphan_count=1,
+        sample_rows=("parent_id=99",),
+    )
+    report = ForeignKeyOrphanReport((finding,), datetime.utcnow(), 0.0)
+
+    class _Detector:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def scan(self, *, sample_limit: int = 10) -> ForeignKeyOrphanReport:
+            self.calls += 1
+            return report
+
+        def format_report(self, result: ForeignKeyOrphanReport) -> str:
+            return "panel report"
+
+    detector = _Detector()
+    export_path = tmp_path / "fk_report.txt"
+
+    with services.override_context(
+        database_safety_service=safety_service,
+        sqlite_conn=recording_connection,
+        schema_introspection_service=schema,
+    ):
+        panel = DatabasePanel()
+        qt_app.processEvents()
+    try:
+        panel.fk_orphan_widget.set_detector(detector)
+        panel.fk_orphan_widget.set_file_saver(lambda: str(export_path))
+        panel.fk_orphan_widget.scan_button.click()
+        qt_app.processEvents()
+        assert detector.calls == 1
+        assert panel.fk_orphan_widget.table.rowCount() == 1
+        assert panel.fk_orphan_widget.export_button.isEnabled()
+
+        panel.fk_orphan_widget.export_button.click()
+        qt_app.processEvents()
+        assert export_path.read_text(encoding="utf-8") == "panel report"
+    finally:
+        panel.deleteLater()
+        recording_connection.close()

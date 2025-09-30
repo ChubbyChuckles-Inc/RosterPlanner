@@ -54,12 +54,26 @@ class ColumnInfo:
 class ForeignKeyInfo:
     """Represents a foreign key constraint on a table."""
 
+    constraint_id: int
+    sequence: int
     column: str
     ref_table: str
     ref_column: str
     on_update: str
     on_delete: str
     match: str
+
+    @property
+    def grouping_key(self) -> tuple[int, str]:
+        """Return a stable key to group composite foreign keys.
+
+        SQLite's ``PRAGMA foreign_key_list`` returns one row per column and
+        associates multi-column foreign keys via a shared ``id``. The
+        ``sequence`` value indicates the column ordering. Consumers can group
+        rows by ``constraint_id`` to reconstruct composite key relationships.
+        """
+
+        return (self.constraint_id, self.ref_table)
 
 
 @dataclass(frozen=True)
@@ -265,9 +279,20 @@ class SchemaIntrospectionService:
         cur = conn.execute(f"PRAGMA foreign_key_list({self._quote_ident(table)})")
         records = cur.fetchall()
         out: List[ForeignKeyInfo] = []
-        for _id, _seq, ref_table, from_col, ref_col, on_update, on_delete, match in records:
+        for (
+            constraint_id,
+            sequence,
+            ref_table,
+            from_col,
+            ref_col,
+            on_update,
+            on_delete,
+            match,
+        ) in records:
             out.append(
                 ForeignKeyInfo(
+                    constraint_id=int(constraint_id),
+                    sequence=int(sequence),
                     column=from_col,
                     ref_table=ref_table,
                     ref_column=ref_col,
