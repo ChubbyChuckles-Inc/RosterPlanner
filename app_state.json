@@ -11,5 +11,5 @@
   "window_state_version": 1,
   "density_mode": "compact",
   "theme_variant": "ocean",
-  "database_admin_mode": true
+  "database_admin_mode": false
 }

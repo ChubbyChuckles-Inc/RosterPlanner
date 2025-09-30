@@ -1,4 +1,7 @@
 
+feat(database): add admin maintenance vacuum/analyze trigger (7.11.15)
+Adds MaintenanceActionsWidget to run VACUUM/ANALYZE with confirmation and status messaging, integrates it into DatabasePanel's admin area, syncs admin gating, and introduces PyQt tests covering execution, gating, and cancellation while updating the roadmap for milestone 7.11.15.
+
 feat(database): add index usage advisor to Database Panel (7.11.14)
 Introduces IndexUsageAdvisorWidget that replays slow queries through EXPLAIN to flag table scans without indexes, integrates it into DatabasePanel with automatic refresh on query execution, and adds PyQt coverage validating recommendations for scans vs indexed lookups alongside roadmap update marking 7.11.14 complete.
 

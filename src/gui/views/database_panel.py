@@ -95,6 +95,13 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             )
         self._populate_tables()
         self._apply_admin_state()
+        # Apply current theme immediately if service available so widgets don't flash white.
+        try:  # pragma: no cover - relies on optional theme service
+            theme = _services.try_get("theme_service")
+            if theme:
+                self.on_theme_changed(theme, [])
+        except Exception:
+            pass
 
     def _build_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -468,6 +475,81 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.style().polish(self)
         except Exception:  # pragma: no cover
             pass
+
+    # ------------------------------------------------------------------
+    def on_theme_changed(self, theme, changed_keys):  # type: ignore[override]
+        """Apply theme-driven styling to the database panel widgets."""
+
+        colors = {}
+        try:
+            colors = theme.colors() if hasattr(theme, "colors") else {}
+        except Exception:
+            colors = {}
+        background = colors.get("background.secondary", "#1b1d22")
+        surface = colors.get("surface.card", colors.get("background.primary", background))
+        sunken = colors.get("surface.sunken", surface)
+        text = colors.get("text.primary", "#f0f0f0")
+        muted = colors.get("text.muted", text)
+        border = colors.get("border.medium", colors.get("accent.base", "#3D8BFD"))
+        accent = colors.get("accent.base", "#3D8BFD")
+        mono = "Consolas,'Courier New',monospace"
+
+        stylesheet = [
+            f"#databasePanel {{ background:{background}; color:{text}; }}",
+            f"#databasePanel QLabel {{ color:{text}; }}",
+            f"#databasePanel QLabel#dbMaintenanceStatus, #databasePanel QLabel#dbAdminNotice {{ color:{muted}; }}",
+            (
+                "#databasePanel QLineEdit, #databasePanel QPlainTextEdit, #databasePanel QTextEdit, "
+                "#databasePanel QTableWidget, #databasePanel QListWidget, #databasePanel QTreeView "
+                f"{{ background:{surface}; color:{text}; border:1px solid {border}; "
+                f"selection-background-color:{accent}; selection-color:{background}; }}"
+            ),
+            f"#databasePanel QPlainTextEdit, #databasePanel QTextEdit {{ font-family:{mono}; font-size:12px; }}",
+            (
+                "#databasePanel QTableWidget::item:selected, #databasePanel QListWidget::item:selected, "
+                f"#databasePanel QTreeView::item:selected {{ background:{accent}; color:{background}; }}"
+            ),
+            f"#databasePanel QTableWidget {{ gridline-color:{border}; alternate-background-color:{sunken}; }}",
+            f"#databasePanel QListWidget {{ alternate-background-color:{sunken}; }}",
+            f"#databasePanel QComboBox {{ background:{surface}; color:{text}; border:1px solid {border}; padding:4px 6px; }}",
+            f"#databasePanel QComboBox::drop-down {{ border-left:1px solid {border}; }}",
+            f"#databasePanel QComboBox QAbstractItemView {{ background:{surface}; color:{text}; border:1px solid {border}; selection-background-color:{accent}; selection-color:{background}; }}",
+            f"#databasePanel QPushButton {{ background:{surface}; color:{text}; border:1px solid {border}; padding:4px 10px; border-radius:4px; }}",
+            f"#databasePanel QPushButton:hover {{ background:{accent}; color:{background}; }}",
+            f"#databasePanel QPushButton:disabled {{ background:{sunken}; color:{muted}; border:1px solid {border}; }}",
+        ]
+        self.setStyleSheet("\n".join(stylesheet))
+        self._propagate_theme(theme, changed_keys)
+
+    def _propagate_theme(self, theme, changed_keys) -> None:
+        """Forward theme updates to child widgets that participate in theming."""
+
+        children = [
+            getattr(self, "row_inspector", None),
+            getattr(self, "row_diff_viewer", None),
+            getattr(self, "query_runner", None),
+            getattr(self, "slow_query_viewer", None),
+            getattr(self, "index_advisor", None),
+            getattr(self, "query_plan_analyzer", None),
+            getattr(self, "graph_widget", None),
+            getattr(self, "maintenance_actions", None),
+        ]
+        for child in children:
+            if child is None:
+                continue
+            handler = getattr(child, "on_theme_changed", None)
+            if callable(handler):
+                try:
+                    handler(theme, changed_keys)
+                    continue
+                except Exception:
+                    pass
+            apply_theme = getattr(child, "apply_theme", None)
+            if callable(apply_theme):
+                try:
+                    apply_theme()
+                except Exception:
+                    pass
 
     # ------------------------------------------------------------------
     @staticmethod
