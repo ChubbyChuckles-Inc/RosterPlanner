@@ -435,8 +435,8 @@ Goal: Insert a power-user dock ("Database") that offers a read-only by default, 
 
  Query & Performance Tooling
  [x] 7.11.11 Ad-hoc read-only query runner (syntax highlight, result grid, EXPLAIN toggle)
- [ ] 7.11.12 Query plan analyzer: capture EXPLAIN output -> structured tree with cost highlight
- [ ] 7.11.13 Slow query log viewer (surfacing entries from existing query perf logging 3.9)
+ [x] 7.11.12 Query plan analyzer: capture EXPLAIN output -> structured tree with cost highlight
+ [x] 7.11.13 Slow query log viewer (surfacing entries from existing query perf logging 3.9)
  [ ] 7.11.14 Index usage advisor: detect missing index patterns from recent slow queries (basic heuristic)
  [ ] 7.11.15 Vacuum / analyze maintenance trigger (confirmation dialog + progress banner) [Admin]
 

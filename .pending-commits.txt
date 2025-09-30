@@ -1,4 +1,8 @@
 
+feat(database): add query plan analyzer & slow query log viewer (7.11.12-7.11.13)
+Implements the QueryPlanAnalyzerWidget with structured EXPLAIN tree rendering, integrates it and the new SlowQueryLogViewer into DatabasePanel with service-located instrumentation, updates bootstrap to provision the query performance logger, and adds PyQt tests covering plan analysis and slow query capture.
+
+
 feat(database): add column stats sampler caching and panel display (7.11.7)
 Extends SchemaIntrospectionService with sampled column metrics caching and exposes the values in DatabasePanel,
 adding unit tests for the sampler, caching behavior, and GUI rendering.
