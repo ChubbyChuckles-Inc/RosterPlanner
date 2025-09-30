@@ -22,6 +22,8 @@ from .schema_graph_widget import SchemaGraphWidget
 from .row_detail_inspector import RowDetailInspector, RowDetailInspectorWidget
 from .row_diff_viewer import RowDiffViewer, RowDiffViewerWidget
 from .query_runner import QueryRunnerWidget
+from .query_plan_analyzer import QueryPlanAnalyzerWidget
+from .slow_query_log_viewer import SlowQueryLogViewer
 
 __all__ = [
     "register_demo",
@@ -37,4 +39,6 @@ __all__ = [
     "RowDiffViewer",
     "RowDiffViewerWidget",
     "QueryRunnerWidget",
+    "QueryPlanAnalyzerWidget",
+    "SlowQueryLogViewer",
 ]

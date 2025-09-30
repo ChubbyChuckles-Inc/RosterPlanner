@@ -42,6 +42,11 @@ from gui.services.service_locator import services, ServiceLocator
 from gui.services.event_bus import EventBus
 import sqlite3
 
+try:  # pragma: no cover - optional dependency during bootstrap tests
+    from db.query_perf import create_instrumented_connection
+except Exception:  # pragma: no cover
+    create_instrumented_connection = None  # type: ignore[assignment]
+
 # Lazy import for optional post-scrape ingestion hook (Milestone 5.9.5)
 try:  # pragma: no cover - optional during early bootstrap
     from gui.services.post_scrape_ingest import PostScrapeIngestionHook  # type: ignore
@@ -249,7 +254,21 @@ def create_app(
                 # Create directory if missing
                 os.makedirs(os.path.dirname(db_path), exist_ok=True)
                 # Allow usage from background worker threads in GUI tests (thread-affinity relaxed)
-                conn = sqlite3.connect(db_path, check_same_thread=False)
+                if create_instrumented_connection is not None:
+                    threshold_ms = 25.0
+                    conn, query_logger = create_instrumented_connection(
+                        db_path,
+                        threshold_ms=threshold_ms,
+                        max_records=400,
+                        log_enabled=False,
+                        check_same_thread=False,
+                    )
+                    services.register("query_performance_logger", query_logger, allow_override=True)
+                    services.register(
+                        "query_performance_threshold_ms", threshold_ms, allow_override=True
+                    )
+                else:
+                    conn = sqlite3.connect(db_path, check_same_thread=False)
                 # Foreign keys on (defensive)
                 try:
                     conn.execute("PRAGMA foreign_keys=ON")

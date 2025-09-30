@@ -16,7 +16,7 @@ import sqlite3
 import time
 from typing import Iterable, Optional, Sequence
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat, QTextDocument
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -87,6 +87,8 @@ class _SqlHighlighter(QSyntaxHighlighter):
 
 class QueryRunnerWidget(QWidget, ThemeAwareMixin):
     """Execute read-only SQL queries and render the result set."""
+
+    queryExecuted = pyqtSignal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         """Construct the widget and wire up child controls."""
@@ -201,6 +203,7 @@ class QueryRunnerWidget(QWidget, ThemeAwareMixin):
 
         assert self._conn is not None
         start = time.perf_counter()
+        should_emit = False
         try:
             cursor = self._conn.execute(sql)
             rows = cursor.fetchall()
@@ -208,10 +211,16 @@ class QueryRunnerWidget(QWidget, ThemeAwareMixin):
             duration_ms = (time.perf_counter() - start) * 1000.0
             self._populate_table(columns, rows)
             self.status_label.setText(f"Query returned {len(rows)} row(s) in {duration_ms:.1f} ms.")
+            should_emit = True
         except sqlite3.OperationalError as exc:
             self._show_error(f"Query failed: {exc}")
+            should_emit = True
         except Exception as exc:  # pragma: no cover - defensive guard
             self._show_error(f"Unexpected error: {exc}")
+            should_emit = True
+        finally:
+            if should_emit:
+                self.queryExecuted.emit()
 
     def _populate_table(self, columns: Iterable[str], rows: Sequence[Sequence[object]]) -> None:
         """Render *rows* with the provided *columns* into the table widget."""

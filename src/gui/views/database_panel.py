@@ -9,7 +9,7 @@ Initial dockable widget giving a read-only overview:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -36,6 +36,8 @@ from gui.components.schema_graph_widget import SchemaGraphWidget
 from gui.components.row_detail_inspector import RowDetailInspector
 from gui.components.row_diff_viewer import RowDiffViewer
 from gui.components.query_runner import QueryRunnerWidget
+from gui.components.query_plan_analyzer import QueryPlanAnalyzerWidget
+from gui.components.slow_query_log_viewer import SlowQueryLogViewer
 from gui.services.data_freshness_service import humanize_age
 from gui.services.service_locator import services as _services  # type: ignore
 from gui.viewmodels.data_preview_model import (
@@ -44,6 +46,11 @@ from gui.viewmodels.data_preview_model import (
     PreviewCancelledError,
 )
 from gui.services.schema_introspection_service import TableInfo
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from db.query_perf import QueryPerformanceLogger
+else:  # pragma: no cover - runtime fallback when module unavailable
+    QueryPerformanceLogger = Any  # type: ignore[misc,assignment]
 
 
 class DatabasePanel(QWidget, ThemeAwareMixin):
@@ -58,6 +65,13 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self._sqlite_conn = _services.try_get("sqlite_conn")
         self._preview_limit = 5
         self._active_table: Optional[str] = None
+        self._query_performance_logger: Optional[QueryPerformanceLogger] = _services.try_get(
+            "query_performance_logger"
+        )
+        threshold_service = _services.try_get("query_performance_threshold_ms")
+        self._query_performance_threshold_ms: Optional[float] = (
+            float(threshold_service) if isinstance(threshold_service, (int, float)) else None
+        )
         initial_admin = False
         if self._safety_service is not None:
             try:
@@ -136,6 +150,13 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.query_runner.set_connection(self._sqlite_conn)
         detail_layout.addWidget(self.query_runner)
 
+        self.slow_query_viewer = SlowQueryLogViewer(detail_container)
+        detail_layout.addWidget(self.slow_query_viewer)
+
+        self.query_plan_analyzer = QueryPlanAnalyzerWidget(detail_container)
+        self.query_plan_analyzer.set_connection(self._sqlite_conn)
+        detail_layout.addWidget(self.query_plan_analyzer)
+
         self.graph_widget = SchemaGraphWidget(detail_container)
         detail_layout.addWidget(self.graph_widget, 1)
 
@@ -169,6 +190,9 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.table_list.currentItemChanged.connect(self._on_table_selected)  # type: ignore
         self.admin_toggle.stateChanged.connect(self._on_admin_toggled)  # type: ignore
         self.quick_filter_input.textChanged.connect(self._on_quick_filter_changed)  # type: ignore
+        self.query_runner.queryExecuted.connect(self._on_query_runner_executed)  # type: ignore
+
+        self._configure_slow_query_viewer()
 
     def _populate_tables(self) -> None:
         svc = _services.try_get("schema_introspection_service")  # type: ignore
@@ -193,6 +217,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.row_inspector.clear("Select a table to inspect rows.")
             self.row_diff_viewer.clear("Select a table to compare rows.")
             self.query_runner.set_default_table(None)
+            self.query_plan_analyzer.set_default_table(None)
             return
         self._active_table = current.text()
         self._filter_timer.stop()
@@ -218,6 +243,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             )
             self.row_diff_viewer.show_unavailable("Row diff viewer unavailable (no schema info).")
             self.query_runner.set_default_table(None)
+            self.query_plan_analyzer.set_default_table(None)
             return
         ti = svc.get_table_info(name)
         if not ti:
@@ -228,10 +254,12 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             )
             self.row_diff_viewer.show_unavailable("Row diff viewer unavailable (no schema info).")
             self.query_runner.set_default_table(None)
+            self.query_plan_analyzer.set_default_table(None)
             return
         self.row_inspector.set_context(name, ti)
         self.row_diff_viewer.set_context(name, ti)
         self.query_runner.set_default_table(name)
+        self.query_plan_analyzer.set_default_table(name)
         stats_map: Dict[str, object] = {}
         if hasattr(svc, "get_column_stats"):
             try:
@@ -326,6 +354,38 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             return
         self._filter_timer.stop()
         self._filter_timer.start()
+
+    def _configure_slow_query_viewer(self) -> None:
+        logger, threshold = self._resolve_query_performance_logger()
+        self.slow_query_viewer.set_logger(logger, threshold_ms=threshold)
+
+    def _resolve_query_performance_logger(
+        self,
+    ) -> tuple[Optional[QueryPerformanceLogger], Optional[float]]:
+        logger = self._query_performance_logger
+        threshold = self._query_performance_threshold_ms
+        conn = self._sqlite_conn
+        if logger is None and conn is not None:
+            getter = getattr(conn, "get_query_performance_logger", None)
+            if callable(getter):
+                try:
+                    logger = getter()
+                except Exception:
+                    logger = None
+        if threshold is None and conn is not None:
+            raw_threshold = getattr(conn, "_qpl_threshold_ms", None)
+            if isinstance(raw_threshold, (int, float)):
+                threshold = float(raw_threshold)
+        self._query_performance_logger = logger
+        self._query_performance_threshold_ms = threshold
+        return logger, threshold
+
+    def _on_query_runner_executed(self) -> None:
+        try:
+            self.slow_query_viewer.refresh()
+        except Exception:
+            # Refresh failures should never disrupt the rest of the panel.
+            pass
 
     def _get_schema_service(self):
         svc = _services.try_get("schema_introspection_service")
