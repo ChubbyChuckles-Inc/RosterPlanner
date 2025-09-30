@@ -86,6 +86,7 @@ from gui.components.chrome_dialog import ChromeDialog
 from gui.services.export_service import ExportService, ExportFormat
 from gui.services.export_presets import ExportPresetsService
 from gui.components.theme_aware import ThemeAwareMixin, ThemeAwareProtocol
+from gui.utils.style_helpers import ensure_styled_background
 from gui.services.color_blind_mode import ColorBlindModeService
 from gui.services.service_locator import services
 from gui.components.status_bar import StatusBarWidget
@@ -916,6 +917,10 @@ class MainWindow(QMainWindow):  # Dock-based
                     continue
                 visited.add(id(w))
                 # Invoke hook if widget is theme-aware
+                try:
+                    ensure_styled_background(w)
+                except Exception:
+                    pass
                 if isinstance(w, ThemeAwareMixin):
                     try:
                         w.on_theme_changed(theme_svc, changed_keys)  # type: ignore[arg-type]
