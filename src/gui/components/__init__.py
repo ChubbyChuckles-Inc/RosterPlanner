@@ -19,6 +19,9 @@ from .gallery import (
 )
 from .progress_indicator import DeterminateProgress, IndeterminateProgress
 from .schema_graph_widget import SchemaGraphWidget
+from .row_detail_inspector import RowDetailInspector, RowDetailInspectorWidget
+from .row_diff_viewer import RowDiffViewer, RowDiffViewerWidget
+from .query_runner import QueryRunnerWidget
 
 __all__ = [
     "register_demo",
@@ -29,4 +32,9 @@ __all__ = [
     "DeterminateProgress",
     "IndeterminateProgress",
     "SchemaGraphWidget",
+    "RowDetailInspector",
+    "RowDetailInspectorWidget",
+    "RowDiffViewer",
+    "RowDiffViewerWidget",
+    "QueryRunnerWidget",
 ]

@@ -179,9 +179,7 @@ def test_database_panel_quick_filter_updates_preview(qt_app: QApplication):
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     preview_model: Optional[LazyDataPreviewModel] = None
     try:
-        conn.execute(
-            "CREATE TABLE players (player_id INTEGER PRIMARY KEY, name TEXT, notes TEXT)"
-        )
+        conn.execute("CREATE TABLE players (player_id INTEGER PRIMARY KEY, name TEXT, notes TEXT)")
         conn.executemany(
             "INSERT INTO players VALUES (?, ?, ?)",
             [
@@ -216,8 +214,94 @@ def test_database_panel_quick_filter_updates_preview(qt_app: QApplication):
                 assert "filter: Beta" in filtered_text
                 assert "Beta" in filtered_text
                 assert "Alpha" not in filtered_text
+                diff_text = panel.row_diff_viewer._diff_view.toPlainText()
+                assert "Need at least two rows" in diff_text
             finally:
                 panel.deleteLater()
+    finally:
+        if preview_model is not None:
+            preview_model.shutdown()
+        conn.close()
+
+
+def test_row_detail_inspector_shows_json_and_related(qt_app: QApplication):
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    preview_model: Optional[LazyDataPreviewModel] = None
+    try:
+        conn.execute("CREATE TABLE division (division_id INTEGER PRIMARY KEY, name TEXT)")
+        conn.execute(
+            "CREATE TABLE team (team_id INTEGER PRIMARY KEY, division_id INTEGER REFERENCES division(division_id), name TEXT)"
+        )
+        conn.execute("INSERT INTO division (division_id, name) VALUES (1, 'Test Division')")
+        conn.execute("INSERT INTO team (team_id, division_id, name) VALUES (10, 1, 'Alpha Team')")
+        conn.commit()
+
+        introspection = SchemaIntrospectionService(conn)
+        introspection.refresh()
+        preview_model = LazyDataPreviewModel(conn, introspection=introspection)
+        fake_service = _FakeSafetyService(False)
+
+        with services.override_context(
+            database_safety_service=fake_service,
+            schema_introspection_service=introspection,
+            data_preview_model=preview_model,
+        ):
+            panel = DatabasePanel()
+            qt_app.processEvents()
+            for row in range(panel.table_list.count()):
+                item = panel.table_list.item(row)
+                if item and item.text() == "team":
+                    panel.table_list.setCurrentRow(row)
+                    break
+            qt_app.processEvents()
+            assert panel.row_inspector.row_selector.count() >= 1
+            json_text = panel.row_inspector.json_view.toPlainText()
+            assert '"team_id": 10' in json_text
+            assert '"division_id": 1' in json_text
+            assert '"name": "Alpha Team"' in json_text
+            related_html = panel.row_inspector.related_label.text()
+            assert "division" in related_html
+            assert "Preview:" in related_html
+            panel.deleteLater()
+    finally:
+        if preview_model is not None:
+            preview_model.shutdown()
+        conn.close()
+
+
+def test_row_diff_viewer_highlights_differences(qt_app: QApplication):
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    preview_model: Optional[LazyDataPreviewModel] = None
+    try:
+        conn.execute("CREATE TABLE players (player_id INTEGER PRIMARY KEY, name TEXT, notes TEXT)")
+        conn.executemany(
+            "INSERT INTO players VALUES (?, ?, ?)",
+            [
+                (1, "Alpha", "Captain"),
+                (2, "Beta", "Bench"),
+            ],
+        )
+        conn.commit()
+        introspection = SchemaIntrospectionService(conn)
+        introspection.refresh()
+        preview_model = LazyDataPreviewModel(conn, introspection=introspection)
+        fake_service = _FakeSafetyService(False)
+
+        with services.override_context(
+            database_safety_service=fake_service,
+            schema_introspection_service=introspection,
+            data_preview_model=preview_model,
+        ):
+            panel = DatabasePanel()
+            qt_app.processEvents()
+            panel.table_list.setCurrentRow(0)
+            qt_app.processEvents()
+            assert panel.row_diff_viewer._base_selector.count() >= 2
+            assert panel.row_diff_viewer._compare_selector.count() >= 2
+            diff_text = panel.row_diff_viewer._diff_view.toPlainText()
+            assert "Comparing Row 1 vs Row 2" in diff_text
+            assert "name: → Alpha -> Beta" in diff_text
+            panel.deleteLater()
     finally:
         if preview_model is not None:
             preview_model.shutdown()

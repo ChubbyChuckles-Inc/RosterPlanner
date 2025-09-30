@@ -33,9 +33,17 @@ except Exception:  # pragma: no cover
 
 
 from gui.components.schema_graph_widget import SchemaGraphWidget
+from gui.components.row_detail_inspector import RowDetailInspector
+from gui.components.row_diff_viewer import RowDiffViewer
+from gui.components.query_runner import QueryRunnerWidget
 from gui.services.data_freshness_service import humanize_age
 from gui.services.service_locator import services as _services  # type: ignore
-from gui.viewmodels.data_preview_model import DataPreviewRequest, LazyDataPreviewModel, PreviewCancelledError
+from gui.viewmodels.data_preview_model import (
+    DataPreviewRequest,
+    LazyDataPreviewModel,
+    PreviewCancelledError,
+)
+from gui.services.schema_introspection_service import TableInfo
 
 
 class DatabasePanel(QWidget, ThemeAwareMixin):
@@ -46,6 +54,8 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self._data_preview_model: Optional[LazyDataPreviewModel] = _services.try_get(
             "data_preview_model"
         )
+        self._schema_service = _services.try_get("schema_introspection_service")
+        self._sqlite_conn = _services.try_get("sqlite_conn")
         self._preview_limit = 5
         self._active_table: Optional[str] = None
         initial_admin = False
@@ -114,6 +124,18 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.quick_filter_input.setPlaceholderText("Quick filter (substring match across columns)")
         detail_layout.addWidget(self.quick_filter_input)
 
+        self.row_inspector = RowDetailInspector(self._data_preview_model, detail_container)
+        detail_layout.addWidget(self.row_inspector)
+
+        self.row_diff_viewer = RowDiffViewer(detail_container)
+        detail_layout.addWidget(self.row_diff_viewer)
+        if self._data_preview_model is None:
+            self.row_diff_viewer.show_unavailable("Row diff viewer requires preview service.")
+
+        self.query_runner = QueryRunnerWidget(detail_container)
+        self.query_runner.set_connection(self._sqlite_conn)
+        detail_layout.addWidget(self.query_runner)
+
         self.graph_widget = SchemaGraphWidget(detail_container)
         detail_layout.addWidget(self.graph_widget, 1)
 
@@ -150,6 +172,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
 
     def _populate_tables(self) -> None:
         svc = _services.try_get("schema_introspection_service")  # type: ignore
+        self._schema_service = svc
         if not svc:
             return
         try:
@@ -167,6 +190,9 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
                 "Select a table to inspect. Future tasks will add sample rows, indexes, graph views."
             )
             self.graph_widget.clear()
+            self.row_inspector.clear("Select a table to inspect rows.")
+            self.row_diff_viewer.clear("Select a table to compare rows.")
+            self.query_runner.set_default_table(None)
             return
         self._active_table = current.text()
         self._filter_timer.stop()
@@ -183,16 +209,29 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         name = self._active_table
         if not name:
             return
-        svc = _services.try_get("schema_introspection_service")
+        svc = self._get_schema_service()
         if not svc:
             self.detail_label.setText(f"{name}\n(No introspection service)")
             self.graph_widget.clear()
+            self.row_inspector.show_unavailable(
+                "Row detail inspector unavailable (no schema info)."
+            )
+            self.row_diff_viewer.show_unavailable("Row diff viewer unavailable (no schema info).")
+            self.query_runner.set_default_table(None)
             return
         ti = svc.get_table_info(name)
         if not ti:
             self.detail_label.setText(f"{name}\n(No column info)")
             self.graph_widget.clear()
+            self.row_inspector.show_unavailable(
+                "Row detail inspector unavailable (no schema info)."
+            )
+            self.row_diff_viewer.show_unavailable("Row diff viewer unavailable (no schema info).")
+            self.query_runner.set_default_table(None)
             return
+        self.row_inspector.set_context(name, ti)
+        self.row_diff_viewer.set_context(name, ti)
+        self.query_runner.set_default_table(name)
         stats_map: Dict[str, object] = {}
         if hasattr(svc, "get_column_stats"):
             try:
@@ -204,7 +243,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.detail_label.setText("\n".join(lines))
         self.graph_widget.set_focus_table(name)
 
-    def _build_table_summary_lines(self, ti, stats_map: Dict[str, object]) -> list[str]:
+    def _build_table_summary_lines(self, ti: TableInfo, stats_map: Dict[str, object]) -> list[str]:
         lines: list[str] = [f"Table: {ti.name}"]
         lines.append("Table Profile:")
         lines.append(f" • Rows: {self._format_row_count(ti.row_count)}")
@@ -248,21 +287,30 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
     def _build_preview_lines(self, table: str) -> list[str]:
         model = self._data_preview_model
         if model is None:
+            self.row_inspector.show_unavailable("Row detail inspector requires preview service.")
+            self.row_diff_viewer.show_unavailable("Row diff viewer requires preview service.")
             return []
         quick_text = self.quick_filter_input.text().strip()
-        request = DataPreviewRequest(table=table, limit=self._preview_limit, quick_filter=quick_text)
+        request = DataPreviewRequest(
+            table=table, limit=self._preview_limit, quick_filter=quick_text
+        )
         try:
             page = model.fetch_page(request, timeout=2.0)
         except PreviewCancelledError:
+            self.row_diff_viewer.clear("Preview cancelled; no diff available.")
             return ["", "Preview rows: cancelled"]
         except Exception:
+            self.row_diff_viewer.clear("Preview rows unavailable (query failed).")
             return ["", "Preview rows unavailable (query failed)"]
+        self.row_inspector.update_from_preview(page)
+        self.row_diff_viewer.update_from_preview(page)
         heading = "Preview rows"
         if quick_text:
             heading += f" (filter: {quick_text})"
         lines = ["", f"{heading}:"]
         if not page.rows:
             lines.append(" • No rows match current filter")
+            self.row_diff_viewer.clear("No rows available to diff. Adjust filters or ingest data.")
             return lines
         columns = " | ".join(page.columns) if page.columns else "(no columns)"
         lines.append(f" • {columns}")
@@ -278,6 +326,11 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             return
         self._filter_timer.stop()
         self._filter_timer.start()
+
+    def _get_schema_service(self):
+        svc = _services.try_get("schema_introspection_service")
+        self._schema_service = svc
+        return svc
 
     @staticmethod
     def _format_preview_value(value: object) -> str:

@@ -58,11 +58,19 @@ def test_database_panel_table_selection(qtbot):
         panel.table_list.setCurrentRow(0)
         txt = panel.detail_label.text()
         assert "Table: test_table" in txt
-        assert "Rows (cached):" in txt
+        assert "Rows:" in txt
         assert "• id: INTEGER" in txt
         assert "PK" in txt
         assert "• value: TEXT" in txt
         assert panel.graph_widget is not None
+        assert (
+            "Row detail inspector requires preview service."
+            in panel.row_inspector.json_view.toPlainText()
+        )
+    assert (
+        "Row diff viewer requires preview service."
+        in panel.row_diff_viewer._diff_view.toPlainText()
+    )
 
 
 _app_instance = None
