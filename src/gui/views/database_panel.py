@@ -34,11 +34,13 @@ except Exception:  # pragma: no cover
 
 from gui.components.schema_graph_widget import SchemaGraphWidget
 from gui.components.row_detail_inspector import RowDetailInspector
+from gui.utils.style_helpers import ensure_styled_background
 from gui.components.row_diff_viewer import RowDiffViewer
 from gui.components.query_runner import QueryRunnerWidget
 from gui.components.query_plan_analyzer import QueryPlanAnalyzerWidget
 from gui.components.slow_query_log_viewer import SlowQueryLogViewer
 from gui.components.index_usage_advisor import IndexUsageAdvisorWidget
+from gui.components.maintenance_actions import MaintenanceActionsWidget
 from gui.services.data_freshness_service import humanize_age
 from gui.services.service_locator import services as _services  # type: ignore
 from gui.viewmodels.data_preview_model import (
@@ -58,6 +60,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setObjectName("databasePanel")
+        ensure_styled_background(self)
         self._safety_service = _services.try_get("database_safety_service")
         self._data_preview_model: Optional[LazyDataPreviewModel] = _services.try_get(
             "data_preview_model"
@@ -183,12 +186,12 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         admin_layout = QVBoxLayout(self.admin_actions)
         admin_layout.setContentsMargins(0, 0, 0, 0)
         admin_layout.setSpacing(4)
-        placeholder = QLabel(
-            "Admin-only maintenance actions will appear here in future milestones."
-        )
+        placeholder = QLabel("Admin-only maintenance actions: use with caution.")
         placeholder.setWordWrap(True)
         placeholder.setObjectName("dbAdminPlaceholder")
         admin_layout.addWidget(placeholder)
+        self.maintenance_actions = MaintenanceActionsWidget(self.admin_actions)
+        admin_layout.addWidget(self.maintenance_actions)
         root.addWidget(self.admin_actions)
 
         self.table_list.currentItemChanged.connect(self._on_table_selected)  # type: ignore
@@ -198,6 +201,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
 
         self._configure_slow_query_viewer()
         self._configure_index_advisor()
+        self._configure_maintenance_actions()
 
     def _populate_tables(self) -> None:
         svc = _services.try_get("schema_introspection_service")  # type: ignore
@@ -368,6 +372,11 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         logger, _threshold = self._resolve_query_performance_logger()
         self.index_advisor.set_context(self._sqlite_conn, logger)
 
+    def _configure_maintenance_actions(self) -> None:
+        if hasattr(self, "maintenance_actions"):
+            self.maintenance_actions.set_connection(self._sqlite_conn)
+            self.maintenance_actions.set_admin_enabled(self._admin_enabled)
+
     def _resolve_query_performance_logger(
         self,
     ) -> tuple[Optional[QueryPerformanceLogger], Optional[float]]:
@@ -452,6 +461,8 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.admin_actions.hide()
             self.admin_notice.show()
             self.setProperty("dbAdminMode", "readonly")
+        if hasattr(self, "maintenance_actions"):
+            self.maintenance_actions.set_admin_enabled(self._admin_enabled)
         try:
             self.style().unpolish(self)
             self.style().polish(self)

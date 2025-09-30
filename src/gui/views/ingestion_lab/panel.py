@@ -34,6 +34,7 @@ from PyQt6.QtWidgets import (
 )
 
 from gui.components.theme_aware import ThemeAwareMixin
+from gui.utils.style_helpers import ensure_styled_background
 from gui.ingestion.rule_intent_store import RuleIntentStore
 from gui.ingestion.selector_watchlist_store import (
     SelectorWatchResult,
@@ -129,6 +130,7 @@ class IngestionLabPanel(
     def __init__(self, base_dir: str, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setObjectName("ingestionLabPanel")
+        ensure_styled_background(self)
         self._base_dir = base_dir
         self._intent_store_path = os.path.join(self._base_dir, ".ingestion_rule_intents.json")
         self._intent_store = RuleIntentStore(self._intent_store_path)
