@@ -38,6 +38,7 @@ from gui.components.row_diff_viewer import RowDiffViewer
 from gui.components.query_runner import QueryRunnerWidget
 from gui.components.query_plan_analyzer import QueryPlanAnalyzerWidget
 from gui.components.slow_query_log_viewer import SlowQueryLogViewer
+from gui.components.index_usage_advisor import IndexUsageAdvisorWidget
 from gui.services.data_freshness_service import humanize_age
 from gui.services.service_locator import services as _services  # type: ignore
 from gui.viewmodels.data_preview_model import (
@@ -153,6 +154,9 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.slow_query_viewer = SlowQueryLogViewer(detail_container)
         detail_layout.addWidget(self.slow_query_viewer)
 
+        self.index_advisor = IndexUsageAdvisorWidget(detail_container)
+        detail_layout.addWidget(self.index_advisor)
+
         self.query_plan_analyzer = QueryPlanAnalyzerWidget(detail_container)
         self.query_plan_analyzer.set_connection(self._sqlite_conn)
         detail_layout.addWidget(self.query_plan_analyzer)
@@ -193,6 +197,7 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.query_runner.queryExecuted.connect(self._on_query_runner_executed)  # type: ignore
 
         self._configure_slow_query_viewer()
+        self._configure_index_advisor()
 
     def _populate_tables(self) -> None:
         svc = _services.try_get("schema_introspection_service")  # type: ignore
@@ -359,6 +364,10 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         logger, threshold = self._resolve_query_performance_logger()
         self.slow_query_viewer.set_logger(logger, threshold_ms=threshold)
 
+    def _configure_index_advisor(self) -> None:
+        logger, _threshold = self._resolve_query_performance_logger()
+        self.index_advisor.set_context(self._sqlite_conn, logger)
+
     def _resolve_query_performance_logger(
         self,
     ) -> tuple[Optional[QueryPerformanceLogger], Optional[float]]:
@@ -385,6 +394,10 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             self.slow_query_viewer.refresh()
         except Exception:
             # Refresh failures should never disrupt the rest of the panel.
+            pass
+        try:
+            self.index_advisor.refresh()
+        except Exception:
             pass
 
     def _get_schema_service(self):

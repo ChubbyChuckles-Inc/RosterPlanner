@@ -437,7 +437,7 @@ Goal: Insert a power-user dock ("Database") that offers a read-only by default, 
  [x] 7.11.11 Ad-hoc read-only query runner (syntax highlight, result grid, EXPLAIN toggle)
  [x] 7.11.12 Query plan analyzer: capture EXPLAIN output -> structured tree with cost highlight
  [x] 7.11.13 Slow query log viewer (surfacing entries from existing query perf logging 3.9)
- [ ] 7.11.14 Index usage advisor: detect missing index patterns from recent slow queries (basic heuristic)
+ [x] 7.11.14 Index usage advisor: detect missing index patterns from recent slow queries (basic heuristic) — integrated widget + DatabasePanel wiring with PyQt tests (`tests/test_database_panel_slow_query_log_viewer.py`)
  [ ] 7.11.15 Vacuum / analyze maintenance trigger (confirmation dialog + progress banner) [Admin]
 
  Data Integrity & Diff Utilities

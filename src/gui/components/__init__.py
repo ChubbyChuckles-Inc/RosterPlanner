@@ -24,6 +24,7 @@ from .row_diff_viewer import RowDiffViewer, RowDiffViewerWidget
 from .query_runner import QueryRunnerWidget
 from .query_plan_analyzer import QueryPlanAnalyzerWidget
 from .slow_query_log_viewer import SlowQueryLogViewer
+from .index_usage_advisor import IndexUsageAdvisorWidget
 
 __all__ = [
     "register_demo",
@@ -41,4 +42,5 @@ __all__ = [
     "QueryRunnerWidget",
     "QueryPlanAnalyzerWidget",
     "SlowQueryLogViewer",
+    "IndexUsageAdvisorWidget",
 ]

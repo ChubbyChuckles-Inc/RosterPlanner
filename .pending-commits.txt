@@ -1,4 +1,7 @@
 
+feat(database): add index usage advisor to Database Panel (7.11.14)
+Introduces IndexUsageAdvisorWidget that replays slow queries through EXPLAIN to flag table scans without indexes, integrates it into DatabasePanel with automatic refresh on query execution, and adds PyQt coverage validating recommendations for scans vs indexed lookups alongside roadmap update marking 7.11.14 complete.
+
 feat(database): add query plan analyzer & slow query log viewer (7.11.12-7.11.13)
 Implements the QueryPlanAnalyzerWidget with structured EXPLAIN tree rendering, integrates it and the new SlowQueryLogViewer into DatabasePanel with service-located instrumentation, updates bootstrap to provision the query performance logger, and adds PyQt tests covering plan analysis and slow query capture.
 
