@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QCheckBox,
     QLineEdit,
+    QTabWidget,
 )
 from PyQt6.QtCore import Qt, QTimer
 
@@ -150,37 +151,83 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
         self.quick_filter_input.setPlaceholderText("Quick filter (substring match across columns)")
         detail_layout.addWidget(self.quick_filter_input)
 
-        self.row_inspector = RowDetailInspector(self._data_preview_model, detail_container)
-        detail_layout.addWidget(self.row_inspector)
+        self.detail_tabs = QTabWidget(detail_container)
+        self.detail_tabs.setObjectName("dbDetailTabs")
+        detail_layout.addWidget(self.detail_tabs, 1)
 
-        self.row_diff_viewer = RowDiffViewer(detail_container)
-        detail_layout.addWidget(self.row_diff_viewer)
+        # Overview tab: row-level tools and schema graph
+        overview_tab = QWidget()
+        overview_layout = QVBoxLayout(overview_tab)
+        overview_layout.setContentsMargins(0, 0, 0, 0)
+        overview_layout.setSpacing(6)
+
+        self.row_inspector = RowDetailInspector(self._data_preview_model, overview_tab)
+        self.row_inspector.setMinimumHeight(160)
+
+        self.row_diff_viewer = RowDiffViewer(overview_tab)
         if self._data_preview_model is None:
             self.row_diff_viewer.show_unavailable("Row diff viewer requires preview service.")
 
-        self.query_runner = QueryRunnerWidget(detail_container)
+        self.graph_widget = SchemaGraphWidget(overview_tab)
+        self.graph_widget.setMinimumHeight(200)
+
+        overview_splitter = QSplitter(Qt.Orientation.Vertical, overview_tab)
+        overview_splitter.setChildrenCollapsible(False)
+        overview_splitter.addWidget(self.row_inspector)
+        overview_splitter.addWidget(self.row_diff_viewer)
+        overview_splitter.addWidget(self.graph_widget)
+        overview_splitter.setStretchFactor(0, 1)
+        overview_splitter.setStretchFactor(1, 1)
+        overview_splitter.setStretchFactor(2, 2)
+        overview_layout.addWidget(overview_splitter)
+
+        self.detail_tabs.addTab(overview_tab, "Overview")
+
+        # Queries tab: ad-hoc query execution and explain plans
+        queries_tab = QWidget()
+        queries_layout = QVBoxLayout(queries_tab)
+        queries_layout.setContentsMargins(0, 0, 0, 0)
+        queries_layout.setSpacing(6)
+
+        self.query_runner = QueryRunnerWidget(queries_tab)
         self.query_runner.set_connection(self._sqlite_conn)
-        detail_layout.addWidget(self.query_runner)
+        queries_layout.addWidget(self.query_runner)
 
-        self.slow_query_viewer = SlowQueryLogViewer(detail_container)
-        detail_layout.addWidget(self.slow_query_viewer)
-
-        self.index_advisor = IndexUsageAdvisorWidget(detail_container)
-        detail_layout.addWidget(self.index_advisor)
-
-        self.query_plan_analyzer = QueryPlanAnalyzerWidget(detail_container)
+        self.query_plan_analyzer = QueryPlanAnalyzerWidget(queries_tab)
         self.query_plan_analyzer.set_connection(self._sqlite_conn)
-        detail_layout.addWidget(self.query_plan_analyzer)
+        queries_layout.addWidget(self.query_plan_analyzer, 1)
+
+        self.detail_tabs.addTab(queries_tab, "Queries")
+
+        # Performance tab: slow query log & index advisor
+        performance_tab = QWidget()
+        performance_layout = QVBoxLayout(performance_tab)
+        performance_layout.setContentsMargins(0, 0, 0, 0)
+        performance_layout.setSpacing(6)
+
+        self.slow_query_viewer = SlowQueryLogViewer(performance_tab)
+        performance_layout.addWidget(self.slow_query_viewer)
+
+        self.index_advisor = IndexUsageAdvisorWidget(performance_tab)
+        performance_layout.addWidget(self.index_advisor, 1)
+
+        self.detail_tabs.addTab(performance_tab, "Performance")
+
+        # Integrity tab: foreign key orphan scan and future checks
+        integrity_tab = QWidget()
+        integrity_layout = QVBoxLayout(integrity_tab)
+        integrity_layout.setContentsMargins(0, 0, 0, 0)
+        integrity_layout.setSpacing(6)
 
         self.fk_orphan_widget = ForeignKeyOrphanWidget(
-            detail_container,
+            integrity_tab,
             schema_service=self._schema_service,
             connection=self._sqlite_conn,
         )
-        detail_layout.addWidget(self.fk_orphan_widget)
+        integrity_layout.addWidget(self.fk_orphan_widget)
+        integrity_layout.addStretch(1)
 
-        self.graph_widget = SchemaGraphWidget(detail_container)
-        detail_layout.addWidget(self.graph_widget, 1)
+        self.detail_tabs.addTab(integrity_tab, "Integrity")
 
         split.addWidget(detail_container)
         split.setStretchFactor(1, 1)
@@ -535,6 +582,17 @@ class DatabasePanel(QWidget, ThemeAwareMixin):
             f"#databasePanel QComboBox {{ background:{surface}; color:{text}; border:1px solid {border}; padding:4px 6px; }}",
             f"#databasePanel QComboBox::drop-down {{ border-left:1px solid {border}; }}",
             f"#databasePanel QComboBox QAbstractItemView {{ background:{surface}; color:{text}; border:1px solid {border}; selection-background-color:{accent}; selection-color:{background}; }}",
+            f"#databasePanel QTabWidget::pane {{ border:1px solid {border}; background:{surface}; top:-1px; }}",
+            "#databasePanel QTabWidget::tab-bar { alignment: left; }",
+            (
+                f"#databasePanel QTabBar::tab {{ background:{sunken}; color:{text}; padding:6px 10px; "
+                f"border:1px solid {border}; border-bottom:0; border-top-left-radius:4px; "
+                f"border-top-right-radius:4px; margin-right:2px; }}"
+            ),
+            (
+                f"#databasePanel QTabBar::tab:selected {{ background:{accent}; color:{background}; border-color:{border}; }}"
+            ),
+            (f"#databasePanel QTabBar::tab:hover {{ background:{accent}; color:{background}; }}"),
             f"#databasePanel QPushButton {{ background:{surface}; color:{text}; border:1px solid {border}; padding:4px 10px; border-radius:4px; }}",
             f"#databasePanel QPushButton:hover {{ background:{accent}; color:{background}; }}",
             f"#databasePanel QPushButton:disabled {{ background:{sunken}; color:{muted}; border:1px solid {border}; }}",
