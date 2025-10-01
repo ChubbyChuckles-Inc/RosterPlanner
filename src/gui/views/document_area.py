@@ -43,6 +43,13 @@ class DocumentArea(QTabWidget, ThemeAwareMixin):
             self.customContextMenuRequested.connect(self._on_tab_context_menu)  # type: ignore
         except Exception:
             pass
+        try:
+            stack = self.findChild(QWidget, "qt_tabwidget_stackedwidget")
+            if stack is not None:
+                stack.setObjectName("documentAreaStack")
+                ensure_styled_background(stack)
+        except Exception:
+            pass
         self._apply_initial_theme()
 
     # Public API -----------------------------------------------------
@@ -95,6 +102,12 @@ class DocumentArea(QTabWidget, ThemeAwareMixin):
                 pass
         try:
             ensure_styled_background(self.tabBar())
+        except Exception:
+            pass
+        try:
+            stack = self.findChild(QWidget, "documentAreaStack")
+            if stack is not None:
+                ensure_styled_background(stack)
         except Exception:
             pass
 

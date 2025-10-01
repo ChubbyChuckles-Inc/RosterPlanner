@@ -345,6 +345,7 @@ QTabWidget#documentArea {{ background:{workspace_bg}; color:{txt}; border:none; 
 QTabWidget#documentArea::pane {{ background:{workspace_bg}; border:1px solid {border}; }}
 QTabWidget#documentArea > QTabBar::tab {{ background:{workspace_tab_bg}; color:{txt}; padding:4px 10px; border:1px solid {border}; border-bottom:none; margin-right:2px; }}
 QTabWidget#documentArea > QTabBar::tab:selected {{ background:{workspace_tab_selected}; color:{bg}; border-color:{workspace_tab_selected}; z-index:1; }}
+QTabWidget#documentArea QWidget#documentAreaStack {{ background:{workspace_bg}; }}
  QListWidget, QTreeView {{ background:{surf}; color:{txt}; border:1px solid {border}; }}
  QTreeView::item:selected, QListWidget::item:selected {{ background:{accent}; color:{bg}; }}
  QToolTip {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
