@@ -162,11 +162,21 @@ class MainWindow(QMainWindow):  # Dock-based
         self._build_document_area()
         self._create_initial_docks()
         # Install rich status bar (Milestone 5.10.59)
+        self._status_bar = None
         try:
             self._status_bar_widget = StatusBarWidget()
             # Use QMainWindow native statusBar container to host custom widget
             sb = self.statusBar()  # type: ignore[attr-defined]
+            sb.setObjectName("MainStatusBar")
+            ensure_styled_background(sb)
+            self._status_bar = sb
             sb.addPermanentWidget(self._status_bar_widget, 1)  # type: ignore
+            try:
+                theme = services.try_get("theme_service")
+                if theme:
+                    self._apply_status_bar_theme(theme)
+            except Exception:
+                pass
         except Exception:
             self._status_bar_widget = None  # fallback
         # Subscribe to ingestion refresh events for live metrics (best effort)
@@ -241,6 +251,10 @@ class MainWindow(QMainWindow):  # Dock-based
                 except Exception:
                     pass
                 self._apply_theme_stylesheet(qss)
+                try:
+                    self._apply_status_bar_theme(theme_svc)
+                except Exception:
+                    pass
         except Exception:
             pass
         self._dock_style_helper = DockStyleHelper()
@@ -274,6 +288,10 @@ class MainWindow(QMainWindow):  # Dock-based
                 except Exception:
                     pass
                 self._apply_theme_stylesheet(qss)
+                try:
+                    self._apply_status_bar_theme(theme_svc)
+                except Exception:
+                    pass
         except Exception:
             pass
         # Subscribe to theme changed event for propagation (Milestone 5.10.13)
@@ -1207,6 +1225,31 @@ class MainWindow(QMainWindow):  # Dock-based
                             queue.append(child)
                 except Exception:
                     pass
+        except Exception:
+            pass
+
+    def _apply_status_bar_theme(self, theme) -> None:
+        if not getattr(self, "_status_bar", None):
+            return
+        colors = theme.colors() if hasattr(theme, "colors") else {}
+        bg = colors.get("statusbar.background", colors.get("background.secondary", "#1F2732"))
+        border = colors.get("statusbar.border", colors.get("border.medium", "#233040"))
+        text = colors.get("text.primary", "#FFFFFF")
+        muted = colors.get("text.muted", text)
+        stylesheet = (
+            "QStatusBar#MainStatusBar { background:" + bg + "; border-top:1px solid " + border + "; color:" + text + "; }\n"
+            "QStatusBar#MainStatusBar QLabel { color:" + muted + "; }"
+        )
+        try:
+            self._status_bar.setStyleSheet(stylesheet)
+        except Exception:
+            pass
+        try:
+            ensure_styled_background(self._status_bar)
+        except Exception:
+            pass
+        try:
+            self._apply_status_bar_theme(theme_svc)
         except Exception:
             pass
 

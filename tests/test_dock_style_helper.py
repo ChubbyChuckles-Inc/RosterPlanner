@@ -2,7 +2,8 @@ import sys
 import pytest
 
 try:  # pragma: no cover
-    from PyQt6.QtWidgets import QApplication, QDockWidget, QWidget
+    from PyQt6.QtWidgets import QApplication, QDockWidget, QWidget, QLabel
+    from PyQt6.QtCore import Qt
 except Exception:  # pragma: no cover
     QApplication = None  # type: ignore
 
@@ -22,3 +23,6 @@ def test_create_title_bar_applies_custom_widget(qtbot):  # requires pytest-qt
     # Ensure grip label was added (object name for label)
     labels = tb.findChildren(QWidget)
     assert any(getattr(w, "objectName", lambda: "")() == "DockTitleLabel" for w in labels)
+    assert tb.testAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+    label = tb.findChild(QLabel, "DockTitleLabel")
+    assert label is not None and label.testAttribute(Qt.WidgetAttribute.WA_StyledBackground)

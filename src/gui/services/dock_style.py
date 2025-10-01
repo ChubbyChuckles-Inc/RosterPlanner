@@ -15,6 +15,8 @@ Design Considerations:
 from __future__ import annotations
 from typing import Optional
 
+from gui.utils.style_helpers import ensure_styled_background
+
 try:  # pragma: no cover
     from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QDockWidget
     from PyQt6.QtCore import Qt
@@ -61,11 +63,14 @@ class DockStyleHelper:
             return
         title = QWidget()
         title.setObjectName("DockTitleBar")
+        ensure_styled_background(title)
         lay = QHBoxLayout(title)
         lay.setContentsMargins(4, 2, 4, 2)
         grip = _GripWidget()
+        ensure_styled_background(grip)
         label = QLabel(dock.windowTitle())
         label.setObjectName("DockTitleLabel")
+        ensure_styled_background(label)
         lay.addWidget(grip)
         lay.addWidget(label)
         lay.addStretch(1)
