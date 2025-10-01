@@ -17,6 +17,8 @@ from PyQt6.QtWidgets import QDockWidget, QWidget, QApplication
 import sys
 from PyQt6.QtCore import Qt
 
+from gui.utils.style_helpers import ensure_styled_background
+
 
 __all__ = ["DockDefinition", "DockManager"]
 
@@ -82,13 +84,25 @@ class DockManager:
         except Exception:
             pass
         dock_widget = QDockWidget(definition.title)
+        try:
+            ensure_styled_background(dock_widget)
+        except Exception:
+            pass
         dock_widget.setObjectName(dock_id)
         try:
             if isinstance(widget, QWidget):
                 dock_widget.setWidget(widget)
+                try:
+                    ensure_styled_background(widget)
+                except Exception:
+                    pass
             else:  # test fallback: wrap in empty QWidget container
                 container = QWidget()
                 dock_widget.setWidget(container)
+                try:
+                    ensure_styled_background(container)
+                except Exception:
+                    pass
         except Exception:
             # As a last resort leave dock without inner widget (test contexts)
             pass

@@ -16,6 +16,10 @@ from typing import Iterable, List
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSizePolicy
 from PyQt6.QtCore import Qt
 
+from gui.components.theme_aware import ThemeAwareMixin
+from gui.services.service_locator import services
+from gui.utils.style_helpers import ensure_styled_background
+
 __all__ = ["StatusBarWidget"]
 
 _SPARK_CHARS = "▁▂▃▄▅▆▇█"  # 8 steps
@@ -40,7 +44,7 @@ def _sparkline(values: Iterable[int]) -> str:
     return "".join(chars)
 
 
-class StatusBarWidget(QWidget):
+class StatusBarWidget(QWidget, ThemeAwareMixin):
     """Composite status bar with segment labels.
 
     Methods:
@@ -52,6 +56,7 @@ class StatusBarWidget(QWidget):
     def __init__(self):  # pragma: no cover - trivial layout
         super().__init__()
         self.setObjectName("StatusBarRoot")
+        ensure_styled_background(self)
         lay = QHBoxLayout(self)
         lay.setContentsMargins(8, 2, 8, 2)
         lay.setSpacing(16)
@@ -60,16 +65,19 @@ class StatusBarWidget(QWidget):
         self.lbl_message.setObjectName("StatusMessageLabel")
         self.lbl_message.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         self.lbl_message.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        ensure_styled_background(self.lbl_message)
         lay.addWidget(self.lbl_message, 10)
 
         self.lbl_freshness = QLabel("")
         self.lbl_freshness.setObjectName("StatusFreshnessPill")
         self.lbl_freshness.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ensure_styled_background(self.lbl_freshness)
         lay.addWidget(self.lbl_freshness, 0)
 
         self.lbl_trend = QLabel("")
         self.lbl_trend.setObjectName("StatusTrendSpark")
         self.lbl_trend.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ensure_styled_background(self.lbl_trend)
         lay.addWidget(self.lbl_trend, 0)
 
         # Diagnostics (warn/error) badges – hidden by default
@@ -77,15 +85,23 @@ class StatusBarWidget(QWidget):
         self.lbl_warn.setObjectName("StatusWarnBadge")
         self.lbl_warn.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_warn.setVisible(False)
+        ensure_styled_background(self.lbl_warn)
         lay.addWidget(self.lbl_warn, 0)
 
         self.lbl_error = QLabel("")
         self.lbl_error.setObjectName("StatusErrorBadge")
         self.lbl_error.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_error.setVisible(False)
+        ensure_styled_background(self.lbl_error)
         lay.addWidget(self.lbl_error, 0)
 
-        self._apply_style()
+        self._apply_theme(None)
+        try:
+            theme = services.try_get("theme_service")
+            if theme:
+                self.on_theme_changed(theme, [])
+        except Exception:
+            pass
 
     # Public API --------------------------------------------------
     def update_message(self, text: str) -> None:
@@ -118,14 +134,29 @@ class StatusBarWidget(QWidget):
         self.lbl_error.updateGeometry()
 
     # Styling -----------------------------------------------------
-    def _apply_style(self):  # pragma: no cover - visual
+    def _apply_theme(self, theme):  # pragma: no cover - visual
+        colors = theme.colors() if hasattr(theme, "colors") else {}
+        bg = colors.get("statusbar.background", colors.get("background.secondary", "#1F2732"))
+        border = colors.get("statusbar.border", colors.get("border.medium", "#233040"))
+        text = colors.get("text.primary", "#FFFFFF")
+        muted = colors.get("text.muted", text)
+        pill_bg = colors.get("statusbar.pill.background", colors.get("accent.base", "#3D8BFD"))
+        pill_fg = colors.get("statusbar.pill.foreground", colors.get("accent.foreground", text))
+        warn_bg = colors.get("state.warning.bg", "#FFC107")
+        warn_fg = colors.get("state.warning.fg", "#202020")
+        error_bg = colors.get("state.error.bg", "#DC3545")
+        error_fg = colors.get("state.error.fg", "#FFFFFF")
+        spark_font = "'Consolas', 'Courier New', monospace"
         self.setStyleSheet(
-            """
-            QWidget#StatusBarRoot { background: palette(AlternateBase); border-top: 1px solid palette(Mid); }
-            QLabel#StatusMessageLabel { font-size: 12px; color: palette(WindowText); }
-            QLabel#StatusFreshnessPill { padding:2px 6px; border-radius: 8px; background: palette(Button); color: palette(ButtonText); }
-            QLabel#StatusTrendSpark { font-family: 'Consolas', 'Courier New', monospace; }
-            QLabel#StatusWarnBadge { padding:2px 4px; border-radius:6px; background:#FFC107; color:#202020; font-weight:600; }
-            QLabel#StatusErrorBadge { padding:2px 4px; border-radius:6px; background:#DC3545; color:#ffffff; font-weight:600; }
+            f"""
+            QWidget#StatusBarRoot {{ background: {bg}; border-top: 1px solid {border}; }}
+            QLabel#StatusMessageLabel {{ font-size: 12px; color: {text}; }}
+            QLabel#StatusFreshnessPill {{ padding:2px 6px; border-radius: 8px; background: {pill_bg}; color: {pill_fg}; }}
+            QLabel#StatusTrendSpark {{ font-family: {spark_font}; color: {muted}; }}
+            QLabel#StatusWarnBadge {{ padding:2px 4px; border-radius:6px; background:{warn_bg}; color:{warn_fg}; font-weight:600; }}
+            QLabel#StatusErrorBadge {{ padding:2px 4px; border-radius:6px; background:{error_bg}; color:{error_fg}; font-weight:600; }}
             """
         )
+
+    def on_theme_changed(self, theme, changed_keys):  # pragma: no cover - visual
+        self._apply_theme(theme)

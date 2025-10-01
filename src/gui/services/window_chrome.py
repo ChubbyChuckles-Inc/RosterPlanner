@@ -29,10 +29,14 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QPoint, QRect, QEvent, QObject
 from PyQt6.QtGui import QMouseEvent, QCursor, QPixmap
 
+from gui.components.theme_aware import ThemeAwareMixin
+from gui.services.service_locator import services
+from gui.utils.style_helpers import ensure_styled_background
+
 _ACTIVE_ROLE = "--active"  # suffix for state classes (future theming hook)
 
 
-class _ChromeTitleBar(QWidget):
+class _ChromeTitleBar(QWidget, ThemeAwareMixin):
     """Title bar widget inserted via setMenuWidget for QMainWindow."""
 
     def __init__(self, window: QMainWindow, icon_path: str | None = None):
@@ -42,6 +46,7 @@ class _ChromeTitleBar(QWidget):
         self._maximized = False
         self._pre_max_normal_geom: QRect | None = None
         self.setObjectName("chromeTitleBar")
+        ensure_styled_background(self)
         lay = QHBoxLayout(self)
         lay.setContentsMargins(12, 4, 8, 4)
         lay.setSpacing(8)
@@ -64,6 +69,7 @@ class _ChromeTitleBar(QWidget):
             self.title_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         except Exception:
             pass
+        ensure_styled_background(self.title_label)
         lay.addWidget(self.title_label, 1)
         # Minimize
         self.btn_min = QToolButton()
@@ -75,6 +81,7 @@ class _ChromeTitleBar(QWidget):
         except Exception:
             pass
         self.btn_min.clicked.connect(window.showMinimized)  # type: ignore
+        ensure_styled_background(self.btn_min)
         lay.addWidget(self.btn_min)
         # Maximize / Restore
         self.btn_max = QToolButton()
@@ -86,6 +93,7 @@ class _ChromeTitleBar(QWidget):
         except Exception:
             pass
         self.btn_max.clicked.connect(self._toggle_max_restore)  # type: ignore
+        ensure_styled_background(self.btn_max)
         lay.addWidget(self.btn_max)
         # Close
         self.btn_close = QToolButton()
@@ -97,9 +105,16 @@ class _ChromeTitleBar(QWidget):
         except Exception:
             pass
         self.btn_close.clicked.connect(window.close)  # type: ignore
+        ensure_styled_background(self.btn_close)
         lay.addWidget(self.btn_close)
         try:
             window.windowTitleChanged.connect(self._on_title_changed)  # type: ignore
+        except Exception:
+            pass
+        try:
+            theme = services.try_get("theme_service")
+            if theme:
+                self.on_theme_changed(theme, [])
         except Exception:
             pass
 
@@ -140,6 +155,26 @@ class _ChromeTitleBar(QWidget):
     def mouseDoubleClickEvent(self, e: QMouseEvent):  # type: ignore[override]
         self._toggle_max_restore()
         super().mouseDoubleClickEvent(e)
+
+    def on_theme_changed(self, theme, changed_keys):  # pragma: no cover - visual
+        colors = theme.colors() if hasattr(theme, "colors") else {}
+        bg = colors.get("titlebar.background", colors.get("background.secondary", "#1F2732"))
+        border = colors.get("titlebar.border", colors.get("border.medium", "#233040"))
+        text = colors.get("text.primary", "#FFFFFF")
+        muted = colors.get("text.muted", text)
+        accent = colors.get("accent.base", "#3D8BFD")
+        close_hover = colors.get("state.error.bg", "rgba(200,40,40,0.65)")
+        close_fg = colors.get("state.error.fg", "#FFFFFF")
+        self.setStyleSheet(
+            f"""
+            QWidget#chromeTitleBar {{ background:{bg}; border-bottom:1px solid {border}; }}
+            QLabel#chromeTitleLabel {{ color:{text}; font-weight:600; padding-left:4px; }}
+            QToolButton#chromeBtnMin, QToolButton#chromeBtnMax {{ color:{muted}; border:none; background:transparent; }}
+            QToolButton#chromeBtnMin:hover, QToolButton#chromeBtnMax:hover {{ background:{accent}; color:{bg}; }}
+            QToolButton#chromeBtnClose {{ color:{text}; border:none; background:transparent; }}
+            QToolButton#chromeBtnClose:hover {{ background:{close_hover}; color:{close_fg}; }}
+            """
+        )
 
 
 class _MainWindowResizer(QObject):

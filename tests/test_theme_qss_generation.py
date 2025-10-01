@@ -7,6 +7,8 @@ def test_theme_service_generate_qss_variant_change():
     svc = ThemeService.create_default()
     base_qss = svc.generate_qss()
     assert "QMainWindow" in base_qss and len(base_qss) > 50
+    for selector in ("QMainWindow::separator", "QDockWidget::widget", "QGroupBox"):
+        assert selector in base_qss
     # Ensure semantic aliases present
     colors = svc.colors()
     for key in ("background.primary", "background.secondary", "surface.card", "accent.base"):

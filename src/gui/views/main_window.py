@@ -95,6 +95,10 @@ from gui.components.status_bar import StatusBarWidget
 class MainWindow(QMainWindow):  # Dock-based
     def __init__(self, club_id: int = 0, season: int = 2025, data_dir: str = "."):
         super().__init__()
+        try:
+            ensure_styled_background(self)
+        except Exception:
+            pass
         self.setWindowTitle("Roster Planner (Docked)")
         self.club_id = club_id
         self.season = season
@@ -1181,6 +1185,28 @@ class MainWindow(QMainWindow):  # Dock-based
             self.setProperty("reducedColor", "1" if active else "0")
             self.style().unpolish(self)
             self.style().polish(self)
+        except Exception:
+            pass
+        # Ensure styled backgrounds were applied to the main window and descendants.
+        try:
+            queue = [self]
+            visited: set[int] = set()
+            while queue:
+                w = queue.pop(0)
+                ident = id(w)
+                if ident in visited:
+                    continue
+                visited.add(ident)
+                try:
+                    ensure_styled_background(w)
+                except Exception:
+                    pass
+                try:
+                    for child in w.findChildren(QWidget):  # type: ignore[arg-type]
+                        if id(child) not in visited:
+                            queue.append(child)
+                except Exception:
+                    pass
         except Exception:
             pass
 

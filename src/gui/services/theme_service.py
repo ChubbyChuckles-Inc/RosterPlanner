@@ -321,11 +321,18 @@ class ThemeService:
         return f"""
 /* THEME (auto-generated runtime) */
 QMainWindow {{ background: {bg}; color: {txt}; }}
+QMainWindow::separator {{ background:{border}; width:1px; height:1px; }}
+QMainWindow::separator:hover {{ background:{accent}; }}
 QMenuBar {{ background: {bg2}; color:{txt}; }}
 QMenu {{ background: {bg2}; color:{txt}; }}
 QMenu::item:selected {{ background: {accent}; color: {bg}; }}
+QDockWidget {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
+QDockWidget::widget {{ background:{surf}; }}
+QDockWidget QWidget {{ background:{surf}; color:{txt}; }}
 QDockWidget::title {{ background: {surf}; color:{txt}; }}
 QLabel {{ color:{txt}; }}
+QGroupBox {{ background:{bg2}; color:{txt}; border:1px solid {border}; border-radius:6px; margin-top:12px; padding:6px; }}
+QGroupBox::title {{ subcontrol-origin: margin; left:10px; padding:0px 4px; background:{bg2}; color:{txt_muted}; }}
  QTableWidget {{ background:{surf}; color:{txt}; gridline-color:{border}; }}
  /* Simplified header styling to avoid deferred paint issues */
  QHeaderView::section {{ background:{bg2}; color:{txt}; padding:3px 6px; border:none; }}
