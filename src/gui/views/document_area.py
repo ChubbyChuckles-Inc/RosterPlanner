@@ -18,26 +18,32 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QObject, pyqtSignal, Qt
 
 from gui.services.tab_metadata_persistence import TabMetadataPersistenceService
+from gui.components.theme_aware import ThemeAwareMixin
+from gui.utils.style_helpers import ensure_styled_background
 
 __all__ = ["DocumentArea"]
 
 
-class DocumentArea(QTabWidget):
+class DocumentArea(QTabWidget, ThemeAwareMixin):
     # (Could add a Qt signal later if needed; for now simple override)
     def __init__(self, base_dir: str | None = None):
         super().__init__()
+        self.setObjectName("documentArea")
+        ensure_styled_background(self)
         self._doc_index: Dict[str, int] = {}
         self._base_dir = base_dir or "."
         self._tab_meta = TabMetadataPersistenceService(self._base_dir)
         # Legacy compatibility structures expected by older tests
         self._documents = []  # type: ignore[attr-defined]
         self._widgets_by_id = {}  # type: ignore[attr-defined]
+        self._base_stylesheet = self.styleSheet()
         # Enable custom context menu
         try:
             self.setContextMenuPolicy(0x0003)  # Qt.ContextMenuPolicy.CustomContextMenu value
             self.customContextMenuRequested.connect(self._on_tab_context_menu)  # type: ignore
         except Exception:
             pass
+        self._apply_initial_theme()
 
     # Public API -----------------------------------------------------
     def open_or_focus(self, doc_id: str, title: str, factory: Callable[[], Any]) -> Any:
@@ -71,6 +77,77 @@ class DocumentArea(QTabWidget):
         except Exception:
             pass
         return widget
+
+    # Theme Integration -------------------------------------------------
+    def _apply_initial_theme(self) -> None:
+        """Apply the current theme immediately if available."""
+
+        try:  # pragma: no cover - service locator may be missing in tests
+            from gui.services.service_locator import services as _services  # type: ignore
+
+            theme = _services.try_get("theme_service")
+        except Exception:
+            theme = None
+        if theme:
+            try:
+                self.on_theme_changed(theme, [])
+            except Exception:
+                pass
+        try:
+            ensure_styled_background(self.tabBar())
+        except Exception:
+            pass
+
+    def on_theme_changed(self, theme, changed_keys):  # type: ignore[override]
+        """Update tab workspace styling using active theme tokens."""
+
+        colors: Dict[str, str] = {}
+        try:
+            if hasattr(theme, "colors"):
+                colors = theme.colors()
+        except Exception:
+            colors = {}
+        base_bg = colors.get("background.base", "#1f1f1f")
+        pane_bg = colors.get("surface.card", colors.get("background.secondary", base_bg))
+        tab_bg = colors.get("background.secondary", pane_bg)
+        text = colors.get("text.primary", "#f0f0f0")
+        accent = colors.get("accent.base", colors.get("accent.primary", "#3d8bfd"))
+        border = colors.get("border.medium", colors.get("border.base", accent))
+        inactive_border = colors.get("border.light", border)
+
+        qss = f"""
+QTabWidget#documentArea {{
+    background: {base_bg};
+    color: {text};
+    border: none;
+}}
+QTabWidget#documentArea::pane {{
+    background: {pane_bg};
+    border: 1px solid {border};
+}}
+QTabBar::tab {{
+    background: {tab_bg};
+    color: {text};
+    padding: 4px 10px;
+    border: 1px solid {inactive_border};
+    border-bottom: none;
+    margin-right: 2px;
+}}
+QTabBar::tab:selected {{
+    background: {accent};
+    color: {base_bg};
+    border-color: {accent};
+    z-index: 1;
+}}
+"""
+        try:
+            self.setStyleSheet(qss)
+        except Exception:
+            pass
+        try:
+            ensure_styled_background(self.tabBar())
+        except Exception:
+            pass
 
     def has_document(self, doc_id: str) -> bool:
         return doc_id in self._doc_index
