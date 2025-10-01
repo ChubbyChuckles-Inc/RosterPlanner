@@ -315,6 +315,9 @@ class ThemeService:
         txt_muted = c.get("text.muted", txt)
         accent = c.get("accent.base", c.get("accent.primary", "#3D8BFD"))
         border = c.get("border.medium", c.get("border.light", accent))
+        workspace_bg = c.get("workspace.background", c.get("surface.card", bg2))
+        workspace_tab_bg = c.get("workspace.tab", c.get("background.secondary", workspace_bg))
+        workspace_tab_selected = c.get("workspace.tab.active", accent)
         return f"""
 /* THEME (auto-generated runtime) */
 QMainWindow {{ background: {bg}; color: {txt}; }}
@@ -337,6 +340,11 @@ QStatusBar {{ background:{bg2}; color:{txt_muted}; }}
  QTabWidget::pane {{ border:1px solid {border}; background:{surf}; }}
  QTabBar::tab {{ background:{bg2}; color:{txt}; padding:4px 10px; border:1px solid {border}; border-bottom:none; }}
  QTabBar::tab:selected {{ background:{accent}; color:{bg}; }}
+/* Document workspace styling */
+QTabWidget#documentArea {{ background:{workspace_bg}; color:{txt}; border:none; }}
+QTabWidget#documentArea::pane {{ background:{workspace_bg}; border:1px solid {border}; }}
+QTabWidget#documentArea > QTabBar::tab {{ background:{workspace_tab_bg}; color:{txt}; padding:4px 10px; border:1px solid {border}; border-bottom:none; margin-right:2px; }}
+QTabWidget#documentArea > QTabBar::tab:selected {{ background:{workspace_tab_selected}; color:{bg}; border-color:{workspace_tab_selected}; z-index:1; }}
  QListWidget, QTreeView {{ background:{surf}; color:{txt}; border:1px solid {border}; }}
  QTreeView::item:selected, QListWidget::item:selected {{ background:{accent}; color:{bg}; }}
  QToolTip {{ background:{bg2}; color:{txt}; border:1px solid {border}; }}
