@@ -45,6 +45,21 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QMouseEvent, QCursor
 
+try:  # pragma: no cover - optional import in early boot
+    from gui.components.theme_aware import ThemeAwareMixin
+except Exception:  # pragma: no cover - fallback noop mixin
+
+    class ThemeAwareMixin:  # type: ignore
+        def on_theme_changed(self, *_args, **_kwargs) -> None:
+            pass
+
+try:  # pragma: no cover - optional helper
+    from gui.utils.style_helpers import ensure_styled_background
+except Exception:  # pragma: no cover
+
+    def ensure_styled_background(_widget):  # type: ignore
+        return
+
 __all__ = ["ChromeDialog"]
 
 
@@ -128,7 +143,7 @@ class _FramelessResizer(QObject):
         return False
 
 
-class ChromeDialog(QDialog):
+class ChromeDialog(QDialog, ThemeAwareMixin):
     def __init__(self, parent=None, title: str = "", resize_margin: int = 6):
         super().__init__(parent, flags=Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setObjectName("ChromeDialog")
@@ -205,6 +220,19 @@ class ChromeDialog(QDialog):
                 self.restoreGeometry(geo)
         except Exception:
             pass
+        # Enable styled backgrounds so theme shaders apply without artifacts
+        try:
+            ensure_styled_background(self)
+            ensure_styled_background(self._title_bar)
+            ensure_styled_background(self._content)
+            ensure_styled_background(self._title_label)
+            ensure_styled_background(self._btn_close)
+        except Exception:
+            pass
+        # Cache theme colors for paintEvent lookups
+        self._theme_colors: dict[str, str] = {}
+        # Apply active theme immediately if available
+        self._apply_theme_from_service()
 
     # API ----------------------------------------------------------
     def content_widget(self) -> QWidget:
@@ -281,38 +309,54 @@ class ChromeDialog(QDialog):
             path.addRect(qrect)
         # Resolve base fill from theme tokens (use surface.card or background.secondary)
         fill_qcolor = None
-        try:
-            from gui.services.service_locator import services as _services
+        colors = getattr(self, "_theme_colors", {})
+        hexv = (
+            colors.get("surface.dialog")
+            or colors.get("surface.card")
+            or colors.get("background.secondary")
+            or colors.get("background.primary")
+        )
+        if isinstance(hexv, str) and hexv.startswith("#"):
+            fill_qcolor = QColor(hexv)
+        if fill_qcolor is None:
+            try:
+                from gui.services.service_locator import services as _services
 
-            theme = _services.try_get("theme_service")
-            if theme:
-                colors = getattr(theme, "colors", lambda: {})()
-                hexv = (
-                    colors.get("surface.dialog")
-                    or colors.get("surface.card")
-                    or colors.get("background.secondary")
-                    or colors.get("background.primary")
-                )
-                if isinstance(hexv, str) and hexv.startswith("#"):
-                    fill_qcolor = QColor(hexv)
-        except Exception:
-            pass
+                theme = _services.try_get("theme_service")
+                if theme:
+                    colors = getattr(theme, "colors", lambda: {})()
+                    hexv = (
+                        colors.get("surface.dialog")
+                        or colors.get("surface.card")
+                        or colors.get("background.secondary")
+                        or colors.get("background.primary")
+                    )
+                    if isinstance(hexv, str) and hexv.startswith("#"):
+                        fill_qcolor = QColor(hexv)
+                        self._theme_colors = colors
+            except Exception:
+                pass
         if fill_qcolor is None:
             fill_qcolor = self.palette().color(QPalette.ColorRole.Window)
         p.fillPath(path, fill_qcolor)
         # Resolve border color from theme service if available
         border_qcolor = QColor(68, 68, 68)
-        try:
-            from gui.services.service_locator import services as _services
+        border_hex = colors.get("border.medium") or colors.get("accent.base")
+        if not (isinstance(border_hex, str) and border_hex.startswith("#")):
+            try:
+                from gui.services.service_locator import services as _services
 
-            theme = _services.try_get("theme_service")
-            if theme:
-                colors = getattr(theme, "colors", lambda: {})()
-                hexv = colors.get("border.medium") or colors.get("accent.base")
-                if hexv and isinstance(hexv, str) and hexv.startswith("#"):
-                    border_qcolor = QColor(hexv)
-        except Exception:
-            pass
+                theme = _services.try_get("theme_service")
+                if theme:
+                    colors = getattr(theme, "colors", lambda: {})()
+                    border_hex = colors.get("border.medium") or colors.get("accent.base")
+                    if border_hex and isinstance(border_hex, str) and border_hex.startswith("#"):
+                        border_qcolor = QColor(border_hex)
+                        self._theme_colors = colors
+            except Exception:
+                pass
+        elif border_hex:
+            border_qcolor = QColor(border_hex)
         pen = QPen(border_qcolor)
         pen.setWidth(1)
         p.setPen(pen)
@@ -330,3 +374,57 @@ class ChromeDialog(QDialog):
     # Helpers ------------------------------------------------------
     def _in_title_bar(self, pt: QPoint) -> bool:
         return 0 <= pt.y() <= self._title_bar.height()
+
+    def _apply_theme_from_service(self) -> None:
+        try:  # pragma: no cover - best effort init
+            from gui.services.service_locator import services as _services
+
+            theme = _services.try_get("theme_service")
+            if theme:
+                self.on_theme_changed(theme, [])
+        except Exception:
+            pass
+
+    def _apply_chrome_theme(self, theme) -> None:
+        colors = theme.colors() if hasattr(theme, "colors") else {}
+        self._theme_colors = dict(colors)
+        bg = colors.get("titlebar.background", colors.get("background.secondary", "#1F2732"))
+        border = colors.get("titlebar.border", colors.get("border.medium", "#233040"))
+        text = colors.get("text.primary", "#FFFFFF")
+        muted = colors.get("text.muted", text)
+        accent = colors.get("accent.base", "#3D8BFD")
+        close_hover = colors.get("state.error.bg", "rgba(200,40,40,0.65)")
+        close_fg = colors.get("state.error.fg", "#FFFFFF")
+        content_bg = colors.get("surface.dialog", colors.get("surface.card", bg))
+        content_fg = colors.get("text.secondary", text)
+        try:
+            self._title_bar.setStyleSheet(
+                "\n".join(
+                    [
+                        f"QWidget#chromeTitleBar {{ background:{bg}; border-bottom:1px solid {border}; }}",
+                        f"QLabel#chromeTitleLabel {{ color:{text}; font-weight:600; padding-left:4px; }}",
+                        "QToolButton#chromeBtnClose { color:" + text + "; border:none; background:transparent; }",
+                        f"QToolButton#chromeBtnClose:hover {{ background:{close_hover}; color:{close_fg}; }}",
+                        f"QToolButton#chromeBtnClose:pressed {{ background:{close_hover}; color:{close_fg}; opacity:0.85; }}",
+                    ]
+                )
+            )
+        except Exception:
+            pass
+        try:
+            self._content.setStyleSheet(
+                f"QWidget#chromeContentHost {{ background:{content_bg}; color:{content_fg}; }}"
+            )
+        except Exception:
+            pass
+        try:
+            ensure_styled_background(self._title_bar)
+            ensure_styled_background(self._content)
+            ensure_styled_background(self._title_label)
+            ensure_styled_background(self._btn_close)
+        except Exception:
+            pass
+        self.update()  # trigger repaint with new palette
+
+    def on_theme_changed(self, theme, changed_keys):  # type: ignore[override]
+        self._apply_chrome_theme(theme)

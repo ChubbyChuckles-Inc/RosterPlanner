@@ -163,6 +163,7 @@ class MainWindow(QMainWindow):  # Dock-based
         self._create_initial_docks()
         # Install rich status bar (Milestone 5.10.59)
         self._status_bar = None
+        self._chrome_bar = None
         try:
             self._status_bar_widget = StatusBarWidget()
             # Use QMainWindow native statusBar container to host custom widget
@@ -213,6 +214,20 @@ class MainWindow(QMainWindow):  # Dock-based
             if not os.path.exists(icon_path):
                 icon_path = os.path.join("assets", "icons", "base", "table-tennis.png")
             try_enable_custom_chrome(self, icon_path)
+            try:
+                self._chrome_bar = self.menuWidget()
+                if self._chrome_bar:
+                    ensure_styled_background(self._chrome_bar)
+                    try:
+                        for child in self._chrome_bar.findChildren(QWidget):  # type: ignore[arg-type]
+                            ensure_styled_background(child)
+                    except Exception:
+                        pass
+                    theme = services.try_get("theme_service")
+                    if theme:
+                        self._apply_title_bar_theme(theme)
+            except Exception:
+                self._chrome_bar = None
         except Exception:
             pass
         # Register reduced color mode service if absent (Milestone 5.10.61)
@@ -255,6 +270,10 @@ class MainWindow(QMainWindow):  # Dock-based
                     self._apply_status_bar_theme(theme_svc)
                 except Exception:
                     pass
+                try:
+                    self._apply_title_bar_theme(theme_svc)
+                except Exception:
+                    pass
         except Exception:
             pass
         self._dock_style_helper = DockStyleHelper()
@@ -290,6 +309,10 @@ class MainWindow(QMainWindow):  # Dock-based
                 self._apply_theme_stylesheet(qss)
                 try:
                     self._apply_status_bar_theme(theme_svc)
+                except Exception:
+                    pass
+                try:
+                    self._apply_title_bar_theme(theme_svc)
                 except Exception:
                     pass
         except Exception:
@@ -755,6 +778,14 @@ class MainWindow(QMainWindow):  # Dock-based
                     except Exception:
                         pass
                     self._apply_theme_stylesheet(qss)
+                    try:
+                        self._apply_status_bar_theme(svc)
+                    except Exception:
+                        pass
+                    try:
+                        self._apply_title_bar_theme(svc)
+                    except Exception:
+                        pass
                 except Exception:
                     pass
             self._set_status(f"Theme set to {variant}")
@@ -927,6 +958,14 @@ class MainWindow(QMainWindow):  # Dock-based
                 except Exception:
                     pass
                 self._apply_theme_stylesheet(qss)
+                try:
+                    self._apply_status_bar_theme(theme_svc)
+                except Exception:
+                    pass
+                try:
+                    self._apply_title_bar_theme(theme_svc)
+                except Exception:
+                    pass
         except Exception:
             pass
         # Walk child widgets breadth-first to limit recursion depth issues
@@ -1229,7 +1268,8 @@ class MainWindow(QMainWindow):  # Dock-based
             pass
 
     def _apply_status_bar_theme(self, theme) -> None:
-        if not getattr(self, "_status_bar", None):
+        status_bar = getattr(self, "_status_bar", None)
+        if not status_bar or theme is None:
             return
         colors = theme.colors() if hasattr(theme, "colors") else {}
         bg = colors.get("statusbar.background", colors.get("background.secondary", "#1F2732"))
@@ -1237,19 +1277,72 @@ class MainWindow(QMainWindow):  # Dock-based
         text = colors.get("text.primary", "#FFFFFF")
         muted = colors.get("text.muted", text)
         stylesheet = (
-            "QStatusBar#MainStatusBar { background:" + bg + "; border-top:1px solid " + border + "; color:" + text + "; }\n"
+            "QStatusBar#MainStatusBar { background:"
+            + bg
+            + "; border-top:1px solid "
+            + border
+            + "; color:"
+            + text
+            + "; }\n"
             "QStatusBar#MainStatusBar QLabel { color:" + muted + "; }"
         )
         try:
-            self._status_bar.setStyleSheet(stylesheet)
+            status_bar.setStyleSheet(stylesheet)
         except Exception:
             pass
         try:
-            ensure_styled_background(self._status_bar)
+            ensure_styled_background(status_bar)
         except Exception:
             pass
         try:
-            self._apply_status_bar_theme(theme_svc)
+            widget = getattr(self, "_status_bar_widget", None)
+            if widget and hasattr(widget, "on_theme_changed"):
+                widget.on_theme_changed(theme, [])  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    def _apply_title_bar_theme(self, theme) -> None:
+        chrome_bar = getattr(self, "_chrome_bar", None)
+        if not chrome_bar or theme is None:
+            return
+        try:
+            if not chrome_bar.objectName():
+                chrome_bar.setObjectName("chromeTitleBar")
+        except Exception:
+            pass
+        try:
+            if hasattr(chrome_bar, "on_theme_changed"):
+                chrome_bar.on_theme_changed(theme, [])  # type: ignore[attr-defined]
+            else:
+                colors = theme.colors() if hasattr(theme, "colors") else {}
+                bg = colors.get("titlebar.background", colors.get("background.secondary", "#1F2732"))
+                border = colors.get("titlebar.border", colors.get("border.medium", "#233040"))
+                text = colors.get("text.primary", "#FFFFFF")
+                muted = colors.get("text.muted", text)
+                accent = colors.get("accent.base", "#3D8BFD")
+                close_hover = colors.get("state.error.bg", "rgba(200,40,40,0.65)")
+                close_fg = colors.get("state.error.fg", "#FFFFFF")
+                chrome_bar.setStyleSheet(
+                    "\n".join(
+                        [
+                            f"QWidget#chromeTitleBar {{ background:{bg}; border-bottom:1px solid {border}; }}",
+                            f"QLabel#chromeTitleLabel {{ color:{text}; font-weight:600; padding-left:4px; }}",
+                            f"QToolButton#chromeBtnMin, QToolButton#chromeBtnMax {{ color:{muted}; border:none; background:transparent; }}",
+                            f"QToolButton#chromeBtnMin:hover, QToolButton#chromeBtnMax:hover {{ background:{accent}; color:{bg}; }}",
+                            f"QToolButton#chromeBtnClose {{ color:{text}; border:none; background:transparent; }}",
+                            f"QToolButton#chromeBtnClose:hover {{ background:{close_hover}; color:{close_fg}; }}",
+                        ]
+                    )
+                )
+        except Exception:
+            pass
+        try:
+            ensure_styled_background(chrome_bar)
+        except Exception:
+            pass
+        try:
+            for child in chrome_bar.findChildren(QWidget):  # type: ignore[arg-type]
+                ensure_styled_background(child)
         except Exception:
             pass
 
@@ -1279,6 +1372,14 @@ class MainWindow(QMainWindow):  # Dock-based
             try:
                 qss = theme_svc.generate_qss()  # type: ignore[attr-defined]
                 self._apply_theme_stylesheet(qss)
+                try:
+                    self._apply_status_bar_theme(theme_svc)
+                except Exception:
+                    pass
+                try:
+                    self._apply_title_bar_theme(theme_svc)
+                except Exception:
+                    pass
             except Exception:
                 pass
             # Sync QAction checked state if present
